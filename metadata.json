@@ -1,0 +1,6 @@
+{
+  "name": "Dengr Studio",
+  "description": "Platform streaming musik hi-fi mandiri dengan audio engine Web Audio API, equalizer 5-band, lirik tersinkronisasi, unggah lagu kustom, dan manajemen playlist awan.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

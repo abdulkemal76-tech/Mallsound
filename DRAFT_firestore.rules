@@ -1,0 +1,209 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // Phase 3: Hardened Global Helpers
+    // =========================================================================
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // =========================================================================
+    // Validation Blueprints (Anti-Update-Gap)
+    // =========================================================================
+    function isValidPlaylist(data) {
+      return data.keys().hasAll([
+        'title',
+        'description',
+        'coverTheme',
+        'trackIds',
+        'ownerId',
+        'ownerName',
+        'isPublic',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title',
+        'description',
+        'coverTheme',
+        'trackIds',
+        'ownerId',
+        'ownerName',
+        'isPublic',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 80 &&
+      data.description is string && data.description.size() >= 0 && data.description.size() <= 300 &&
+      data.coverTheme is string && data.coverTheme.size() >= 1 && data.coverTheme.size() <= 20 &&
+      data.coverTheme in ['amber', 'emerald', 'indigo', 'rose', 'slate'] &&
+      data.trackIds is list && data.trackIds.size() <= 50 &&
+      (data.trackIds.size() == 0 || (data.trackIds[0] is string && data.trackIds[0].size() >= 1 && data.trackIds[0].size() <= 64)) &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.ownerId == request.auth.uid &&
+      data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+      data.isPublic is bool &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    function isValidFavoriteTrack(data) {
+      return data.keys().hasAll(['trackId', 'ownerId', 'createdAt']) &&
+      data.keys().hasOnly(['trackId', 'ownerId', 'createdAt']) &&
+      data.trackId is string && data.trackId.size() >= 1 && data.trackId.size() <= 64 && data.trackId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.ownerId == request.auth.uid &&
+      data.createdAt is timestamp;
+    }
+
+    function isValidCustomTrack(data) {
+      return data.keys().hasAll([
+        'title',
+        'artist',
+        'album',
+        'genre',
+        'audioUrl',
+        'durationSec',
+        'lyricsText',
+        'ownerId',
+        'ownerName',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.keys().hasOnly([
+        'title',
+        'artist',
+        'album',
+        'genre',
+        'audioUrl',
+        'durationSec',
+        'lyricsText',
+        'ownerId',
+        'ownerName',
+        'createdAt',
+        'updatedAt'
+      ]) &&
+      data.title is string && data.title.size() >= 1 && data.title.size() <= 100 &&
+      data.artist is string && data.artist.size() >= 1 && data.artist.size() <= 80 &&
+      data.album is string && data.album.size() >= 1 && data.album.size() <= 80 &&
+      data.genre is string && data.genre.size() >= 1 && data.genre.size() <= 30 &&
+      data.genre in ['Indie Senja', 'Lo-Fi Beats', 'Synthwave', 'Akustik', 'Eksperimental', 'Pop Alternatif'] &&
+      data.audioUrl is string && data.audioUrl.size() >= 5 && data.audioUrl.size() <= 500 &&
+      data.durationSec is number && data.durationSec >= 10 && data.durationSec <= 3600 &&
+      data.lyricsText is string && data.lyricsText.size() >= 0 && data.lyricsText.size() <= 2000 &&
+      data.ownerId is string && data.ownerId.size() >= 1 && data.ownerId.size() <= 128 && data.ownerId.matches('^[a-zA-Z0-9_\\-]+$') &&
+      data.ownerId == request.auth.uid &&
+      data.ownerName is string && data.ownerName.size() >= 1 && data.ownerName.size() <= 80 &&
+      data.createdAt is timestamp &&
+      data.updatedAt is timestamp;
+    }
+
+    // =========================================================================
+    // Collection Rules
+    // =========================================================================
+
+    // 1. Playlists (/playlists/{playlistId})
+    match /playlists/{playlistId} {
+      allow get: if isSignedIn() && isValidId(playlistId) && (existing().ownerId == request.auth.uid || existing().isPublic == true);
+      allow list: if isSignedIn() && (existing().ownerId == request.auth.uid || existing().isPublic == true);
+
+      allow create: if isVerifiedUser() &&
+        isValidId(playlistId) &&
+        isValidPlaylist(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(playlistId) &&
+        isValidPlaylist(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Update playlist metadata or visibility
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'coverTheme', 'isPublic', 'updatedAt']) ||
+          // Action 2: Modify track list
+          incoming().diff(existing()).affectedKeys().hasOnly(['trackIds', 'updatedAt']) ||
+          // Action 3: Full edit of playlist details and tracks
+          incoming().diff(existing()).affectedKeys().hasOnly(['title', 'description', 'coverTheme', 'trackIds', 'isPublic', 'updatedAt'])
+        );
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(playlistId) &&
+        existing().ownerId == request.auth.uid;
+    }
+
+    // 2. Favorites (/favorites/{favoriteId})
+    match /favorites/{favoriteId} {
+      allow get: if isSignedIn() && isValidId(favoriteId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(favoriteId) &&
+        isValidFavoriteTrack(incoming()) &&
+        incoming().createdAt == request.time;
+
+      allow update: if false;
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(favoriteId) &&
+        existing().ownerId == request.auth.uid;
+    }
+
+    // 3. Custom Tracks (/customTracks/{trackId})
+    match /customTracks/{trackId} {
+      allow get: if isSignedIn() && isValidId(trackId) && existing().ownerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().ownerId == request.auth.uid;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(trackId) &&
+        isValidCustomTrack(incoming()) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+
+      allow update: if isVerifiedUser() &&
+        isValidId(trackId) &&
+        isValidCustomTrack(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'title',
+          'artist',
+          'album',
+          'genre',
+          'audioUrl',
+          'durationSec',
+          'lyricsText',
+          'updatedAt'
+        ]);
+
+      allow delete: if isVerifiedUser() &&
+        isValidId(trackId) &&
+        existing().ownerId == request.auth.uid;
+    }
+  }
+}

@@ -1,0 +1,204 @@
+{
+  "entities": {
+    "Playlist": {
+      "title": "Playlist",
+      "description": "User-created music playlist stored in Firestore.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Display title of the playlist.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "description": "Short editorial description of the playlist mood or theme.",
+          "minLength": 0,
+          "maxLength": 300
+        },
+        "coverTheme": {
+          "type": "string",
+          "description": "Visual accent theme for the playlist cover.",
+          "enum": ["amber", "emerald", "indigo", "rose", "slate"],
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "trackIds": {
+          "type": "array",
+          "description": "Ordered list of track IDs in this playlist (maximum 50 tracks)."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the playlist owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the playlist creator.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "isPublic": {
+          "type": "boolean",
+          "description": "Whether the playlist is visible only to the owner or shared."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the playlist was created."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the playlist was last updated."
+        }
+      },
+      "required": [
+        "title",
+        "description",
+        "coverTheme",
+        "trackIds",
+        "ownerId",
+        "ownerName",
+        "isPublic",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "FavoriteTrack": {
+      "title": "FavoriteTrack",
+      "description": "Record of a user liking/favoriting a track.",
+      "type": "object",
+      "properties": {
+        "trackId": {
+          "type": "string",
+          "description": "ID of the liked track.",
+          "minLength": 1,
+          "maxLength": 64,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user who liked the track.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the track was favorited."
+        }
+      },
+      "required": ["trackId", "ownerId", "createdAt"]
+    },
+    "CustomTrack": {
+      "title": "CustomTrack",
+      "description": "User-contributed custom music track with external audio stream URL or synth preset and synced lyrics.",
+      "type": "object",
+      "properties": {
+        "title": {
+          "type": "string",
+          "description": "Track title.",
+          "minLength": 1,
+          "maxLength": 100
+        },
+        "artist": {
+          "type": "string",
+          "description": "Artist or producer name.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "album": {
+          "type": "string",
+          "description": "Album or EP title.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "genre": {
+          "type": "string",
+          "description": "Musical genre classification.",
+          "enum": [
+            "Indie Senja",
+            "Lo-Fi Beats",
+            "Synthwave",
+            "Akustik",
+            "Eksperimental",
+            "Pop Alternatif"
+          ],
+          "minLength": 1,
+          "maxLength": 30
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "Direct HTTPS audio stream URL or procedural studio synth URI.",
+          "minLength": 5,
+          "maxLength": 500
+        },
+        "durationSec": {
+          "type": "number",
+          "description": "Track duration in seconds (between 10 and 3600)."
+        },
+        "lyricsText": {
+          "type": "string",
+          "description": "Plain or timestamped lyrics lines.",
+          "minLength": 0,
+          "maxLength": 2000
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the uploader.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerName": {
+          "type": "string",
+          "description": "Display name of the uploader.",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the track was added."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp when the track was last updated."
+        }
+      },
+      "required": [
+        "title",
+        "artist",
+        "album",
+        "genre",
+        "audioUrl",
+        "durationSec",
+        "lyricsText",
+        "ownerId",
+        "ownerName",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/playlists/{playlistId}": {
+      "schema": { "$ref": "#/entities/Playlist" },
+      "description": "Stores user-created music playlists."
+    },
+    "/favorites/{favoriteId}": {
+      "schema": { "$ref": "#/entities/FavoriteTrack" },
+      "description": "Stores user favorite track records."
+    },
+    "/customTracks/{trackId}": {
+      "schema": { "$ref": "#/entities/CustomTrack" },
+      "description": "Stores user-added custom music tracks."
+    }
+  }
+}
