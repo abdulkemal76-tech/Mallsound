@@ -301,6 +301,202 @@ app.get('/api/music/lyrics', async (req, res) => {
   }
 });
 
+app.get('/api/playlist/import', async (req, res) => {
+  try {
+    const rawUrl = String(req.query.url || '').trim();
+    if (!rawUrl) {
+      res.status(400).json({ error: 'URL playlist tidak boleh kosong' });
+      return;
+    }
+
+    interface Candidate {
+      title: string;
+      artist: string;
+      youtubeId?: string;
+    }
+
+    let playlistTitle = 'Playlist Impor';
+    const candidates: Candidate[] = [];
+
+    // --- 1. SPOTIFY PLAYLIST IMPORT ---
+    if (rawUrl.includes('spotify.com/playlist/')) {
+      const match = rawUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+      const playlistId = match ? match[1] : '';
+
+      if (!playlistId) {
+        res.status(400).json({ error: 'ID playlist Spotify tidak valid' });
+        return;
+      }
+
+      try {
+        const embedRes = await fetch(`https://open.spotify.com/embed/playlist/${playlistId}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          },
+        });
+
+        if (embedRes.ok) {
+          const html = await embedRes.text();
+          const nextDataMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
+          if (nextDataMatch) {
+            try {
+              const nextData = JSON.parse(nextDataMatch[1]);
+              const entity = nextData?.props?.pageProps?.state?.data?.entity;
+              if (entity) {
+                if (entity.name) playlistTitle = entity.name;
+                const trackList = entity.trackList || [];
+                for (const t of trackList) {
+                  if (t.name || t.title) {
+                    candidates.push({
+                      title: t.name || t.title,
+                      artist: t.subtitle || t.artist || '',
+                    });
+                  }
+                  if (candidates.length >= 35) break;
+                }
+              }
+            } catch (e) {
+              console.warn('Spotify next data parse error:', e);
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('Spotify embed fetch failed, trying oEmbed:', err);
+      }
+
+      // Fallback: oEmbed for title
+      if (playlistTitle === 'Playlist Impor') {
+        try {
+          const oembedRes = await fetch(`https://open.spotify.com/oembed?url=${encodeURIComponent(rawUrl)}`);
+          if (oembedRes.ok) {
+            const oembedJson = await oembedRes.json() as { title?: string };
+            if (oembedJson.title) playlistTitle = oembedJson.title;
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }
+    // --- 2. YOUTUBE / YOUTUBE MUSIC PLAYLIST IMPORT ---
+    else if (rawUrl.includes('youtube.com/') || rawUrl.includes('youtu.be/')) {
+      const listMatch = rawUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+      const listId = listMatch ? listMatch[1] : '';
+
+      if (!listId) {
+        res.status(400).json({ error: 'ID playlist YouTube tidak ditemukan dalam URL' });
+        return;
+      }
+
+      try {
+        const ytRes = await fetch(`https://www.youtube.com/playlist?list=${listId}`, {
+          headers: {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+          },
+        });
+
+        if (ytRes.ok) {
+          const html = await ytRes.text();
+          const titleMatch = html.match(/<title>(.*?) - YouTube<\/title>/);
+          if (titleMatch && titleMatch[1]) {
+            playlistTitle = titleMatch[1].trim();
+          }
+
+          // Extract video title and videoId
+          const trackMatches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})".*?"title":{"runs":\[{"text":"([^"]+)"}\]/g)];
+          const seen = new Set<string>();
+
+          for (const m of trackMatches) {
+            const videoId = m[1];
+            const title = m[2];
+            if (videoId && title && !seen.has(videoId)) {
+              seen.add(videoId);
+              // Clean up YouTube title: often "Artist - Title" or "Title (Official Video)"
+              let cleanArtist = '';
+              let cleanTitle = title.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+              if (cleanTitle.includes(' - ')) {
+                const parts = cleanTitle.split(' - ');
+                cleanArtist = parts[0].trim();
+                cleanTitle = parts.slice(1).join(' - ').trim();
+              }
+              candidates.push({
+                title: cleanTitle || title,
+                artist: cleanArtist,
+                youtubeId: videoId,
+              });
+              if (candidates.length >= 35) break;
+            }
+          }
+        }
+      } catch (err) {
+        console.warn('YouTube playlist fetch failed:', err);
+      }
+    } else {
+      res.status(400).json({ error: 'URL tidak didukung. Harap gunakan URL Spotify atau YouTube Music.' });
+      return;
+    }
+
+    if (candidates.length === 0) {
+      res.status(404).json({ error: 'Tidak ada lagu yang dapat diekstrak dari tautan ini. Pastikan playlist bersifat publik.' });
+      return;
+    }
+
+    // --- Search iTunes in batches for rich metadata and audio previews ---
+    const finalTracks: Array<ReturnType<typeof mapItunesItemToTrack>> = [];
+    const batchSize = 5;
+
+    for (let i = 0; i < candidates.length; i += batchSize) {
+      const batch = candidates.slice(i, i + batchSize);
+      const searchPromises = batch.map(async (c) => {
+        const queryTerm = `${c.artist} ${c.title}`.trim();
+        try {
+          const results = await fetchItunesSearch(queryTerm, 1);
+          if (results.length > 0) {
+            const trk = results[0];
+            if (c.youtubeId) {
+              trk.youtubeVideoId = c.youtubeId;
+            }
+            return trk;
+          }
+        } catch {
+          // ignore error
+        }
+
+        // Fallback track if not found on iTunes
+        return {
+          id: `imported_${c.youtubeId || Math.random().toString(36).substring(2, 9)}`,
+          itunesId: 0,
+          title: c.title,
+          artist: c.artist || 'Artis',
+          album: playlistTitle,
+          genre: 'Pop',
+          durationSec: 210,
+          previewDurationSec: 30,
+          coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80',
+          audioUrl: '',
+          rawPreviewUrl: '',
+          youtubeVideoId: c.youtubeId || null,
+          bitrateLabel: '256kbps YT Audio',
+          releaseYear: new Date().getFullYear(),
+          playsCount: 15000,
+          lyrics: [],
+        };
+      });
+
+      const resolved = await Promise.all(searchPromises);
+      finalTracks.push(...resolved);
+    }
+
+    res.json({
+      title: playlistTitle,
+      tracks: finalTracks,
+    });
+  } catch (err) {
+    console.error('Playlist import error:', err);
+    res.status(500).json({ error: 'Gagal memproses import playlist' });
+  }
+});
+
 app.get('/api/download/mallsound-launcher', (req, res) => {
   const hostUrl = String(req.query.url || 'https://mallz12.my.id');
   const htmlContent = `<!DOCTYPE html>
