@@ -23,6 +23,7 @@ import { EQUALIZER_PRESETS } from '../types/music';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
 import { ThemeColorPicker } from './ThemeColorPicker';
+import { ThemeMode } from '../theme/themeConfig';
 
 type PlaybackEngineMode = 'hifi-eq' | 'yt-music';
 type SettingsTab = 'audio' | 'general' | 'apk';
@@ -41,6 +42,8 @@ interface SettingsModalProps {
   initialTab?: SettingsTab;
   isDark: boolean;
   onToggleDark: () => void;
+  currentTheme?: ThemeMode;
+  onSelectTheme?: (theme: ThemeMode) => void;
   accentColor?: string;
   onAccentColorChange?: (hex: string) => void;
   engineMode: PlaybackEngineMode;
@@ -67,6 +70,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   initialTab = 'audio',
   isDark,
   onToggleDark,
+  currentTheme,
+  onSelectTheme,
   accentColor,
   onAccentColorChange,
   engineMode,
@@ -420,6 +425,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               <ThemeColorPicker
                 currentAccent={accentColor || '#8b5cf6'}
                 onSelectAccent={onAccentColorChange || (() => {})}
+                currentTheme={currentTheme}
+                onSelectTheme={onSelectTheme}
               />
 
               {/* Quick Studio Actions */}

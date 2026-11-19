@@ -10,11 +10,19 @@
     --accent-glow: rgba(139, 92, 246, 0.45);
     --accent-subtle: rgba(139, 92, 246, 0.15);
     --accent-border: rgba(139, 92, 246, 0.35);
+    --app-bg: #0a0a0c;
+    --app-surface: rgba(255, 255, 255, 0.05);
+    --app-surface-border: rgba(255, 255, 255, 0.1);
+    --app-text-primary: #ffffff;
+    --app-text-secondary: #94a3b8;
   }
 
   body {
     font-family: var(--font-sans);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    background-color: var(--app-bg);
+    color: var(--app-text-primary);
+    transition: background-color 0.3s ease, color 0.3s ease;
   }
 
   h1, h2, .font-display {
@@ -29,6 +37,157 @@
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
+}
+
+/* =====================================================================
+   FULL-APP THEME OVERRIDES (Light Mode, Latte, & Vivid Color Schemes)
+===================================================================== */
+[data-theme="light"],
+html.light {
+  color-scheme: light;
+}
+
+[data-theme="light"] body,
+html.light body,
+[data-theme="latte"] body {
+  background-color: var(--app-bg, #f8fafc);
+  color: var(--app-text-primary, #0f172a);
+}
+
+/* Background overrides for light & latte */
+[data-theme="light"] .bg-neutral-950,
+[data-theme="light"] .bg-neutral-900,
+[data-theme="light"] .bg-zinc-950,
+[data-theme="light"] .bg-zinc-900,
+html.light .bg-neutral-950,
+html.light .bg-neutral-900,
+html.light .bg-zinc-950,
+html.light .bg-zinc-900,
+[data-theme="latte"] .bg-neutral-950,
+[data-theme="latte"] .bg-neutral-900,
+[data-theme="latte"] .bg-zinc-950,
+[data-theme="latte"] .bg-zinc-900 {
+  background-color: var(--app-bg) !important;
+}
+
+/* Card & Surface overrides for light & latte */
+[data-theme="light"] .bg-white\/5,
+[data-theme="light"] .bg-white\/10,
+html.light .bg-white\/5,
+html.light .bg-white\/10,
+[data-theme="latte"] .bg-white\/5,
+[data-theme="latte"] .bg-white\/10 {
+  background-color: var(--app-surface) !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+[data-theme="light"] .hover\:bg-white\/5:hover,
+[data-theme="light"] .hover\:bg-white\/10:hover,
+html.light .hover\:bg-white\/5:hover,
+html.light .hover\:bg-white\/10:hover,
+[data-theme="latte"] .hover\:bg-white\/5:hover,
+[data-theme="latte"] .hover\:bg-white\/10:hover {
+  background-color: rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme="light"] .border-white\/10,
+[data-theme="light"] .border-white\/5,
+[data-theme="light"] .border-white\/20,
+html.light .border-white\/10,
+html.light .border-white\/5,
+html.light .border-white\/20,
+[data-theme="latte"] .border-white\/10,
+[data-theme="latte"] .border-white\/5,
+[data-theme="latte"] .border-white\/20 {
+  border-color: var(--app-surface-border) !important;
+}
+
+[data-theme="light"] .text-white,
+html.light .text-white,
+[data-theme="latte"] .text-white {
+  color: var(--app-text-primary) !important;
+}
+
+[data-theme="light"] .text-white\/70,
+[data-theme="light"] .text-white\/60,
+[data-theme="light"] .text-white\/50,
+[data-theme="light"] .text-white\/40,
+html.light .text-white\/70,
+html.light .text-white\/60,
+html.light .text-white\/50,
+html.light .text-white\/40,
+[data-theme="latte"] .text-white\/70,
+[data-theme="latte"] .text-white\/60,
+[data-theme="latte"] .text-white\/50 {
+  color: var(--app-text-secondary) !important;
+}
+
+[data-theme="light"] input,
+html.light input,
+[data-theme="latte"] input {
+  color: var(--app-text-primary) !important;
+}
+
+[data-theme="light"] input::placeholder,
+html.light input::placeholder,
+[data-theme="latte"] input::placeholder {
+  color: var(--app-text-secondary) !important;
+}
+
+/* Nav & player bars */
+[data-theme="light"] nav,
+[data-theme="light"] aside,
+html.light nav,
+html.light aside,
+[data-theme="latte"] nav,
+[data-theme="latte"] aside {
+  background-color: var(--app-bg) !important;
+}
+
+/* Stage Canvas preservation (Maintains neon contrast) */
+[data-theme="light"] .bg-black,
+html.light .bg-black,
+[data-theme="latte"] .bg-black {
+  background-color: #050508 !important;
+}
+
+/* Vivid Colored Themes (Violet, Ocean, Emerald, Sunset) */
+[data-theme="violet"] body,
+[data-theme="ocean"] body,
+[data-theme="emerald"] body,
+[data-theme="sunset"] body {
+  background-color: var(--app-bg) !important;
+  color: var(--app-text-primary) !important;
+}
+
+[data-theme="violet"] .bg-neutral-950,
+[data-theme="violet"] .bg-neutral-900,
+[data-theme="ocean"] .bg-neutral-950,
+[data-theme="ocean"] .bg-neutral-900,
+[data-theme="emerald"] .bg-neutral-950,
+[data-theme="emerald"] .bg-neutral-900,
+[data-theme="sunset"] .bg-neutral-950,
+[data-theme="sunset"] .bg-neutral-900 {
+  background-color: var(--app-bg) !important;
+}
+
+[data-theme="violet"] .bg-white\/5,
+[data-theme="ocean"] .bg-white\/5,
+[data-theme="emerald"] .bg-white\/5,
+[data-theme="sunset"] .bg-white\/5 {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-surface-border) !important;
+}
+
+[data-theme="violet"] nav,
+[data-theme="violet"] aside,
+[data-theme="ocean"] nav,
+[data-theme="ocean"] aside,
+[data-theme="emerald"] nav,
+[data-theme="emerald"] aside,
+[data-theme="sunset"] nav,
+[data-theme="sunset"] aside {
+  background-color: var(--app-bg) !important;
 }
 
 /* Custom subtle scrollbars for MallSound studio panels */

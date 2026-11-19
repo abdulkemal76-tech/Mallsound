@@ -20,6 +20,7 @@ import {
   Flame,
   Sun,
   Activity,
+  Check,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
@@ -800,12 +801,72 @@ export const DJPage: React.FC<DJPageProps> = ({
   isRepeat: propIsRepeat,
   onToggleRepeat: propOnToggleRepeat,
 }) => {
-  // Local states
+  // Auto-Save storage key & state initialization
   const [localShuffle, setLocalShuffle] = useState(false);
   const [localRepeat, setLocalRepeat] = useState(false);
-  const [lightMode, setLightMode] = useState<DiscoLightMode>('disco');
-  const [lightSpeed, setLightSpeed] = useState<DiscoSpeed>('hyper');
-  const [activeListTab, setActiveListTab] = useState<'dj-indo' | 'queue'>('dj-indo');
+
+  const [lightMode, setLightMode] = useState<DiscoLightMode>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_dj_console_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.lightMode) return parsed.lightMode;
+      }
+    } catch {
+      // ignore
+    }
+    return 'disco';
+  });
+
+  const [lightSpeed, setLightSpeed] = useState<DiscoSpeed>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_dj_console_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.lightSpeed) return parsed.lightSpeed;
+      }
+    } catch {
+      // ignore
+    }
+    return 'hyper';
+  });
+
+  const [activeListTab, setActiveListTab] = useState<'dj-indo' | 'queue'>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_dj_console_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.activeListTab) return parsed.activeListTab;
+      }
+    } catch {
+      // ignore
+    }
+    return 'dj-indo';
+  });
+
+  // Auto-save notification feedback state
+  const [autoSaveActive, setAutoSaveActive] = useState(false);
+
+  // Auto-save effect: automatically persists all DJ console settings
+  useEffect(() => {
+    try {
+      const payload = {
+        lightMode,
+        lightSpeed,
+        activeListTab,
+        eqGains,
+        playbackRate,
+      };
+      localStorage.setItem('mallsound_dj_console_settings', JSON.stringify(payload));
+      localStorage.setItem('mallsound_eq_gains', JSON.stringify(eqGains));
+      localStorage.setItem('mallsound_playback_rate', String(playbackRate));
+      setAutoSaveActive(true);
+      const timer = window.setTimeout(() => setAutoSaveActive(false), 1800);
+      return () => window.clearTimeout(timer);
+    } catch {
+      // ignore
+    }
+  }, [lightMode, lightSpeed, activeListTab, eqGains, playbackRate]);
 
   const isShuffle = propIsShuffle !== undefined ? propIsShuffle : localShuffle;
   const isRepeat = propIsRepeat !== undefined ? propIsRepeat : localRepeat;
@@ -958,6 +1019,19 @@ export const DJPage: React.FC<DJPageProps> = ({
               <span className="font-medium text-white/80">
                 {isPlaying ? 'ON DECK' : 'PAUSED'}
               </span>
+            </div>
+
+            {/* Auto-Save Indicator */}
+            <div
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-xs font-semibold transition-all duration-300 border ${
+                autoSaveActive
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-[0_0_12px_rgba(52,211,153,0.3)]'
+                  : 'bg-white/5 text-white/60 border-white/10'
+              }`}
+              title="Pengaturan konsol DJ tersimpan otomatis"
+            >
+              <Check className={`w-3.5 h-3.5 ${autoSaveActive ? 'text-emerald-400' : 'text-emerald-500/70'}`} />
+              <span className="hidden sm:inline text-[11px]">Auto-Save</span>
             </div>
 
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono text-amber-400">

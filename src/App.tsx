@@ -63,7 +63,14 @@ import { LibraryPage } from './pages/LibraryPage';
 import { ProfilePage } from './pages/ProfilePage';
 
 // Theme Configuration
-import { getSavedThemeAccent, applyThemeAccent } from './theme/themeConfig';
+import {
+  ThemeMode,
+  getSavedAppTheme,
+  getThemeConfig,
+  applyAppTheme,
+  getSavedThemeAccent,
+  applyThemeAccent,
+} from './theme/themeConfig';
 
 // Desktop Experience Components (YouTube Music desktop style)
 import { DesktopTopBar } from './components/desktop/DesktopTopBar';
@@ -188,7 +195,23 @@ export function App() {
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
-  const [playbackRate, setPlaybackRate] = useState(1.0);
+  const [playbackRate, setPlaybackRate] = useState<number>(() => {
+    try {
+      const savedRate = localStorage.getItem('mallsound_playback_rate');
+      if (savedRate) {
+        const val = Number(savedRate);
+        if (!isNaN(val) && val >= 0.5 && val <= 2.0) return val;
+      }
+      const savedSettings = localStorage.getItem('mallsound_dj_console_settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        if (parsed?.playbackRate && typeof parsed.playbackRate === 'number') return parsed.playbackRate;
+      }
+    } catch {
+      // ignore
+    }
+    return 1.0;
+  });
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
 
   // Dual Playback Engine & YouTube (Default to 'yt-music' for full song playback)
@@ -223,13 +246,41 @@ export function App() {
     height: number;
   } | null>(null);
 
-  // Equalizer
-  const [eqGains, setEqGains] = useState<[number, number, number, number, number]>([0, 0, 0, 0, 0]);
+  // Equalizer (Auto-restored from saved settings)
+  const [eqGains, setEqGains] = useState<[number, number, number, number, number]>(() => {
+    try {
+      const savedEq = localStorage.getItem('mallsound_eq_gains');
+      if (savedEq) {
+        const parsed = JSON.parse(savedEq);
+        if (Array.isArray(parsed) && parsed.length === 5) {
+          return parsed as [number, number, number, number, number];
+        }
+      }
+      const savedSettings = localStorage.getItem('mallsound_dj_console_settings');
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        if (Array.isArray(parsed?.eqGains) && parsed.eqGains.length === 5) {
+          return parsed.eqGains as [number, number, number, number, number];
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return [0, 0, 0, 0, 0];
+  });
   const [activeEqPreset, setActiveEqPreset] = useState<string>('flat');
 
-  // Theme & Modals
-  const [isDark, setIsDark] = useState(true);
+  // Full-App Background & Accent Theme System
+  const [appTheme, setAppTheme] = useState<ThemeMode>(() => getSavedAppTheme());
   const [accentColor, setAccentColor] = useState<string>(() => getSavedThemeAccent());
+  const currentThemeConfig = useMemo(() => getThemeConfig(appTheme), [appTheme]);
+  const isDark = !currentThemeConfig.isLight;
+
+  const handleThemeChange = (newTheme: ThemeMode) => {
+    setAppTheme(newTheme);
+    applyAppTheme(newTheme, accentColor);
+  };
+
   const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
   const [isDesktopNowPlayingExpanded, setIsDesktopNowPlayingExpanded] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
@@ -239,8 +290,31 @@ export function App() {
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
 
   useEffect(() => {
-    applyThemeAccent(accentColor);
-  }, [accentColor]);
+    applyAppTheme(appTheme, accentColor);
+  }, [appTheme, accentColor]);
+
+  // Persist EQ gains & playback rate to localStorage whenever they change
+  useEffect(() => {
+    try {
+      localStorage.setItem('mallsound_eq_gains', JSON.stringify(eqGains));
+    } catch {
+      // ignore
+    }
+  }, [eqGains]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mallsound_playback_rate', String(playbackRate));
+    } catch {
+      // ignore
+    }
+  }, [playbackRate]);
+
+  // Apply initial EQ & rate to Studio Audio Engine
+  useEffect(() => {
+    studioAudioEngine.setEqualizerGains(eqGains);
+    studioAudioEngine.setPlaybackRate(playbackRate);
+  }, []);
 
   // Synchronize exact pixel bounding rect for persistent YouTube video stage
   useEffect(() => {
@@ -1135,8 +1209,12 @@ export function App() {
 
   return (
     <div
-      className={`min-h-screen bg-neutral-950 text-white flex flex-col md:flex-row font-sans ${
-        isDark ? 'dark' : ''
+      style={{
+        backgroundColor: currentThemeConfig.bgHex,
+        color: currentThemeConfig.textPrimary,
+      }}
+      className={`min-h-screen flex flex-col md:flex-row font-sans transition-colors duration-300 ${
+        currentThemeConfig.isLight ? 'light' : 'dark'
       }`}
     >
       {/* Offline PWA Indicator */}
@@ -1273,7 +1351,9 @@ export function App() {
             onSignIn={handleGoogleSignIn}
             onSignOut={() => signOutUser()}
             isDark={isDark}
-            onToggleTheme={() => setIsDark(!isDark)}
+            onToggleTheme={() => handleThemeChange(isDark ? 'light' : 'dark')}
+            currentTheme={appTheme}
+            onSelectTheme={handleThemeChange}
             accentColor={accentColor}
             onAccentColorChange={(hex) => setAccentColor(hex)}
             eqGains={eqGains}
@@ -1545,7 +1625,9 @@ export function App() {
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
         isDark={isDark}
-        onToggleDark={() => setIsDark(!isDark)}
+        onToggleDark={() => handleThemeChange(isDark ? 'light' : 'dark')}
+        currentTheme={appTheme}
+        onSelectTheme={handleThemeChange}
         accentColor={accentColor}
         onAccentColorChange={(hex) => setAccentColor(hex)}
         engineMode={engineMode}

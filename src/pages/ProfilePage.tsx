@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
+import { ThemeMode, getThemeConfig } from '../theme/themeConfig';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 import { backgroundAudioService } from '../services/backgroundAudio';
 
@@ -36,6 +37,8 @@ export interface ProfilePageProps {
   onSignOut: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
+  currentTheme?: ThemeMode;
+  onSelectTheme?: (theme: ThemeMode) => void;
   accentColor?: string;
   onAccentColorChange?: (hex: string) => void;
   // EQ settings
@@ -79,6 +82,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onSignOut,
   isDark,
   onToggleTheme,
+  currentTheme,
+  onSelectTheme,
   accentColor,
   onAccentColorChange,
   eqGains,
@@ -624,7 +629,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             <div>
               <h3 className="text-base font-bold text-white font-display">Tampilan Antarmuka</h3>
               <p className="text-xs text-white/60">
-                Mode saat ini: {isDark ? 'Tema Gelap (OLED Black)' : 'Tema Terang'}
+                Tema aktif: {currentTheme ? getThemeConfig(currentTheme).name : isDark ? 'Tema Gelap' : 'Tema Terang'}
               </p>
             </div>
           </div>
@@ -655,6 +660,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <ThemeColorPicker
             currentAccent={accentColor || '#8b5cf6'}
             onSelectAccent={onAccentColorChange || (() => {})}
+            currentTheme={currentTheme}
+            onSelectTheme={onSelectTheme}
           />
         </div>
       </section>
