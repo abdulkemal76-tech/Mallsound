@@ -150,6 +150,20 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               }
               onPlayingChange(true);
             } else if (e.data === 2) {
+              // Browser auto-pauses iframe video when screen locks or tab is hidden
+              if (document.hidden && isPlayingPropRef.current) {
+                // Do not mark as paused in UI, and attempt immediate resume
+                setTimeout(() => {
+                  try {
+                    if (isPlayingPropRef.current && playerRef.current) {
+                      playerRef.current.playVideo();
+                    }
+                  } catch {
+                    // ignore
+                  }
+                }, 100);
+                return;
+              }
               onPlayingChange(false);
             }
           },

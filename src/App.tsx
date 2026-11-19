@@ -138,8 +138,8 @@ export function App() {
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
 
-  // Dual Playback Engine & YouTube (Default to 'hifi-eq' for native background and lockscreen playback)
-  const [engineMode, setEngineMode] = useState<PlaybackEngineMode>('hifi-eq');
+  // Dual Playback Engine & YouTube (Default to 'yt-music' for full song playback)
+  const [engineMode, setEngineMode] = useState<PlaybackEngineMode>('yt-music');
   const [currentYtVideoId, setCurrentYtVideoId] = useState<string | null>(null);
   const [currentYtCandidates, setCurrentYtCandidates] = useState<string[]>([]);
   const [ytSeekRequest, setYtSeekRequest] = useState<{ sec: number; nonce: number } | null>(null);
@@ -487,9 +487,11 @@ export function App() {
       return updated;
     });
 
-    const hasAudioUrl = Boolean(track.audioUrl && track.audioUrl.trim().length > 0);
-    const targetMode: PlaybackEngineMode =
-      forceMode || (hasAudioUrl ? 'hifi-eq' : 'yt-music');
+    const isLocalOrSynth =
+      track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:');
+    const targetMode: PlaybackEngineMode = isLocalOrSynth
+      ? 'hifi-eq'
+      : forceMode || 'yt-music';
 
     if (targetMode !== engineMode) {
       setEngineMode(targetMode);
