@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Play,
   Pause,
@@ -11,11 +11,22 @@ import {
   Headphones,
   Sliders,
   MoreVertical,
+  Disc,
+  Disc3,
+  Radio,
+  Coffee,
+  Zap,
+  Activity,
+  ChevronRight,
+  ChevronLeft,
+  Volume2,
+  Music,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { TRENDING_SECTIONS, TrendingSection } from '../data/trending';
 import { GENRE_MOOD_CARDS, GenreMoodCard } from '../data/genres';
 import { GLOBAL_ARTISTS, ArtistItem } from '../data/artists';
+import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
@@ -26,6 +37,7 @@ export interface HomePageProps {
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
   onNavigateToSearch: (query?: string) => void;
   onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
+  onNavigateToDJ?: () => void;
 }
 
 // Fallback image component with graceful degradation
@@ -70,6 +82,89 @@ function formatDuration(seconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
+// Dynamic greeting based on current hour
+function getGreeting(): { text: string; icon: string } {
+  const hour = new Date().getHours();
+  if (hour >= 4 && hour < 11) return { text: 'Selamat Pagi', icon: '🌅' };
+  if (hour >= 11 && hour < 15) return { text: 'Selamat Siang', icon: '☀️' };
+  if (hour >= 15 && hour < 18) return { text: 'Selamat Sore', icon: '☕' };
+  return { text: 'Selamat Malam', icon: '🌙' };
+}
+
+// Quick mood chips for 1-tap filtering
+const MOOD_FILTERS = [
+  { id: 'semua', label: 'Semua Hits', query: '' },
+  { id: 'dj', label: '🔥 DJ & Horeg', query: 'DJ Breakbeat Indonesia' },
+  { id: 'hits', label: '✨ Top Hits 2026', query: 'Top Hits Indonesia' },
+  { id: 'senja', label: '☕ Senja & Indie', query: 'Indie Indonesia Senja' },
+  { id: 'tiktok', label: '⚡ Viral TikTok', query: 'Viral TikTok Indonesia' },
+  { id: 'galau', label: '🌧️ Galau Brutal', query: 'Lagu Galau Indonesia' },
+  { id: 'rock', label: '🎸 Band 2000-an', query: 'Pop Rock 2000 Indonesia' },
+  { id: 'santai', label: '🏖️ Santai Sore', query: 'Lagu Santai Indonesia' },
+];
+
+// Spotify-Style 6 Quick-Picks Curated Mixes
+interface QuickPickItem {
+  id: string;
+  title: string;
+  subtitle: string;
+  coverUrl: string;
+  gradient: string;
+  actionQuery?: string;
+  djTrack?: Track;
+}
+
+const QUICK_PICKS: QuickPickItem[] = [
+  {
+    id: 'qp-dj-viral',
+    title: 'DJ Horeg & Pargoy',
+    subtitle: 'Jedag Jedug Full Bass',
+    coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&h=300&fit=crop',
+    gradient: 'from-violet-600/40 via-purple-900/30 to-black',
+    djTrack: DJ_INDO_TRACKS[0],
+  },
+  {
+    id: 'qp-top-hits',
+    title: 'Top Hits Indonesia',
+    subtitle: 'Bernadya, Sal Priadi',
+    coverUrl: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=300&h=300&fit=crop',
+    gradient: 'from-pink-600/40 via-fuchsia-900/30 to-black',
+    actionQuery: 'Top Hits Indonesia',
+  },
+  {
+    id: 'qp-indie-senja',
+    title: 'Indie Senja & Kopi',
+    subtitle: 'Syahdu & Santai Sore',
+    coverUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=300&h=300&fit=crop',
+    gradient: 'from-amber-600/40 via-orange-900/30 to-black',
+    actionQuery: 'Indie Indonesia Senja',
+  },
+  {
+    id: 'qp-tiktok-fyp',
+    title: 'Viral TikTok FYP',
+    subtitle: 'Sound Paling Ramai 2026',
+    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop',
+    gradient: 'from-cyan-600/40 via-blue-900/30 to-black',
+    actionQuery: 'Viral TikTok Indonesia',
+  },
+  {
+    id: 'qp-nostalgia',
+    title: 'Nostalgia 2000-an',
+    subtitle: 'Sheila On 7, Dewa 19',
+    coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
+    gradient: 'from-emerald-600/40 via-teal-900/30 to-black',
+    actionQuery: 'Sheila On 7',
+  },
+  {
+    id: 'qp-galau',
+    title: 'Galau Maksimal',
+    subtitle: 'Renungan Larut Malam',
+    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop',
+    gradient: 'from-indigo-600/40 via-slate-900/30 to-black',
+    actionQuery: 'Lagu Galau Indonesia',
+  },
+];
+
 // Initial recommendation query pool
 const RECOMMENDATION_QUERIES = [
   'Sheila On 7',
@@ -90,10 +185,31 @@ export const HomePage: React.FC<HomePageProps> = ({
   onToggleLike,
   onNavigateToSearch,
   onOpenActions,
+  onNavigateToDJ,
 }) => {
   const [recommendedTracks, setRecommendedTracks] = useState<Track[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
   const [activeRecommendationQuery, setActiveRecommendationQuery] = useState('Sheila On 7');
+  const [activeMood, setActiveMood] = useState('semua');
+
+  // Hero Spotlight Slider State
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
+  const slideTimerRef = useRef<number | null>(null);
+
+  const greeting = getGreeting();
+
+  // Auto-rotate Hero Spotlight every 6.5 seconds
+  useEffect(() => {
+    if (isHovered) return;
+    slideTimerRef.current = window.setInterval(() => {
+      setActiveSlide((prev) => (prev + 1) % 3);
+    }, 6500);
+
+    return () => {
+      if (slideTimerRef.current) clearInterval(slideTimerRef.current);
+    };
+  }, [isHovered]);
 
   // Fetch initial recommended tracks on mount
   useEffect(() => {
@@ -135,106 +251,469 @@ export const HomePage: React.FC<HomePageProps> = ({
       artist.category === 'Populer Indonesia'
   ).slice(0, 12);
 
-  const globalArtists = GLOBAL_ARTISTS.filter(
-    (artist: ArtistItem) =>
-      artist.isIndonesian === false ||
-      artist.category === 'Global Pop' ||
-      artist.category === 'Rock & Alternatif Global' ||
-      artist.category === 'Asia & K-Pop'
-  );
-
   return (
-    <div className="min-h-full pb-36 space-y-10 text-white">
-      {/* 1. HERO BANNER */}
-      <section className="relative overflow-hidden rounded-3xl p-6 sm:p-10 lg:p-12 border border-white/10 shadow-2xl bg-gradient-to-br from-violet-950/80 via-neutral-950 to-fuchsia-950/70">
-        {/* Animated Glow Background Effects */}
-        <div className="absolute -top-24 -left-24 w-80 h-80 bg-violet-600/30 rounded-full blur-3xl pointer-events-none animate-pulse" />
-        <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-pink-600/25 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-fuchsia-500/15 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="relative z-10 max-w-3xl space-y-6">
-          {/* Version & Feature Pills */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">
-              <Sparkles className="w-3.5 h-3.5" /> MallSound v2.0
-            </span>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80 border border-white/10 backdrop-blur-md">
-              <Headphones className="w-3.5 h-3.5 text-pink-400" /> Lossless Hi-Fi
-            </span>
-            <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-white/10 text-white/80 border border-white/10 backdrop-blur-md">
-              <Sliders className="w-3.5 h-3.5 text-amber-400" /> Studio EQ 5-Band
-            </span>
+    <div className="min-h-full pb-36 space-y-8 text-white animate-fade-in">
+      {/* =====================================================================
+          1. DYNAMIC GREETING & STATUS BAR (VIP Atmosphere)
+      ===================================================================== */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 p-0.5 shadow-lg shadow-violet-500/20 shrink-0">
+            <div className="w-full h-full bg-neutral-950 rounded-[14px] flex items-center justify-center text-xl">
+              {greeting.icon}
+            </div>
           </div>
-
-          {/* Heading */}
-          <div className="space-y-2">
-            <h1 className="font-display text-3xl sm:text-5xl lg:text-6xl font-extrabold tracking-tight leading-tight">
-              Selamat Datang di{' '}
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400">
-                MallSound
-              </span>
+          <div>
+            <h1 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
+              {greeting.text}, Pendengar
             </h1>
-            <p className="text-white/70 text-base sm:text-lg max-w-2xl leading-relaxed">
-              Streaming musik Indonesia dan katalog dunia tanpa batas. Nikmati audio berkualitas tinggi, lirik sinkron real-time, dan tata suara studio yang memukau.
-            </p>
+            <div className="flex items-center gap-2 text-xs text-white/50 pt-0.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
+              <span className="font-medium text-emerald-300">Lossless Studio 24-bit</span>
+              <span>•</span>
+              <span>Lirik Sinkron Nyata</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Quick Mode Switcher */}
+        <div className="flex items-center gap-2">
+          {onNavigateToDJ && (
+            <button
+              type="button"
+              onClick={onNavigateToDJ}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 hover:from-violet-600/50 hover:to-fuchsia-600/50 border border-violet-500/40 text-violet-200 text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            >
+              <Disc3 className="w-4 h-4 text-violet-400 animate-spin" />
+              <span>Buka Menu DJ 🎛️</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* =====================================================================
+          2. QUICK MOOD FILTER PILLS BAR
+      ===================================================================== */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none">
+        {MOOD_FILTERS.map((m) => {
+          const isActive = activeMood === m.id;
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => {
+                setActiveMood(m.id);
+                if (m.query) {
+                  onNavigateToSearch(m.query);
+                }
+              }}
+              className={`px-4 py-2 rounded-2xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer ${
+                isActive
+                  ? 'bg-white text-black shadow-lg shadow-white/10 scale-105'
+                  : 'bg-white/[0.06] hover:bg-white/[0.12] text-white/70 hover:text-white border border-white/10'
+              }`}
+            >
+              {m.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* =====================================================================
+          3. SPOTIFY-STYLE "DENGAR CEPAT" (6-Item Quick-Picks Grid)
+      ===================================================================== */}
+      <section className="space-y-3">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-3.5">
+          {QUICK_PICKS.map((item) => (
+            <div
+              key={item.id}
+              onClick={() => {
+                if (item.djTrack) {
+                  onSelectTrack(item.djTrack);
+                } else if (item.actionQuery) {
+                  onNavigateToSearch(item.actionQuery);
+                }
+              }}
+              className={`group relative flex items-center justify-between rounded-2xl p-2 sm:p-2.5 bg-gradient-to-r ${item.gradient} border border-white/10 hover:border-white/30 backdrop-blur-md cursor-pointer transition-all duration-200 hover:scale-[1.02] active:scale-[0.98] shadow-md hover:shadow-xl overflow-hidden`}
+            >
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-xl overflow-hidden shrink-0 shadow-md bg-neutral-900 border border-white/10 relative">
+                  <img
+                    src={item.coverUrl}
+                    alt={item.title}
+                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
+                    loading="lazy"
+                  />
+                </div>
+                <div className="min-w-0 pr-1">
+                  <h4 className="font-display font-bold text-xs sm:text-sm text-white group-hover:text-violet-200 transition-colors truncate">
+                    {item.title}
+                  </h4>
+                  <p className="text-[11px] text-white/60 truncate mt-0.5">
+                    {item.subtitle}
+                  </p>
+                </div>
+              </div>
+
+              {/* Floating Instant Play Button */}
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white text-black flex items-center justify-center shrink-0 shadow-xl opacity-0 group-hover:opacity-100 group-hover:translate-x-0 translate-x-2 transition-all duration-200 mr-1.5">
+                <Play className="w-4 h-4 fill-current translate-x-0.5 text-black" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* =====================================================================
+          4. CINEMATIC SPOTLIGHT BILLBOARD (3-Slide Interactive Showcase)
+      ===================================================================== */}
+      <section
+        onMouseEnter={() => setIsHovered(true)}
+        onMouseLeave={() => setIsHovered(false)}
+        className="relative overflow-hidden rounded-3xl border border-white/15 shadow-2xl transition-all duration-500 bg-neutral-950"
+      >
+        {/* ===================== SLIDE 0: DJ INDO PARGOY ===================== */}
+        {activeSlide === 0 && (
+          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-violet-950/90 via-black to-fuchsia-950/80 animate-fade-in">
+            {/* Ambient Lighting Orbs */}
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-violet-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-fuchsia-600/30 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              {/* Left Column: Headline & Action */}
+              <div className="max-w-2xl space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">
+                    <Flame className="w-3.5 h-3.5" /> SPOTLIGHT DJ INDO #1
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    🔊 CLUB BASS +12dB
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-cyan-300 bg-cyan-500/20 border border-cyan-500/30">
+                    34:19 Nonstop
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+                    DJ Ublag Ublag Arab Sakit Lagi{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400">
+                      (Breakbeat Mengkane)
+                    </span>
+                  </h2>
+                  <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
+                    Dentuman sub-bass horeg khas Jawa Timur & breakbeat viral TikTok 2026. Putar mixtape full nonstop dengan mode pencahayaan disko dinamis!
+                  </p>
+                </div>
+
+                {/* Actions */}
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => onSelectTrack(DJ_INDO_TRACKS[0])}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-violet-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                    <span>Putar Mixtape DJ (34:19)</span>
+                  </button>
+
+                  {onNavigateToDJ && (
+                    <button
+                      type="button"
+                      onClick={onNavigateToDJ}
+                      className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                    >
+                      <Sliders className="w-4 h-4 text-violet-400" />
+                      <span>Buka DJ Console 🎛️</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Right Column: 3D Rotating Vinyl Artwork */}
+              <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
+                {/* Vinyl Record */}
+                <div
+                  className={`w-40 h-40 sm:w-52 sm:h-52 rounded-full border-4 border-neutral-900 bg-neutral-950 shadow-2xl relative flex items-center justify-center ${
+                    isPlaying ? 'animate-spin-slow' : ''
+                  }`}
+                  style={{
+                    background: 'radial-gradient(circle, #1a1a1a 0%, #0d0d0d 60%, #000 100%)',
+                    boxShadow: '0 0 35px rgba(168, 85, 247, 0.45)',
+                  }}
+                >
+                  {/* Vinyl Grooves */}
+                  <div className="absolute inset-3 rounded-full border border-white/10 pointer-events-none" />
+                  <div className="absolute inset-7 rounded-full border border-white/5 pointer-events-none" />
+                  <div className="absolute inset-11 rounded-full border border-white/10 pointer-events-none" />
+
+                  {/* Center Label */}
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+                    <img
+                      src={DJ_INDO_TRACKS[0].coverUrl}
+                      alt="DJ Ublag Ublag"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  {/* Spindle hole */}
+                  <div className="w-3.5 h-3.5 rounded-full bg-neutral-900 border border-white/30 absolute z-10" />
+                </div>
+
+                {/* Animated Equalizer Waves Floating Badge */}
+                <div className="absolute -bottom-3 -right-2 px-3 py-1.5 rounded-2xl bg-neutral-900/90 border border-white/20 shadow-xl backdrop-blur-md flex items-center gap-1.5 text-xs font-mono text-emerald-400">
+                  <Activity className="w-3.5 h-3.5 animate-pulse" />
+                  <span>320kbps Horeg</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== SLIDE 1: TOP HITS INDONESIA ===================== */}
+        {activeSlide === 1 && (
+          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-pink-950/90 via-black to-purple-950/80 animate-fade-in">
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-pink-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-purple-600/30 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="max-w-2xl space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white shadow-md">
+                    <Sparkles className="w-3.5 h-3.5" /> TOP PICKS 2026
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30">
+                    🏆 POP INDONESIA HITS
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-white/70 bg-white/10 border border-white/15">
+                    10 Juta+ Stream
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+                    Deretan Hits Paling Viral{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300">
+                      Minggu Ini
+                    </span>
+                  </h2>
+                  <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
+                    Nikmati lagu-lagu populer dari Bernadya, Sal Priadi, Juicy Luicy, dan Nadin Amizah dengan lirik sinkron waktu nyata dan vokal sebening kristal.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Top Hits Indonesia')}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 hover:from-pink-600 hover:to-amber-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                    <span>Mulai Dengarkan Hits</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Bernadya')}
+                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Search className="w-4 h-4 text-pink-300" />
+                    <span>Lagu Bernadya</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
+                <div
+                  className="w-40 h-40 sm:w-52 sm:h-52 rounded-3xl overflow-hidden shadow-2xl border-2 border-pink-500/40 relative group"
+                  style={{ boxShadow: '0 0 35px rgba(244, 63, 94, 0.4)' }}
+                >
+                  <img
+                    src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop"
+                    alt="Top Hits Indonesia"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+                    <span className="font-bold text-xs text-white">#1 di Tangga Lagu</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== SLIDE 2: INDIE SENJA & AKUSTIK ===================== */}
+        {activeSlide === 2 && (
+          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-amber-950/90 via-black to-orange-950/80 animate-fade-in">
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-amber-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-orange-600/30 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="max-w-2xl space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-md">
+                    <Coffee className="w-3.5 h-3.5" /> TEMAN NGOPI SORE
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    ☕ INDIE & AKUSTIK
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-amber-200 bg-amber-500/10 border border-amber-500/20">
+                    Syahdu Santai
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+                    Melodi Senja Syahdu &{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-300 to-rose-300">
+                      Petikan Akustik
+                    </span>
+                  </h2>
+                  <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
+                    Petikan gitar hangat, harmoni tenang, dan suasana santai pelepas penat setelah seharian beraktivitas diiringi lirik puitis.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Indie Indonesia Senja')}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                    <span>Putar Suasana Senja 🌅</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Akustik Santai Indonesia')}
+                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Coffee className="w-4 h-4 text-amber-300" />
+                    <span>Musik Santai</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
+                <div
+                  className="w-40 h-40 sm:w-52 sm:h-52 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 relative group"
+                  style={{ boxShadow: '0 0 35px rgba(245, 158, 11, 0.4)' }}
+                >
+                  <img
+                    src="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&h=500&fit=crop"
+                    alt="Indie Senja"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+                    <span className="font-bold text-xs text-amber-200">Koleksi Senja Sore</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== SLIDE NAVIGATION CONTROLS ===================== */}
+        <div className="px-6 sm:px-10 py-3 bg-neutral-900/90 border-t border-white/10 flex items-center justify-between gap-3">
+          {/* Slide Selector Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+            <button
+              type="button"
+              onClick={() => setActiveSlide(0)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSlide === 0
+                  ? 'bg-violet-500 text-white shadow-md shadow-violet-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-white/50'
+              }`}
+            >
+              🔥 1. DJ Horeg Pargoy
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSlide(1)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSlide === 1
+                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-white/50'
+              }`}
+            >
+              ✨ 2. Top Hits Indonesia
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setActiveSlide(2)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                activeSlide === 2
+                  ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
+                  : 'bg-white/5 hover:bg-white/10 text-white/50'
+              }`}
+            >
+              ☕ 3. Senja Akustik
+            </button>
           </div>
 
-          {/* CTA Buttons */}
-          <div className="flex flex-wrap items-center gap-3 pt-2">
+          {/* Prev / Next Arrows */}
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
-              onClick={() => onNavigateToSearch(activeRecommendationQuery)}
-              className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:from-violet-600 hover:via-fuchsia-600 hover:to-pink-600 text-white font-semibold text-sm sm:text-base shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 hover:scale-105 active:scale-95 transition-all duration-200"
+              type="button"
+              onClick={() => setActiveSlide((prev) => (prev - 1 + 3) % 3)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/60 hover:text-white transition-colors cursor-pointer"
+              title="Slide sebelumnya"
             >
-              <Play className="w-5 h-5 fill-current" />
-              Mulai Dengarkan
+              <ChevronLeft className="w-4 h-4" />
             </button>
             <button
-              onClick={() => onNavigateToSearch()}
-              className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-medium text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200"
+              type="button"
+              onClick={() => setActiveSlide((prev) => (prev + 1) % 3)}
+              className="p-1.5 rounded-xl bg-white/5 hover:bg-white/15 text-white/60 hover:text-white transition-colors cursor-pointer"
+              title="Slide berikutnya"
             >
-              <Search className="w-4 h-4 text-white/70" />
-              Jelajahi Semua Lagu
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       </section>
 
-      {/* 2. 🔥 TRENDING / VIRAL */}
+      {/* =====================================================================
+          5. 🔥 TRENDING / VIRAL (Enhanced Interactive Cards)
+      ===================================================================== */}
       <section className="space-y-4">
-        {/* Section Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🔥</span>
             <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Trending / Viral
+              Trending & Viral Hari Ini
             </h2>
           </div>
           <button
             onClick={() => onNavigateToSearch('Top Hits Indonesia')}
-            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors"
+            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             Lihat Semua
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
 
-        {/* Horizontal Scroll Cards */}
+        {/* Horizontal Scroll Cards with Live Ambient Soundwave */}
         <div className="flex items-center gap-4 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent snap-x snap-mandatory">
           {TRENDING_SECTIONS.map((section: TrendingSection) => (
             <div
               key={section.id}
               onClick={() => onNavigateToSearch(section.query)}
-              className={`group relative snap-start shrink-0 w-64 sm:w-72 p-5 rounded-2xl bg-gradient-to-br ${section.gradient} cursor-pointer border border-white/15 shadow-lg hover:shadow-2xl hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 overflow-hidden`}
+              className={`group relative snap-start shrink-0 w-64 sm:w-72 p-5 rounded-3xl bg-gradient-to-br ${section.gradient} cursor-pointer border border-white/15 shadow-xl hover:shadow-2xl hover:scale-[1.03] active:scale-[0.98] transition-all duration-300 overflow-hidden`}
             >
-              {/* Subtle glass overlay & radial glow */}
               <div className="absolute inset-0 bg-black/15 group-hover:bg-transparent transition-colors" />
-              <div className="relative z-10 flex flex-col justify-between h-32">
+
+              <div className="relative z-10 flex flex-col justify-between h-34">
                 <div className="flex items-start justify-between">
                   <span className="text-3xl filter drop-shadow-md">{section.icon}</span>
-                  <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-0 group-hover:opacity-100 group-hover:translate-x-0 -translate-x-2 transition-all duration-200">
-                    <ArrowRight className="w-4 h-4 text-white" />
+                  <div className="w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-200">
+                    <Play className="w-4 h-4 text-white fill-current translate-x-0.5" />
                   </div>
                 </div>
+
                 <div>
                   <h3 className="font-display font-bold text-lg text-white group-hover:text-amber-200 transition-colors drop-shadow-sm">
                     {section.title}
@@ -249,9 +728,10 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      {/* 3. ✨ REKOMENDASI UNTUKMU */}
+      {/* =====================================================================
+          6. ✨ REKOMENDASI UNTUKMU
+      ===================================================================== */}
       <section className="space-y-4">
-        {/* Section Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">✨</span>
@@ -261,7 +741,7 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
           <button
             onClick={() => onNavigateToSearch(activeRecommendationQuery)}
-            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors"
+            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             Lihat Semua
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -270,7 +750,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
         {/* Track Grid or Skeletons */}
         {isLoadingRecommendations ? (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {Array.from({ length: 6 }).map((_, idx) => (
               <div
                 key={`rec-skeleton-${idx}`}
@@ -283,7 +763,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4">
             {recommendedTracks.map((track) => {
               const isCurrent = currentTrack?.id === track.id;
               const isCurrentlyPlaying = isCurrent && isPlaying;
@@ -293,9 +773,9 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div
                   key={track.id}
                   onClick={() => onSelectTrack(track)}
-                  className={`group relative bg-white/5 hover:bg-white/10 backdrop-blur-md border rounded-2xl p-3.5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                  className={`group relative bg-white/[0.04] hover:bg-white/[0.09] backdrop-blur-md border rounded-2xl p-3 sm:p-3.5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                     isCurrent
-                      ? 'border-violet-500/50 shadow-lg shadow-violet-500/10'
+                      ? 'border-violet-500/60 shadow-lg shadow-violet-500/20 ring-1 ring-violet-500/30'
                       : 'border-white/10 hover:border-white/20 hover:scale-[1.02]'
                   }`}
                 >
@@ -347,7 +827,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                       <div className="min-w-0 flex-1">
                         <h4
                           className={`font-semibold text-sm truncate leading-snug ${
-                            isCurrent ? 'text-violet-400' : 'text-white group-hover:text-violet-300'
+                            isCurrent ? 'text-violet-400 font-bold' : 'text-white group-hover:text-violet-300'
                           }`}
                           title={track.title}
                         >
@@ -363,7 +843,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                           e.stopPropagation();
                           onOpenActions?.(track, e);
                         }}
-                        className="p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 shrink-0 transition-colors"
+                        className="p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 shrink-0 transition-colors cursor-pointer"
                         title="Menu opsi lagu"
                       >
                         <MoreVertical className="w-3.5 h-3.5" />
@@ -374,7 +854,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                   {/* Bitrate / Quality Tag */}
                   <div className="mt-2.5 pt-2 border-t border-white/5 flex items-center justify-between text-[10px] text-white/40">
                     <span className="truncate">{track.genre || 'Pop'}</span>
-                    <span className="text-amber-400/80 font-mono">Hi-Fi</span>
+                    <span className="text-amber-400/80 font-mono font-semibold">24-bit Hi-Fi</span>
                   </div>
                 </div>
               );
@@ -383,9 +863,10 @@ export const HomePage: React.FC<HomePageProps> = ({
         )}
       </section>
 
-      {/* 4. 🌍 JELAJAHI GENRE */}
+      {/* =====================================================================
+          7. 🌍 JELAJAHI GENRE
+      ===================================================================== */}
       <section className="space-y-4">
-        {/* Section Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🌍</span>
@@ -395,14 +876,13 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
           <button
             onClick={() => onNavigateToSearch()}
-            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors"
+            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             Lihat Semua
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
 
-        {/* 3 columns mobile, 4 columns tablet, 6 columns desktop */}
         <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-6 gap-3 sm:gap-4">
           {GENRE_MOOD_CARDS.map((card: GenreMoodCard) => (
             <div
@@ -424,9 +904,10 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
       </section>
 
-      {/* 5. 🇮🇩 ARTIS POPULER INDONESIA */}
+      {/* =====================================================================
+          8. 🇮🇩 ARTIS POPULER INDONESIA
+      ===================================================================== */}
       <section className="space-y-4">
-        {/* Section Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="text-2xl">🇮🇩</span>
@@ -436,14 +917,13 @@ export const HomePage: React.FC<HomePageProps> = ({
           </div>
           <button
             onClick={() => onNavigateToSearch('Artis Indonesia')}
-            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors"
+            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
           >
             Lihat Semua
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
 
-        {/* Horizontal Scroll of Top 12 Indonesian Artist Chips */}
         <div className="flex items-center gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent snap-x">
           {indonesianArtists.map((artist: ArtistItem) => (
             <div
@@ -451,7 +931,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               onClick={() => onNavigateToSearch(artist.query || artist.name)}
               className="group snap-start shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:border-violet-500/50 cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-md min-w-[200px]"
             >
-              {/* Circular Avatar / Badge */}
               <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-violet-600 via-fuchsia-600 to-pink-500 p-0.5 shrink-0 shadow-sm">
                 <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center text-white font-bold text-sm uppercase">
                   {artist.name.slice(0, 2)}
@@ -459,52 +938,6 @@ export const HomePage: React.FC<HomePageProps> = ({
               </div>
               <div className="overflow-hidden">
                 <h4 className="font-semibold text-sm text-white group-hover:text-violet-300 transition-colors truncate">
-                  {artist.name}
-                </h4>
-                <p className="text-xs text-white/50 truncate">
-                  {artist.subtitle || artist.category}
-                </p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* 6. 🌏 ARTIS GLOBAL */}
-      <section className="space-y-4">
-        {/* Section Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">🌏</span>
-            <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Artis Global
-            </h2>
-          </div>
-          <button
-            onClick={() => onNavigateToSearch('Global Pop')}
-            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors"
-          >
-            Lihat Semua
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
-
-        {/* Horizontal Scroll of International Artist Chips */}
-        <div className="flex items-center gap-3.5 overflow-x-auto pb-3 pt-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent snap-x">
-          {globalArtists.map((artist: ArtistItem) => (
-            <div
-              key={artist.id}
-              onClick={() => onNavigateToSearch(artist.query || artist.name)}
-              className="group snap-start shrink-0 flex items-center gap-3 px-4 py-3 rounded-2xl bg-white/5 hover:bg-white/10 backdrop-blur-md border border-white/10 hover:border-pink-500/50 cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200 shadow-md min-w-[200px]"
-            >
-              {/* Circular Avatar / Badge */}
-              <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-cyan-500 via-blue-600 to-indigo-600 p-0.5 shrink-0 shadow-sm">
-                <div className="w-full h-full rounded-full bg-neutral-900 flex items-center justify-center text-white font-bold text-sm uppercase">
-                  {artist.name.slice(0, 2)}
-                </div>
-              </div>
-              <div className="overflow-hidden">
-                <h4 className="font-semibold text-sm text-white group-hover:text-pink-300 transition-colors truncate">
                   {artist.name}
                 </h4>
                 <p className="text-xs text-white/50 truncate">

@@ -1510,6 +1510,7 @@ export function App() {
               if (queryTerm) setSearchQueryFromExternal(queryTerm);
               setActiveTab('search');
             }}
+            onNavigateToDJ={() => setActiveTab('dj')}
           />
         )}
 
