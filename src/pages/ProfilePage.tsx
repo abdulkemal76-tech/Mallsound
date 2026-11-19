@@ -16,6 +16,7 @@ import {
   Sparkles,
   Smartphone,
   Music4,
+} from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
 
