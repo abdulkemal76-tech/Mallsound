@@ -13,6 +13,7 @@ import {
   Globe,
   Info,
   Download,
+  Smartphone,
 } from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
@@ -450,6 +451,35 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </a>
             ))}
           </div>
+        </div>
+
+        {/* APK Pintasan MallSound */}
+        <div className="pt-2 border-t border-sky-500/20 space-y-2">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">APK Pintasan MallSound (Langsung Instal):</p>
+          <a
+            href="/MallSound-Pintasan.apk"
+            download="MallSound-Pintasan.apk"
+            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/35 hover:to-teal-600/35 border border-emerald-500/40 text-white transition-all group shadow-lg shadow-emerald-950/20"
+          >
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0 group-hover:scale-105 transition-transform">
+                <Smartphone className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h4 className="text-xs sm:text-sm font-bold text-white truncate">Download APK Pintasan MallSound</h4>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-mono">4.6 MB</span>
+                </div>
+                <p className="text-[11px] text-emerald-200/70 truncate">
+                  Aplikasi pintasan Web App ringan untuk akses langsung dari beranda HP
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 text-neutral-950 font-bold text-xs flex-shrink-0 group-hover:bg-emerald-400 transition-colors shadow-sm">
+              <Download className="w-3.5 h-3.5" />
+              <span>Unduh APK Pintasan</span>
+            </div>
+          </a>
         </div>
 
         {/* Open Shortcut */}
