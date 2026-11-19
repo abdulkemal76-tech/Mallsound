@@ -1685,6 +1685,7 @@ export function App() {
               setActiveTab('search');
             }}
             onNavigateToDJ={() => setActiveTab('dj')}
+            onNavigateToGuide={() => setActiveTab('profile')}
           />
         )}
 

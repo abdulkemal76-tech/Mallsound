@@ -22,6 +22,10 @@ import {
   Volume2,
   Music,
   RefreshCw,
+  HelpCircle,
+  ExternalLink,
+  Download,
+  X,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { TRENDING_SECTIONS, TrendingSection } from '../data/trending';
@@ -39,6 +43,7 @@ export interface HomePageProps {
   onNavigateToSearch: (query?: string) => void;
   onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
   onNavigateToDJ?: () => void;
+  onNavigateToGuide?: () => void;
 }
 
 // Fallback image component with graceful degradation
@@ -83,13 +88,55 @@ function formatDuration(seconds: number): string {
   return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
 }
 
-// Dynamic greeting based on current hour
-function getGreeting(): { text: string; icon: string } {
+// Dynamic smart greeting based on current hour
+function getGreeting(): { text: string; icon: string; subtext: string } {
   const hour = new Date().getHours();
-  if (hour >= 4 && hour < 11) return { text: 'Selamat Pagi', icon: '🌅' };
-  if (hour >= 11 && hour < 15) return { text: 'Selamat Siang', icon: '☀️' };
-  if (hour >= 15 && hour < 18) return { text: 'Selamat Sore', icon: '☕' };
-  return { text: 'Selamat Malam', icon: '🌙' };
+  // 00:00 - 00:59: Tengah Malam
+  if (hour === 0) {
+    return {
+      text: 'Selamat Tengah Malam',
+      icon: '🌙',
+      subtext: 'Lagu tenang pengantar waktu istirahatmu',
+    };
+  }
+  // 01:00 - 04:59: Dini Hari / Pagi buta (termasuk jam 2 pagi)
+  if (hour >= 1 && hour < 5) {
+    return {
+      text: 'Selamat Pagi',
+      icon: '🌌',
+      subtext: `Jam ${hour} pagi • Lagu santai peneman istirahat & begadang`,
+    };
+  }
+  // 05:00 - 10:59: Pagi hari
+  if (hour >= 5 && hour < 11) {
+    return {
+      text: 'Selamat Pagi',
+      icon: '🌅',
+      subtext: 'Awali harimu dengan alunan musik berenergi',
+    };
+  }
+  // 11:00 - 14:59: Siang hari
+  if (hour >= 11 && hour < 15) {
+    return {
+      text: 'Selamat Siang',
+      icon: '☀️',
+      subtext: 'Temani kesibukan dan rehat siangmu',
+    };
+  }
+  // 15:00 - 17:59: Sore hari
+  if (hour >= 15 && hour < 18) {
+    return {
+      text: 'Selamat Sore',
+      icon: '☕',
+      subtext: 'Lepas penat sore dengan melodi favoritmu',
+    };
+  }
+  // 18:00 - 23:59: Malam hari
+  return {
+    text: 'Selamat Malam',
+    icon: '🌙',
+    subtext: 'Waktunya bersantai dan menikmati malam',
+  };
 }
 
 // Quick mood chips for 1-tap filtering
@@ -191,7 +238,9 @@ export const HomePage: React.FC<HomePageProps> = ({
   onNavigateToSearch,
   onOpenActions,
   onNavigateToDJ,
+  onNavigateToGuide,
 }) => {
+  const [showGuideModal, setShowGuideModal] = useState(false);
   const [recommendedTracks, setRecommendedTracks] = useState<Track[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
   const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
@@ -366,25 +415,36 @@ export const HomePage: React.FC<HomePageProps> = ({
             <h1 className="font-display text-2xl sm:text-3xl font-black text-white tracking-tight flex items-center gap-2">
               {greeting.text}, Pendengar
             </h1>
-            <div className="flex items-center gap-2 text-xs text-white/50 pt-0.5">
+            <div className="flex items-center gap-2 text-xs text-white/50 pt-0.5 flex-wrap">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
               <span className="font-semibold text-emerald-300">MallSound</span>
+              <span className="text-white/30">•</span>
+              <span className="text-white/70">{greeting.subtext}</span>
             </div>
           </div>
         </div>
 
-        {/* Quick Mode Switcher */}
-        <div className="flex items-center gap-2">
+        {/* Quick Mode Switcher & Guide */}
+        <div className="flex items-center gap-2 flex-wrap">
           {onNavigateToDJ && (
             <button
               type="button"
               onClick={onNavigateToDJ}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 hover:from-violet-600/50 hover:to-fuchsia-600/50 border border-violet-500/40 text-violet-200 text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 hover:from-violet-600/50 hover:to-fuchsia-600/50 border border-violet-500/40 text-violet-200 text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer"
             >
               <Disc3 className="w-4 h-4 text-violet-400 animate-spin" />
               <span>Buka Menu DJ 🎛️</span>
             </button>
           )}
+
+          <button
+            type="button"
+            onClick={() => setShowGuideModal(true)}
+            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-sky-600/30 to-teal-600/30 hover:from-sky-600/50 hover:to-teal-600/50 border border-sky-500/40 text-sky-200 text-xs sm:text-sm font-bold shadow-lg shadow-sky-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+          >
+            <HelpCircle className="w-4 h-4 text-sky-400" />
+            <span>Buka Menu Panduan 📖</span>
+          </button>
         </div>
       </div>
 
@@ -1089,6 +1149,110 @@ export const HomePage: React.FC<HomePageProps> = ({
           ))}
         </div>
       </section>
+
+      {/* =====================================================================
+          MODAL PANDUAN & TIPS PUTAR LATAR BELAKANG
+      ===================================================================== */}
+      {showGuideModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in">
+          <div className="relative w-full max-w-lg rounded-3xl bg-neutral-900/95 border border-sky-500/30 p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto scrollbar-thin">
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+                  <HelpCircle className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-white font-display">
+                    Panduan & Putar di Latar Belakang
+                  </h3>
+                  <p className="text-xs text-sky-300/80">
+                    Tips musik tetap berputar saat layar tertutup
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(false)}
+                className="p-2 rounded-full hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="space-y-3.5">
+              <div className="p-3.5 rounded-2xl bg-sky-500/10 border border-sky-500/20 text-xs text-white/85 leading-relaxed">
+                Browser bawaan HP mematikan suara saat layar terkunci. Gunakan <b>Lemur Browser</b> agar musik MallSound terus menyala mulus di latar belakang!
+              </div>
+
+              {/* Steps */}
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">3 Langkah Mudah:</p>
+                <ol className="space-y-2 text-xs text-white/80">
+                  <li className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-500/30 text-sky-300 font-bold text-[10px] flex items-center justify-center border border-sky-500/40 shrink-0">1</span>
+                    <span>Unduh <b>Lemur Browser</b> resmi di Google Play Store.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-500/30 text-sky-300 font-bold text-[10px] flex items-center justify-center border border-sky-500/40 shrink-0">2</span>
+                    <span>Buka <b>mallz12.my.id</b> melalui Lemur Browser.</span>
+                  </li>
+                  <li className="flex items-start gap-2.5">
+                    <span className="w-5 h-5 rounded-full bg-sky-500/30 text-sky-300 font-bold text-[10px] flex items-center justify-center border border-sky-500/40 shrink-0">3</span>
+                    <span>Putar lagumu, lalu minimalkan atau kunci layar HP — musik terus mengalir!</span>
+                  </li>
+                </ol>
+              </div>
+
+              {/* Download Lemur Button */}
+              <a
+                href="https://play.google.com/store/search?q=lemur+browser&c=apps"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-sky-500 to-cyan-500 text-white font-bold text-xs shadow-lg shadow-cyan-500/20 hover:opacity-95 transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Download className="w-4 h-4" />
+                  <span>Download Lemur Browser di Play Store</span>
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
+              </a>
+
+              {/* Add to Home Shortcut Tip */}
+              <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 text-xs text-white/75">
+                <p className="font-semibold text-white">💡 Tips Pintasan ke Layar Utama:</p>
+                <p className="text-[11px] leading-relaxed">
+                  Di browser, ketuk <b>Menu Titik Tiga (⋮)</b> &gt; pilih <b>&quot;Tambahkan ke Layar Utama&quot;</b> agar ikon MallSound ada di beranda HP kamu.
+                </p>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-2 flex items-center justify-between gap-2 border-t border-white/10">
+              {onNavigateToGuide && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowGuideModal(false);
+                    onNavigateToGuide();
+                  }}
+                  className="text-xs text-sky-400 hover:text-sky-300 font-semibold cursor-pointer"
+                >
+                  Buka Menu Pengaturan Lengkap →
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowGuideModal(false)}
+                className="ml-auto px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-white text-xs font-semibold transition-colors cursor-pointer"
+              >
+                Tutup
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
