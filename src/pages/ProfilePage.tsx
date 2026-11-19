@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Sliders,
   Gauge,
@@ -14,10 +14,12 @@ import {
   Info,
   Download,
   Smartphone,
+  Plus,
 } from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
 import { ThemeMode, getThemeConfig } from '../theme/themeConfig';
+import { usePWAInstall } from '../hooks/usePWAInstall';
 
 export interface ProfilePageProps {
   user?: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -82,6 +84,20 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   crossfadeSec,
   onCrossfadeChange,
 }) => {
+  const { isInstallable, promptInstall } = usePWAInstall();
+  const [showInstallGuide, setShowInstallGuide] = useState(false);
+
+  const handleAddShortcut = async () => {
+    if (isInstallable) {
+      const res = await promptInstall();
+      if (res !== 'accepted') {
+        setShowInstallGuide((prev) => !prev);
+      }
+    } else {
+      setShowInstallGuide((prev) => !prev);
+    }
+  };
+
   return (
     <div className="space-y-6 pb-28 sm:pb-24 max-w-4xl mx-auto px-4 sm:px-6 pt-2">
       {/* Header Banner */}
@@ -415,8 +431,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {[
               {
                 name: 'Lemur Browser',
-                sub: 'Ringan & mendukung latar belakang',
-                url: 'https://play.google.com/store/apps/details?id=net.kodehaan.lembur',
+                sub: 'Mendukung putar latar belakang',
+                url: 'https://play.google.com/store/search?q=lemur+browser&c=apps',
                 color: 'from-sky-500 to-cyan-500',
                 shadow: 'shadow-cyan-500/25',
               },
@@ -453,13 +469,16 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
 
-        {/* APK Pintasan MallSound */}
+        {/* Pintasan Layar Utama (Add to Home Screen / Web to App) */}
         <div className="pt-2 border-t border-sky-500/20 space-y-2">
-          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">APK Pintasan MallSound (Langsung Instal):</p>
-          <a
-            href="/MallSound-Pintasan.apk"
-            download="MallSound-Pintasan.apk"
-            className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/35 hover:to-teal-600/35 border border-emerald-500/40 text-white transition-all group shadow-lg shadow-emerald-950/20"
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+            Pintasan Layar Utama (Web ke Beranda HP):
+          </p>
+
+          <button
+            type="button"
+            onClick={handleAddShortcut}
+            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/35 hover:to-teal-600/35 border border-emerald-500/40 text-white transition-all group shadow-lg shadow-emerald-950/20 text-left"
           >
             <div className="flex items-center gap-3 min-w-0">
               <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0 group-hover:scale-105 transition-transform">
@@ -467,19 +486,42 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <h4 className="text-xs sm:text-sm font-bold text-white truncate">Download APK Pintasan MallSound</h4>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-mono">4.6 MB</span>
+                  <h4 className="text-xs sm:text-sm font-bold text-white truncate">
+                    Pasang Pintasan ke Layar Utama
+                  </h4>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-mono">
+                    Instan
+                  </span>
                 </div>
                 <p className="text-[11px] text-emerald-200/70 truncate">
-                  Aplikasi pintasan Web App ringan untuk akses langsung dari beranda HP
+                  Pasang ikon MallSound di layar beranda tanpa unduh file APK besar
                 </p>
               </div>
             </div>
             <div className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 text-neutral-950 font-bold text-xs flex-shrink-0 group-hover:bg-emerald-400 transition-colors shadow-sm">
-              <Download className="w-3.5 h-3.5" />
-              <span>Unduh APK Pintasan</span>
+              <Plus className="w-3.5 h-3.5" />
+              <span>Pasang Pintasan</span>
             </div>
-          </a>
+          </button>
+
+          {showInstallGuide && (
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2 text-xs text-white/90">
+              <p className="font-semibold text-emerald-300 flex items-center gap-1.5">
+                <Info className="w-4 h-4" /> Cara Pasang Pintasan di Lemur Browser / Chrome:
+              </p>
+              <ol className="list-decimal pl-4 space-y-1.5 text-white/80 text-[11px]">
+                <li>
+                  Ketuk tombol <b>Menu Titik Tiga (⋮)</b> di sudut browser kamu.
+                </li>
+                <li>
+                  Pilih opsi <b>&quot;Tambahkan ke Layar Utama&quot; (Add to Home screen)</b> atau <b>&quot;Pasang Aplikasi&quot;</b>.
+                </li>
+                <li>
+                  Tekan <b>Tambah / Add</b>. Ikon pintasan MallSound akan langsung aktif di layar utama HP kamu!
+                </li>
+              </ol>
+            </div>
+          )}
         </div>
 
         {/* Open Shortcut */}
