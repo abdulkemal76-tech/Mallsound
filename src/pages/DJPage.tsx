@@ -751,7 +751,7 @@ const NeonDJCanvasStage: React.FC<{
       >
         <div
           ref={stageCardRef}
-          className="relative w-full aspect-[16/9] min-h-[280px] max-h-[480px] rounded-3xl overflow-hidden border border-fuchsia-500/30 shadow-[0_20px_50px_rgba(0,0,0,0.85)] bg-black transition-transform duration-100 ease-out will-change-transform"
+          className="relative w-full aspect-[16/9] min-h-[280px] max-h-[480px] rounded-3xl overflow-hidden border border-fuchsia-500/30 bg-black transition-transform duration-100 ease-out will-change-transform"
         >
           {/* Canvas Engine */}
           <canvas ref={canvasRef} className="w-full h-full block" />
@@ -759,7 +759,7 @@ const NeonDJCanvasStage: React.FC<{
           {/* Subwoofer Bass Horeg Shockwave Frame */}
           {isPlaying && isHoregBass && (
             <div
-              className="absolute inset-0 rounded-3xl pointer-events-none border border-fuchsia-400/80 shadow-[0_0_30px_rgba(236,72,153,0.8)]"
+              className="absolute inset-0 rounded-3xl pointer-events-none border border-fuchsia-400/80"
               style={{
                 animation: 'dj-bass-kick-1 0.45s cubic-bezier(0.1, 0.9, 0.2, 1) infinite',
               }}
@@ -1034,24 +1034,13 @@ export const DJPage: React.FC<DJPageProps> = ({
               <span className="hidden sm:inline text-[11px]">Auto-Save</span>
             </div>
 
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-xs font-mono text-amber-400">
-              <Radio className="w-3.5 h-3.5 text-amber-400" />
-              <span>{displayBpm} BPM</span>
-            </div>
-
-            {isHoregBass && (
-              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-fuchsia-500/20 border border-fuchsia-500/40 text-xs font-bold text-fuchsia-300">
-                <Flame className="w-3.5 h-3.5 text-amber-300" />
-                <span>+12dB</span>
-              </div>
-            )}
           </div>
         </header>
 
         {/* =================================================================
             2. NOW PLAYING DECK & ULTRA-FAST CANVAS STAGE
         ================================================================= */}
-        <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 shadow-2xl relative overflow-hidden space-y-5">
+        <section className="bg-white/[0.04] border border-white/10 rounded-3xl p-5 sm:p-6 relative space-y-5">
           {/* Subtle Top Accent */}
           <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-fuchsia-400/50 to-transparent" />
 
@@ -1091,27 +1080,6 @@ export const DJPage: React.FC<DJPageProps> = ({
               </button>
             </div>
 
-            {/* Badges Row */}
-            <div className="flex flex-wrap items-center justify-center gap-2">
-              {currentTrack.genre && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-violet-500/20 text-violet-300 border border-violet-500/30">
-                  {currentTrack.genre}
-                </span>
-              )}
-              <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">
-                ⚡ {displayBpm} BPM
-              </span>
-              {durationSec > 600 && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  FULL MIX ({Math.round(durationSec / 60)}M)
-                </span>
-              )}
-              {isHoregBass && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 flex items-center gap-1">
-                  <Flame className="w-3 h-3 text-amber-300" />
-                  Horeg +12dB
-                </span>
-              )}
             </div>
           </div>
 
@@ -1168,7 +1136,7 @@ export const DJPage: React.FC<DJPageProps> = ({
             <button
               type="button"
               onClick={onTogglePlay}
-              className="p-5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white shadow-[0_0_30px_rgba(168,85,247,0.5)] hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="p-5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
               title={isPlaying ? 'Jeda' : 'Putar'}
             >
               {isPlaying ? (
@@ -1205,7 +1173,7 @@ export const DJPage: React.FC<DJPageProps> = ({
         {/* =================================================================
             3. CLUB LIGHTING FX CONTROLLER (Clean & Minimalist)
         ================================================================= */}
-        <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 space-y-3.5">
+        <section className="bg-white/[0.04] border border-white/10 rounded-3xl p-5 space-y-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sun className="w-4 h-4 text-amber-400" />
@@ -1278,7 +1246,7 @@ export const DJPage: React.FC<DJPageProps> = ({
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {/* Speed & Pitch */}
-            <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3">
+            <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Gauge className="w-4 h-4 text-violet-400" />
@@ -1340,7 +1308,7 @@ export const DJPage: React.FC<DJPageProps> = ({
             </div>
 
             {/* 5-Band Equalizer Mini */}
-            <div className="md:col-span-2 bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3">
+            <div className="md:col-span-2 bg-white/[0.04] border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sliders className="w-4 h-4 text-fuchsia-400" />
@@ -1399,7 +1367,7 @@ export const DJPage: React.FC<DJPageProps> = ({
             </div>
 
             {/* Master Volume Fader */}
-            <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3">
+            <div className="bg-white/[0.04] border border-white/10 rounded-2xl p-4 flex flex-col justify-between space-y-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Volume2 className="w-4 h-4 text-pink-400" />
@@ -1539,7 +1507,7 @@ export const DJPage: React.FC<DJPageProps> = ({
         {/* =================================================================
             5. PLAYLIST TABS: 12 DJ INDO VIRAL vs ANTREAN MUSIK
         ================================================================= */}
-        <section className="bg-white/5 backdrop-blur border border-white/10 rounded-3xl p-4 sm:p-5 space-y-3.5">
+        <section className="bg-white/[0.04] border border-white/10 rounded-3xl p-4 sm:p-5 space-y-3.5">
           {/* Clean Tab Switcher */}
           <div className="flex items-center justify-between gap-3 pb-2 border-b border-white/10">
             <div className="flex items-center gap-2">
