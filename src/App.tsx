@@ -200,7 +200,23 @@ export function App() {
   // Track caches
   const [catalogTracks, setCatalogTracks] = useState<Track[]>(BUILT_IN_TRACKS);
   const [localSessionTracks, setLocalSessionTracks] = useState<Track[]>([]);
-  const [resolvedSavedTracks, setResolvedSavedTracks] = useState<Record<string, Track>>({});
+  const [resolvedSavedTracks, setResolvedSavedTracks] = useState<Record<string, Track>>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_resolved_tracks');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('mallsound_resolved_tracks', JSON.stringify(resolvedSavedTracks));
+    } catch {
+      // ignore
+    }
+  }, [resolvedSavedTracks]);
+
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
 
   // Audio Playback State (Restored from last session so it never resets to beginning)
@@ -666,7 +682,7 @@ export function App() {
     localFavorites.forEach((id) => {
       if (id.startsWith('itunes_') && !resolvedSavedTracks[id]) neededIds.add(id);
     });
-    cloudPlaylists.forEach((pl) => {
+    allPlaylists.forEach((pl) => {
       pl.trackIds.forEach((id) => {
         if (id.startsWith('itunes_') && !resolvedSavedTracks[id]) neededIds.add(id);
       });
@@ -686,7 +702,7 @@ export function App() {
         });
       }
     });
-  }, [favoriteIds, localFavorites, cloudPlaylists, resolvedSavedTracks]);
+  }, [favoriteIds, localFavorites, allPlaylists, resolvedSavedTracks]);
 
   // Auth Listener
   useEffect(() => {
@@ -1248,6 +1264,52 @@ export function App() {
     }
   };
 
+  const handleRemoveTrackFromPlaylist = async (playlistId: string, trackId: string) => {
+    setLocalPlaylists((prev) => {
+      const updated = prev.map((pl) => {
+        if (pl.id === playlistId) {
+          const currentTracks = Array.isArray(pl.trackIds) ? pl.trackIds : [];
+          return { ...pl, trackIds: currentTracks.filter((id) => id !== trackId) };
+        }
+        return pl;
+      });
+      try {
+        localStorage.setItem('mallsound_local_playlists', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (user) {
+      const targetPl = allPlaylists.find((p) => p.id === playlistId);
+      if (targetPl) {
+        const currentTracks = Array.isArray(targetPl.trackIds) ? targetPl.trackIds : [];
+        const nextTracks = currentTracks.filter((id) => id !== trackId);
+        try {
+          await setDoc(
+            doc(db, 'playlists', playlistId),
+            {
+              trackIds: nextTracks,
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (err) {
+          handleFirestoreError(err, OperationType.UPDATE, `playlists/${playlistId}`);
+        }
+      }
+    }
+
+    showToast('Lagu dihapus dari playlist');
+  };
+
+  const handleQueueMultipleTracks = (tracks: Track[]) => {
+    setPlaybackQueue(tracks);
+    try {
+      localStorage.setItem('mallsound_playback_queue', JSON.stringify(tracks));
+    } catch {}
+    showToast(`✓ ${tracks.length} lagu dimasukkan ke antrean`);
+  };
+
   const handlePlayNext = (track: Track) => {
     setPlaybackQueue((prev) => {
       const filtered = prev.filter((t) => t.id !== track.id);
@@ -1504,10 +1566,13 @@ export function App() {
         {activeTab === 'library' && (
           <LibraryPage
             playlists={allPlaylists}
+            activePlaylistId={activePlaylistId}
             onSelectPlaylist={(plId) => {
               setActivePlaylistId(plId);
             }}
+            onClearActivePlaylist={() => setActivePlaylistId(null)}
             onDeletePlaylist={handleDeletePlaylist}
+            onRemoveTrackFromPlaylist={handleRemoveTrackFromPlaylist}
             onOpenCreatePlaylist={() => setIsPlaylistModalOpen(true)}
             onOpenImportPlaylist={() => setIsImportModalOpen(true)}
             favoriteTracks={favoriteTracks}
@@ -1516,6 +1581,7 @@ export function App() {
             allTracks={allKnownTracks}
             accentColor={accentColor}
             onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
+            onQueueTracks={handleQueueMultipleTracks}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             isTrackLiked={isTrackLiked}
@@ -1523,6 +1589,11 @@ export function App() {
             onOpenActions={(trk) => setActionModalTrack(trk)}
             onOpenAddCustomTrack={() => setIsAddTrackModalOpen(true)}
             customTracks={cloudCustomTracks}
+            onNavigateToSearch={(query) => {
+              if (query) setSearchQueryFromExternal(query);
+              setActiveTab('search');
+            }}
+            onShowToast={showToast}
           />
         )}
 
