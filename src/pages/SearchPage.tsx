@@ -560,9 +560,6 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                   </div>
                 );
               })}
-                  </div>
-                );
-              })}
             </div>
           )}
         </div>
