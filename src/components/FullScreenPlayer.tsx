@@ -308,205 +308,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
               </div>
             )}
 
-            {overlayPanel === 'queue' && (
-              <div className="absolute inset-0 z-20 bg-neutral-950/95 backdrop-blur-xl p-4 sm:p-5 flex flex-col animate-fade-in">
-                {/* Header with Title and Actions */}
-                <div className="flex items-center justify-between pb-3 mb-3 border-b border-white/10 shrink-0">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-sm font-bold text-white tracking-tight flex items-center gap-1.5">
-                      <ListMusic className="w-4 h-4 text-violet-400" />
-                      Antrean Putar
-                    </span>
-                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-violet-500/20 text-violet-300 font-mono font-bold border border-violet-500/30">
-                      {queueTracks.length} lagu
-                    </span>
-                  </div>
 
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    {onAddToQueue && (
-                      <button
-                        type="button"
-                        onClick={() => setIsSearchingQueue(!isSearchingQueue)}
-                        className={`px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                          isSearchingQueue
-                            ? 'bg-violet-600 text-white shadow-sm'
-                            : 'bg-white/10 hover:bg-white/20 text-white/80 hover:text-white border border-white/10'
-                        }`}
-                        title="Tambah Lagu ke Antrean"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Tambah</span>
-                      </button>
-                    )}
-
-                    {queueTracks.length > 0 && onClearQueue && (
-                      <button
-                        type="button"
-                        onClick={onClearQueue}
-                        className="px-2.5 py-1 rounded-xl text-xs font-semibold text-rose-300 hover:text-rose-200 bg-rose-500/15 hover:bg-rose-500/25 border border-rose-500/30 transition-all cursor-pointer"
-                        title="Bersihkan Semua Antrean"
-                      >
-                        Bersihkan
-                      </button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setOverlayPanel('none');
-                        setIsSearchingQueue(false);
-                      }}
-                      className="p-1 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
-                      title="Tutup Antrean"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Inline Quick Search & Add Bar */}
-                {isSearchingQueue && (
-                  <div className="mb-3 shrink-0 space-y-2 p-2.5 rounded-2xl bg-white/5 border border-white/10">
-                    <div className="relative">
-                      <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
-                      <input
-                        type="text"
-                        value={searchQueueQuery}
-                        onChange={(e) => setSearchQueueQuery(e.target.value)}
-                        placeholder="Ketik judul lagu / artis untuk ditambahkan..."
-                        className="w-full pl-8 pr-7 py-1.5 rounded-xl bg-white/10 text-white text-xs placeholder-white/40 border border-white/10 focus:border-violet-500 focus:outline-none"
-                        autoFocus
-                      />
-                      {searchQueueQuery && (
-                        <button
-                          type="button"
-                          onClick={() => setSearchQueueQuery('')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Filtered Results */}
-                    {filteredSearchTracks.length > 0 && (
-                      <div className="max-h-36 overflow-y-auto space-y-1 pr-1 scrollbar-thin">
-                        {filteredSearchTracks.map((t) => (
-                          <div
-                            key={t.id}
-                            className="flex items-center justify-between gap-2 p-1.5 rounded-lg bg-black/40 hover:bg-white/10 transition-colors"
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-semibold text-white truncate">{t.title}</div>
-                              <div className="text-[10px] text-white/50 truncate">{t.artist}</div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                onAddToQueue?.(t);
-                                setSearchQueueQuery('');
-                              }}
-                              className="px-2 py-0.5 rounded-md bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-[10px] font-bold border border-emerald-500/30 transition-all cursor-pointer shrink-0"
-                            >
-                              + Tambah
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Section 1: Now Playing */}
-                <div className="mb-3 p-2.5 rounded-2xl bg-gradient-to-r from-violet-950/60 via-black to-fuchsia-950/40 border border-violet-500/30 flex items-center justify-between gap-3 shadow-md shrink-0">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 border border-white/15 relative shadow-sm">
-                      <img src={currentTrack.coverUrl} alt={currentTrack.title} className="w-full h-full object-cover" />
-                    </div>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                        <Activity className="w-3 h-3 animate-pulse" /> Sedang Diputar
-                      </div>
-                      <div className="text-xs font-bold text-white truncate">{currentTrack.title}</div>
-                      <div className="text-[11px] text-white/60 truncate">{currentTrack.artist}</div>
-                    </div>
-                  </div>
-                  <span className="text-[11px] font-mono text-white/50 shrink-0">
-                    {formatTimeShort(currentTrack.durationSec)}
-                  </span>
-                </div>
-
-                {/* Section 2: Up Next Queue */}
-                <div className="flex-1 flex flex-col min-h-0">
-                  <div className="text-[11px] font-bold text-white/60 uppercase tracking-wider mb-1.5 flex items-center justify-between px-1 shrink-0">
-                    <span>Berikutnya ({queueTracks.length})</span>
-                    <span className="text-[10px] lowercase text-white/40">Terkunci & Otomatis Lanjut</span>
-                  </div>
-
-                  {queueTracks.length === 0 ? (
-                    <div className="flex-1 flex flex-col items-center justify-center p-6 text-center text-white/50 space-y-2">
-                      <ListMusic className="w-10 h-10 text-white/20 mb-1" />
-                      <p className="text-xs font-semibold text-white/70">Antrean berikutnya kosong</p>
-                      <p className="text-[11px] text-white/40 max-w-xs">
-                        Gunakan tombol "+ Tambah" di atas atau pilih "Tambahkan ke Antrean" pada menu titik 3 lagu untuk mengisi antrean.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 scrollbar-thin">
-                      {queueTracks.map((trk, idx) => (
-                        <div
-                          key={`${trk.id}-${idx}`}
-                          className="group w-full flex items-center justify-between gap-2.5 p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/15 transition-all"
-                        >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              onSelectTrack(trk);
-                              setOverlayPanel('none');
-                            }}
-                            className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
-                          >
-                            <span className="font-mono text-xs text-white/40 w-4 tabular-nums shrink-0 text-center">
-                              {idx + 1}
-                            </span>
-                            <div className="w-9 h-9 rounded-lg overflow-hidden shrink-0 bg-neutral-900 border border-white/10">
-                              <img src={trk.coverUrl} alt={trk.title} className="w-full h-full object-cover" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <div className="text-xs font-semibold text-white group-hover:text-violet-300 transition-colors truncate">
-                                {trk.title}
-                              </div>
-                              <div className="text-[11px] text-white/50 truncate">{trk.artist}</div>
-                            </div>
-                          </button>
-
-                          <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-mono text-[11px] text-white/45 tabular-nums">
-                              {formatTimeShort(trk.durationSec)}
-                            </span>
-
-                            {/* Tombol Hapus dari Antrean */}
-                            {onRemoveFromQueue && (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onRemoveFromQueue(trk.id);
-                                }}
-                                className="p-1.5 rounded-lg text-white/40 hover:text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"
-                                title="Hapus dari antrean"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
             {overlayPanel === 'eq' && (
               <div className="absolute inset-0 z-20 bg-neutral-950/90 backdrop-blur-md p-5 flex flex-col justify-between">
@@ -863,6 +665,216 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
           </button>
         </div>
       </div>
+
+      {/* ================================================================
+          QUEUE FULL-SCREEN OVERLAY — lives OUTSIDE the album art square
+          so it covers the entire FullScreenPlayer (no cramped 300px box!)
+      ================================================================ */}
+      {overlayPanel === 'queue' && (
+        <div className="absolute inset-0 z-20 flex flex-col bg-neutral-950/98 backdrop-blur-xl animate-fade-in">
+          {/* Ambient background carry-over */}
+          {currentTrack.coverUrl && !imgFailed && (
+            <img
+              src={currentTrack.coverUrl}
+              alt=""
+              aria-hidden="true"
+              referrerPolicy="no-referrer"
+              className="absolute inset-0 w-full h-full object-cover blur-3xl opacity-15 scale-125 pointer-events-none"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-b from-violet-950/40 via-neutral-950/85 to-neutral-950 pointer-events-none" />
+
+          {/* Scrollable content container — same max-width as rest of player */}
+          <div className="relative z-10 flex flex-col h-full max-w-md mx-auto w-full px-5 pt-14 pb-6">
+
+            {/* ── Header Row ── */}
+            <div className="flex items-center justify-between mb-5 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-violet-500/20 border border-violet-500/30 flex items-center justify-center">
+                  <ListMusic className="w-4.5 h-4.5 text-violet-400" />
+                </div>
+                <div>
+                  <div className="text-base font-bold text-white leading-tight">Antrean Putar</div>
+                  <div className="text-xs text-white/50 font-mono">
+                    {queueTracks.length} lagu · Terkunci & Otomatis Lanjut
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                {onAddToQueue && (
+                  <button
+                    type="button"
+                    onClick={() => setIsSearchingQueue(!isSearchingQueue)}
+                    className={`p-2 rounded-xl transition-all cursor-pointer ${
+                      isSearchingQueue
+                        ? 'bg-violet-600 text-white'
+                        : 'bg-white/10 hover:bg-white/20 text-white/80'
+                    }`}
+                    title="Tambah Lagu ke Antrean"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                )}
+                {queueTracks.length > 0 && onClearQueue && (
+                  <button
+                    type="button"
+                    onClick={onClearQueue}
+                    className="p-2 rounded-xl bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 border border-rose-500/30 transition-all cursor-pointer"
+                    title="Bersihkan Semua Antrean"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => { setOverlayPanel('none'); setIsSearchingQueue(false); }}
+                  className="p-2 rounded-xl hover:bg-white/10 text-white/60 hover:text-white transition-colors cursor-pointer"
+                  title="Tutup Antrean"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* ── Search Bar (when isSearchingQueue) ── */}
+            {isSearchingQueue && (
+              <div className="mb-4 shrink-0 space-y-2 p-3 rounded-2xl bg-white/5 border border-white/10">
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                  <input
+                    type="text"
+                    value={searchQueueQuery}
+                    onChange={(e) => setSearchQueueQuery(e.target.value)}
+                    placeholder="Ketik judul lagu / artis untuk ditambahkan..."
+                    className="w-full pl-8 pr-7 py-2 rounded-xl bg-white/10 text-white text-sm placeholder-white/40 border border-white/10 focus:border-violet-500 focus:outline-none"
+                    autoFocus
+                  />
+                  {searchQueueQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setSearchQueueQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+                {filteredSearchTracks.length > 0 && (
+                  <div className="max-h-44 overflow-y-auto space-y-1 pr-1">
+                    {filteredSearchTracks.map((t) => (
+                      <div
+                        key={t.id}
+                        className="flex items-center justify-between gap-2 p-2 rounded-xl bg-black/40 hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-lg overflow-hidden shrink-0 bg-neutral-800">
+                            <img src={t.coverUrl} alt={t.title} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="text-xs font-semibold text-white truncate">{t.title}</div>
+                            <div className="text-[11px] text-white/50 truncate">{t.artist}</div>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => { onAddToQueue?.(t); setSearchQueueQuery(''); }}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-500/30 transition-all cursor-pointer shrink-0"
+                        >
+                          + Tambah
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ── Now Playing Card ── */}
+            <div className="mb-4 p-3 rounded-2xl bg-gradient-to-r from-violet-950/70 via-black/60 to-fuchsia-950/50 border border-violet-500/30 flex items-center justify-between gap-3 shrink-0">
+              <div className="flex items-center gap-3 min-w-0 flex-1">
+                <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0 border border-white/15 shadow-md">
+                  <img src={currentTrack.coverUrl} alt={currentTrack.title} className="w-full h-full object-cover" />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1 mb-0.5">
+                    <Activity className="w-3 h-3 animate-pulse" /> Sedang Diputar
+                  </div>
+                  <div className="text-sm font-bold text-white truncate">{currentTrack.title}</div>
+                  <div className="text-xs text-white/60 truncate">{currentTrack.artist}</div>
+                </div>
+              </div>
+              <span className="font-mono text-xs text-white/50 shrink-0">
+                {formatTimeShort(currentTrack.durationSec)}
+              </span>
+            </div>
+
+            {/* ── Up Next Header ── */}
+            <div className="flex items-center justify-between mb-3 shrink-0">
+              <span className="text-xs font-bold text-white/60 uppercase tracking-wider">
+                Berikutnya ({queueTracks.length})
+              </span>
+            </div>
+
+            {/* ── Queue Track List ── */}
+            {queueTracks.length === 0 ? (
+              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-3">
+                <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mb-2">
+                  <ListMusic className="w-8 h-8 text-white/20" />
+                </div>
+                <p className="text-sm font-semibold text-white/70">Antrean berikutnya kosong</p>
+                <p className="text-xs text-white/40 max-w-xs leading-relaxed">
+                  Gunakan tombol <strong className="text-white/60">+ Tambah</strong> di atas atau pilih
+                  "Tambahkan ke Antrean" pada menu titik 3 lagu.
+                </p>
+              </div>
+            ) : (
+              <div className="flex-1 overflow-y-auto space-y-2 pr-1">
+                {queueTracks.map((trk, idx) => (
+                  <div
+                    key={`${trk.id}-${idx}`}
+                    className="group w-full flex items-center justify-between gap-3 p-2.5 rounded-2xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.06] hover:border-white/15 transition-all"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => { onSelectTrack(trk); setOverlayPanel('none'); }}
+                      className="flex items-center gap-3 min-w-0 flex-1 text-left cursor-pointer"
+                    >
+                      <span className="font-mono text-xs text-white/35 w-5 tabular-nums shrink-0 text-center">
+                        {idx + 1}
+                      </span>
+                      <div className="w-10 h-10 rounded-xl overflow-hidden shrink-0 bg-neutral-900 border border-white/10">
+                        <img src={trk.coverUrl} alt={trk.title} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-semibold text-white group-hover:text-violet-300 transition-colors truncate">
+                          {trk.title}
+                        </div>
+                        <div className="text-xs text-white/50 truncate">{trk.artist}</div>
+                      </div>
+                    </button>
+
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="font-mono text-xs text-white/40 tabular-nums">
+                        {formatTimeShort(trk.durationSec)}
+                      </span>
+                      {onRemoveFromQueue && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); onRemoveFromQueue(trk.id); }}
+                          className="p-1.5 rounded-lg text-white/35 hover:text-rose-400 hover:bg-rose-500/20 transition-all cursor-pointer"
+                          title="Hapus dari antrean"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

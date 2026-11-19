@@ -71,9 +71,21 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const candidatesRef = useRef<string[]>(candidateIds);
   const isPlayingPropRef = useRef<boolean>(isPlaying);
 
+  // === STALE CLOSURE FIX ===
+  // The YouTube player's onStateChange is a closure created once at player init.
+  // If we capture `onEnded` directly, it will always see the state from the first render.
+  // Using refs ensures onStateChange always calls the LATEST callback version.
+  const onEndedRef = useRef(onEnded);
+  const onPlayingChangeRef = useRef(onPlayingChange);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+
+  // Keep all callback refs up-to-date every render (no dep array = runs every render)
   useEffect(() => {
+    onEndedRef.current = onEnded;
+    onPlayingChangeRef.current = onPlayingChange;
+    onTimeUpdateRef.current = onTimeUpdate;
     isPlayingPropRef.current = isPlaying;
-  }, [isPlaying]);
+  });
 
   useEffect(() => {
     candidatesRef.current = candidateIds.length > 0 ? candidateIds : videoId ? [videoId] : [];
@@ -164,15 +176,16 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           },
           onStateChange: (e) => {
             if (e.data === 0) {
-              onEnded();
+              // Use ref so we always call the LATEST onEnded (fixes stale closure when queue updates)
+              onEndedRef.current();
             } else if (e.data === 1) {
               const dur = e.target.getDuration();
               if (dur > 0) {
-                onTimeUpdate(e.target.getCurrentTime() || 0, dur);
+                onTimeUpdateRef.current(e.target.getCurrentTime() || 0, dur);
               }
-              onPlayingChange(true);
+              onPlayingChangeRef.current(true);
             } else if (e.data === 2) {
-              onPlayingChange(false);
+              onPlayingChangeRef.current(false);
             }
           },
           onError: (e) => {
