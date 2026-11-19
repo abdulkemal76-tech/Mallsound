@@ -412,51 +412,20 @@ export async function fetchTrackLyrics(
 }
 
 export const POPULAR_YT_MAP: Record<string, string> = {
-  'satu bulan': '7Jm2Il2U-c0',
-  'apa mungkin': 'yjnSX_iUFVo',
-  'kini mereka tahu': 'dQ5E7r15rEw',
-  'untungnya, hidup harus tetap berjalan': 'j3F5uI4b8G0',
-  'kata mereka ini berlebihan': '3sBv7Q7rR0Y',
-  'dan...': 'Ch3l_Q9PxpQ',
-  'dan': 'Ch3l_Q9PxpQ',
-  'sephia': '4p8R2C0B1B0',
-  'melompat lebih tinggi': '8iR8V05yWQI',
-  'seberapa pantas': '8gH7bK3p1Mw',
-  'hari bersamanya': 'Z9M4p2X7wLk',
-  'sahabat sejati': 'W9L3k1P0v7A',
+  // Verified Official IDs
+  'dan': 'dGcGbF4ex5o',
+  'dan...': 'dGcGbF4ex5o',
+  'satu bulan': 'yjnSX_iUFVo',
+  'lantas': 'pagiHshKe_0',
+  'rayuan perempuan gila': 'gIsoLyQX7W8',
+  'evaluasi': '01WhxHpsOyc',
+  'risalah hati': '3NPVxBXRivw',
+  'sephia': 'q9C0IAPzNcI',
+  'hari bersamanya': '32M1DDVwqeY',
   'dari planet lain': 'eBGIQ7ZuuiU',
-  'gala bunga matahari': '2fX_5_3t4p8',
-  'mesra-mesraannya kecil-kecilan dulu': 'p9b2Y_7qK8s',
-  'lantas': '3lqY_x_B43g',
-  'asasing': '5X93-L1eT8w',
-  'tampar': 'u_Wl_Qf3c1I',
-  'mawar jingga': 'w1p9X7qL2oA',
-  'tak di tanganku': 'Z7n2X3vL1oP',
-  'rumah ke rumah': 'f3QnE_C5v8U',
-  'evaluasi': 'Z2W3Y6R3v98',
-  'secukupnya': '3bM6YvQYc9M',
-  'besok mungkin kita sampai': 'p8l2M_4n7qE',
-  'hati-hati di jalan': 'm3p_Zz5X5k8',
-  'tujuh belas': 'V1B8k3Q7y0M',
-  'monokrom': '9H4J1p2X7v8',
-  'pamit': 'd2B7n9K1l6A',
-  'gajah': 'P7V1x3Q0m4L',
-  'rayuan perempuan gila': 'B1R5d5x_81A',
-  'semua aku dirayakan': '9YqM9eR3Vqk',
-  'bertaut': '6Y2m8V1p0oQ',
-  'sorai': 'B9p2K7v3q1M',
-  'sial': 'g2_Z-4oR2Z4',
-  'mati-matian': '2G_D_4p3w1M',
-  'kisah sempurna': 'BvU2rK3w8o0',
-  'sisa rasa': 'P1m8V3n6k0L',
-  'melawan restu': 'J4k9P2m1v7A',
-  'kangen': '1b3B8xQJq2M',
-  'pupus': 'rV3H7N2J7x4',
-  'risalah hati': 'N1b1u7OqM_E',
-  'separuh nafas': '6M2P2mJ8vL0',
-  'cemburu': 'L9v2X3n7m1A',
-  'kamulah satu-satunya': 'K3b9P7q2v1M',
-  // DJ Indo Jedag Jedug & Breakbeat
+  'kangen': 'tQkEG30xYxA',
+  'monokrom': 'ma4sO59mcC4',
+  // Verified DJ Indo
   'dj ublag': 'ZpKSSG-5s5c',
   'ublag': 'ZpKSSG-5s5c',
   'dj sia sia': '4THHQefmCa4',
@@ -492,11 +461,13 @@ export async function resolveYouTubeVideoId(
     }
   }
 
-  // Fast synchronous check
+  // Fast check in verified map
   const cleanTitle = (title || '').toLowerCase().trim();
+  let verifiedId: string | null = null;
   for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
-    if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
-      return { videoId: id, candidates: [id] };
+    if (cleanTitle === key || cleanTitle.includes(key) || key.includes(cleanTitle)) {
+      verifiedId = id;
+      break;
     }
   }
 
@@ -505,16 +476,26 @@ export async function resolveYouTubeVideoId(
     const res = await fetch(`/api/music/yt?q=${encodeURIComponent(q)}`);
     if (res.ok) {
       const data = await res.json();
-      const candidates = Array.isArray(data.candidates) ? data.candidates : [];
-      if (data.videoId || candidates.length > 0) {
+      const apiCandidates: string[] = Array.isArray(data.candidates) ? data.candidates : [];
+      const combined = Array.from(new Set([
+        ...(verifiedId ? [verifiedId] : []),
+        ...(data.videoId ? [data.videoId] : []),
+        ...apiCandidates,
+      ])).filter(Boolean);
+
+      if (combined.length > 0) {
         return {
-          videoId: data.videoId || candidates[0] || null,
-          candidates,
+          videoId: verifiedId || data.videoId || combined[0],
+          candidates: combined,
         };
       }
     }
-  } catch {
-    // Fallback below
+  } catch (err) {
+    console.warn('[resolveYouTubeVideoId] Live search failed:', err);
+  }
+
+  if (verifiedId) {
+    return { videoId: verifiedId, candidates: [verifiedId] };
   }
 
   return { videoId: null, candidates: [] };

@@ -651,21 +651,25 @@ export function App() {
     setIsLoadingLyrics(true);
     const [lyricsResult, ytData] = await Promise.all([
       fetchTrackLyrics(track.title, track.artist, track.durationSec),
-      instantId
-        ? Promise.resolve({ videoId: instantId, candidates: [instantId] })
-        : resolveYouTubeVideoId(track.title, track.artist, track.id),
+      resolveYouTubeVideoId(track.title, track.artist, track.id),
     ]);
     setIsLoadingLyrics(false);
-    if (ytData.videoId) {
-      setCurrentYtVideoId(ytData.videoId);
-      setCurrentYtCandidates(ytData.candidates);
+    if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
+      const candidateList = ytData.candidates.length > 0
+        ? ytData.candidates
+        : (ytData.videoId ? [ytData.videoId] : []);
+      const mergedCandidates = Array.from(new Set([...(instantId ? [instantId] : []), ...candidateList]));
+      if (!instantId && ytData.videoId) {
+        setCurrentYtVideoId(ytData.videoId);
+      }
+      setCurrentYtCandidates(mergedCandidates);
     }
     setCurrentTrack((prev) => {
       if (prev.id !== track.id) return prev;
       return {
         ...prev,
         lyrics: lyricsResult,
-        youtubeVideoId: ytData.videoId || prev.youtubeVideoId,
+        youtubeVideoId: ytData.videoId || prev.youtubeVideoId || instantId,
       };
     });
   };
@@ -2170,6 +2174,12 @@ export function App() {
               if (playing) {
                 setIsPlaying(true);
               }
+            }}
+            onFallbackToPreview={() => {
+              console.warn('[App] YouTube video unavailable, falling back to HiFi audio engine');
+              showToast('⚠️ Video diblokir YouTube, memutar via audio studio...');
+              setStageMode('cover');
+              handleSwitchEngineMode('hifi-eq');
             }}
           />
         </div>

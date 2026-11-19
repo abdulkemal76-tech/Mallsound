@@ -78,18 +78,22 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const onEndedRef = useRef(onEnded);
   const onPlayingChangeRef = useRef(onPlayingChange);
   const onTimeUpdateRef = useRef(onTimeUpdate);
+  const onFallbackToPreviewRef = useRef(onFallbackToPreview);
 
   // Keep all callback refs up-to-date every render (no dep array = runs every render)
   useEffect(() => {
     onEndedRef.current = onEnded;
     onPlayingChangeRef.current = onPlayingChange;
     onTimeUpdateRef.current = onTimeUpdate;
+    onFallbackToPreviewRef.current = onFallbackToPreview;
     isPlayingPropRef.current = isPlaying;
   });
 
   useEffect(() => {
-    candidatesRef.current = candidateIds.length > 0 ? candidateIds : videoId ? [videoId] : [];
-    candidateIndexRef.current = 0;
+    const list = candidateIds.length > 0 ? candidateIds : videoId ? [videoId] : [];
+    candidatesRef.current = list;
+    const found = videoId ? list.indexOf(videoId) : -1;
+    candidateIndexRef.current = found >= 0 ? found : 0;
   }, [videoId, candidateIds]);
 
   // Load YouTube IFrame API script once
@@ -189,7 +193,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             }
           },
           onError: (e) => {
-            console.warn('[YouTube Player] Error code:', e.data);
+            console.warn('[YouTube Player] Error code:', e.data, 'Current ID:', currentVideoIdRef.current);
             const list = candidatesRef.current;
             const nextIdx = candidateIndexRef.current + 1;
             if (nextIdx < list.length) {
@@ -204,6 +208,9 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               } catch {
                 // ignore
               }
+            } else {
+              console.warn('[YouTube Player] All candidate videos failed or unavailable, triggering audio fallback');
+              onFallbackToPreviewRef.current?.();
             }
           },
         },
