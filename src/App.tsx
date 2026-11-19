@@ -220,6 +220,13 @@ export function App() {
   // Theme & Modals
   const [isDark, setIsDark] = useState(true);
   const [accentColor, setAccentColor] = useState<string>(() => getSavedThemeAccent());
+  const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
+  const [isDesktopNowPlayingExpanded, setIsDesktopNowPlayingExpanded] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
+  const [isAddTrackModalOpen, setIsAddTrackModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
 
   useEffect(() => {
     applyThemeAccent(accentColor);
@@ -267,14 +274,6 @@ export function App() {
       window.removeEventListener('scroll', updateRect);
     };
   }, [stageMode, isFullScreenPlayerOpen, isDesktopNowPlayingExpanded]);
-
-  const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
-  const [isDesktopNowPlayingExpanded, setIsDesktopNowPlayingExpanded] = useState(false);
-  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
-  const [isAddTrackModalOpen, setIsAddTrackModalOpen] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
 
   // Persistent Imported Tracks (Spotify & YouTube Music)
   const [importedTracks, setImportedTracks] = useState<Track[]>(() => {
