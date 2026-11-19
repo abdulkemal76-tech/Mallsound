@@ -218,12 +218,12 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
         ================================================================= */}
         <div className="my-auto py-3 flex flex-col items-center justify-center w-full">
           <div className="w-full aspect-square rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl relative">
-            {/* Underlying persistent YouTube Full-Track Audio/Video Engine (Always mounted so audio NEVER stops!) */}
+            {/* Underlying persistent YouTube Full-Track Audio/Video Engine */}
             <div
-              className={`absolute inset-0 transition-opacity duration-200 ${
+              className={`absolute inset-0 ${
                 stageMode === 'video' && overlayPanel === 'none'
-                  ? 'opacity-100 z-10'
-                  : 'opacity-0 pointer-events-none -z-10'
+                  ? 'z-20 pointer-events-auto'
+                  : 'z-0 pointer-events-none'
               }`}
             >
               {videoStageSlot}
