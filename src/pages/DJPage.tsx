@@ -934,6 +934,8 @@ export const DJPage: React.FC<DJPageProps> = ({
             ? 'bg-violet-600/20 opacity-60'
             : 'bg-violet-900/10 opacity-20'
         }`}
+      />
+
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
         {/* =================================================================
             1. CLEAN HEADER
