@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useId, useState, useEffect, useRef } from 'react';
 import {
   Play,
   Pause,
@@ -26,6 +26,7 @@ import { Track } from '../types/music';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 
 export type DiscoLightMode = 'disco' | 'strobe' | 'laser' | 'ambient' | 'off';
+export type DiscoSpeed = 'hyper' | 'turbo' | 'normal';
 
 export interface DJPageProps {
   currentTrack: Track;
@@ -74,7 +75,7 @@ const DJ_TRACK_BPM: Record<string, number> = {
   dj_cikini_gondangdia: 146,
   dj_alay: 154,
   dj_santri_pekok: 160,
-  dj_stecu_stecu: 152,
+  dj_stecu_pargoy: 152,
 };
 
 function formatTime(seconds: number): string {
@@ -86,9 +87,9 @@ function formatTime(seconds: number): string {
 
 /**
  * TurntableStage:
- * Features realistic rotating vinyl, tone arm, hanging mirror disco ball,
- * sweeping moving-head spotlights, cyber laser lines, strobe flash overlay,
- * and subwoofer bass-kick shockwave rings.
+ * Features ultra-fast ("ngebut") stage lighting, 4 moving-head spotlights,
+ * 4 cyber lasers, rotating mirror disco ball, hyper strobe blitz flashes,
+ * subwoofer horeg vibration, and expanding bass shockwave rings.
  */
 const TurntableStage: React.FC<{
   coverUrl: string;
@@ -96,7 +97,9 @@ const TurntableStage: React.FC<{
   playbackRate: number;
   title: string;
   lightMode: DiscoLightMode;
+  lightSpeed: DiscoSpeed;
   isManualBlitz: boolean;
+  isBurstingBlitz: boolean;
   isHoregBass: boolean;
 }> = ({
   coverUrl,
@@ -104,110 +107,160 @@ const TurntableStage: React.FC<{
   playbackRate,
   title,
   lightMode,
+  lightSpeed,
   isManualBlitz,
+  isBurstingBlitz,
   isHoregBass,
 }) => {
   const [imageError, setImageError] = useState(false);
-  const spinDuration = 3 / Math.max(0.25, playbackRate);
-  const pulseDuration = 0.55 / Math.max(0.5, playbackRate);
+
+  // Speed multipliers
+  const speedMult = lightSpeed === 'hyper' ? 2.5 : lightSpeed === 'turbo' ? 1.6 : 1.0;
+  const spinDuration = (2.4 / Math.max(0.25, playbackRate)) / speedMult;
+  const pulseDuration = (0.55 / Math.max(0.5, playbackRate)) / speedMult;
+
+  // Spotlight speeds (0.75s in hyper mode for ultra-fast rave!)
+  const spotLeftDur = (1.8 / speedMult).toFixed(2);
+  const spotRightDur = (2.1 / speedMult).toFixed(2);
+  const spotLimeDur = (1.5 / speedMult).toFixed(2);
+  const spotAmberDur = (1.7 / speedMult).toFixed(2);
+
+  // Laser speeds (0.45s in hyper mode!)
+  const laserDur1 = (1.2 / speedMult).toFixed(2);
+  const laserDur2 = (1.4 / speedMult).toFixed(2);
+  const laserDur3 = (1.0 / speedMult).toFixed(2);
 
   const showSpotlights = (lightMode === 'disco' || lightMode === 'ambient') && isPlaying;
   const showLasers = (lightMode === 'laser' || lightMode === 'disco') && isPlaying;
   const showStrobe = lightMode === 'strobe' && isPlaying;
-  const isStrobeActive = showStrobe || isManualBlitz;
+  const isStrobeActive = showStrobe || isManualBlitz || isBurstingBlitz;
 
   return (
-    <div className="relative w-full flex flex-col items-center justify-center py-6 overflow-hidden rounded-3xl bg-radial from-violet-950/40 via-neutral-950/90 to-black border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.95)]">
+    <div className="relative w-full flex flex-col items-center justify-center py-6 overflow-hidden rounded-3xl bg-radial from-violet-950/50 via-neutral-950/95 to-black border border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.95)]">
       {/* =================================================================
-          A. STROBE BLITZ OVERLAY (Rave Flash)
+          A. HYPER STROBE BLITZ OVERLAY (Rapid-Fire Rave Flashes)
       ================================================================= */}
       {isStrobeActive && (
-        <div
-          className="absolute inset-0 z-30 pointer-events-none"
-          style={{
-            animation: 'dj-strobe-blitz 0.1s steps(2, start) infinite',
-            backgroundColor: isManualBlitz ? 'rgba(255, 255, 255, 0.45)' : 'rgba(255, 255, 255, 0.25)',
-          }}
-        />
+        <>
+          {/* Main Pure White Blitz Flash */}
+          <div
+            className="absolute inset-0 z-30 pointer-events-none"
+            style={{
+              animation: 'dj-hyper-blitz 0.055s steps(2, start) infinite',
+              backgroundColor: isManualBlitz || isBurstingBlitz
+                ? 'rgba(255, 255, 255, 0.7)'
+                : 'rgba(255, 255, 255, 0.35)',
+            }}
+          />
+          {/* Secondary Color Strobe Flare (Cyan / Magenta) */}
+          <div
+            className="absolute inset-0 z-25 pointer-events-none mix-blend-screen"
+            style={{
+              animation: 'dj-color-strobe 0.09s steps(3, start) infinite alternate',
+            }}
+          />
+        </>
       )}
 
       {/* =================================================================
-          B. MOVING-HEAD SPOTLIGHT BEAMS (Left & Right)
+          B. 4 MOVING-HEAD SPOTLIGHT BEAMS (Ultra Fast Sweeping)
       ================================================================= */}
       {showSpotlights && (
         <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden">
-          {/* Spotlight Left (Cyan / Violet) */}
+          {/* Spotlight 1: Electric Cyan (Top-Left) */}
           <div
-            className="absolute -top-10 left-1/4 w-40 sm:w-60 h-[420px] origin-top blur-xl opacity-60"
+            className="absolute -top-12 left-1/4 w-48 sm:w-64 h-[440px] origin-top blur-lg opacity-75"
             style={{
-              background:
-                lightMode === 'disco'
-                  ? 'linear-gradient(180deg, rgba(6,182,212,0.8) 0%, rgba(147,51,234,0.3) 60%, transparent 100%)'
-                  : 'linear-gradient(180deg, rgba(168,85,247,0.7) 0%, rgba(59,130,246,0.3) 60%, transparent 100%)',
+              background: 'linear-gradient(180deg, rgba(6,182,212,0.95) 0%, rgba(147,51,234,0.4) 60%, transparent 100%)',
               clipPath: 'polygon(45% 0%, 55% 0%, 100% 100%, 0% 100%)',
-              animation: 'dj-spotlight-left 3.6s ease-in-out infinite alternate',
+              animation: `dj-spotlight-left ${spotLeftDur}s ease-in-out infinite alternate`,
             }}
           />
 
-          {/* Spotlight Right (Magenta / Amber) */}
+          {/* Spotlight 2: Hot Magenta (Top-Right) */}
           <div
-            className="absolute -top-10 right-1/4 w-40 sm:w-60 h-[420px] origin-top blur-xl opacity-60"
+            className="absolute -top-12 right-1/4 w-48 sm:w-64 h-[440px] origin-top blur-lg opacity-75"
             style={{
-              background:
-                lightMode === 'disco'
-                  ? 'linear-gradient(180deg, rgba(236,72,153,0.8) 0%, rgba(245,158,11,0.3) 60%, transparent 100%)'
-                  : 'linear-gradient(180deg, rgba(217,70,239,0.7) 0%, rgba(99,102,241,0.3) 60%, transparent 100%)',
+              background: 'linear-gradient(180deg, rgba(236,72,153,0.95) 0%, rgba(245,158,11,0.4) 60%, transparent 100%)',
               clipPath: 'polygon(45% 0%, 55% 0%, 100% 100%, 0% 100%)',
-              animation: 'dj-spotlight-right 4.2s ease-in-out infinite alternate',
+              animation: `dj-spotlight-right ${spotRightDur}s ease-in-out infinite alternate`,
+            }}
+          />
+
+          {/* Spotlight 3: Electric Lime (Left Flank) */}
+          <div
+            className="absolute top-1/4 -left-10 w-44 sm:w-56 h-[380px] origin-top-left blur-lg opacity-60"
+            style={{
+              background: 'linear-gradient(135deg, rgba(52,211,153,0.85) 0%, rgba(6,182,212,0.3) 65%, transparent 100%)',
+              clipPath: 'polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)',
+              animation: `dj-spotlight-lime ${spotLimeDur}s ease-in-out infinite alternate`,
+            }}
+          />
+
+          {/* Spotlight 4: Amber Gold (Right Flank) */}
+          <div
+            className="absolute top-1/4 -right-10 w-44 sm:w-56 h-[380px] origin-top-right blur-lg opacity-60"
+            style={{
+              background: 'linear-gradient(225deg, rgba(251,191,36,0.85) 0%, rgba(236,72,153,0.3) 65%, transparent 100%)',
+              clipPath: 'polygon(40% 0%, 60% 0%, 100% 100%, 0% 100%)',
+              animation: `dj-spotlight-amber ${spotAmberDur}s ease-in-out infinite alternate`,
             }}
           />
         </div>
       )}
 
       {/* =================================================================
-          C. CYBER LASER BEAMS
+          C. 4 CYBER LASER BEAMS (High Frequency Cutting Lasers)
       ================================================================= */}
       {showLasers && (
         <div className="absolute inset-0 pointer-events-none z-15 overflow-hidden">
-          {/* Neon Green Laser */}
+          {/* Laser 1: Neon Emerald Horizontal */}
           <div
-            className="absolute h-[2px] w-full bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#34d399]"
+            className="absolute h-[3px] w-full bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_18px_#10b981]"
             style={{
-              top: '38%',
-              animation: 'dj-laser-sweep 2.8s ease-in-out infinite alternate',
+              top: '32%',
+              animation: `dj-laser-sweep ${laserDur1}s ease-in-out infinite alternate`,
             }}
           />
-          {/* Neon Cyan Laser */}
+          {/* Laser 2: Electric Cyan Horizontal */}
           <div
-            className="absolute h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#22d3ee]"
+            className="absolute h-[3px] w-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_18px_#06b6d4]"
             style={{
-              top: '62%',
-              animation: 'dj-laser-sweep-reverse 3.2s ease-in-out infinite alternate',
+              top: '68%',
+              animation: `dj-laser-sweep-reverse ${laserDur2}s ease-in-out infinite alternate`,
+            }}
+          />
+          {/* Laser 3: Hot Pink Diagonal Laser */}
+          <div
+            className="absolute h-[2px] w-[140%] -left-[20%] bg-gradient-to-r from-transparent via-pink-500 to-transparent shadow-[0_0_18px_#ec4899]"
+            style={{
+              top: '48%',
+              animation: `dj-laser-diagonal ${laserDur3}s ease-in-out infinite alternate`,
             }}
           />
         </div>
       )}
 
       {/* =================================================================
-          D. HANGING MIRROR DISCO BALL
+          D. HANGING MIRROR DISCO BALL (Rotating Specular Reflection)
       ================================================================= */}
       {lightMode !== 'off' && (
         <div className="relative z-20 flex flex-col items-center mb-3 group">
           {/* Hanging Cord */}
-          <div className="w-[1.5px] h-8 sm:h-10 bg-gradient-to-b from-white/40 via-neutral-400 to-white/70 shadow-sm" />
+          <div className="w-[2px] h-8 sm:h-10 bg-gradient-to-b from-white/60 via-neutral-300 to-white/80 shadow-[0_0_6px_rgba(255,255,255,0.6)]" />
 
           {/* Disco Ball Sphere */}
           <div
-            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-[0_0_25px_rgba(255,255,255,0.6)] border border-white/60 overflow-hidden flex items-center justify-center"
+            className="relative w-12 h-12 sm:w-14 sm:h-14 rounded-full shadow-[0_0_30px_rgba(255,255,255,0.8)] border border-white/70 overflow-hidden flex items-center justify-center"
             style={{
               background:
                 'conic-gradient(from 0deg, #ffffff 0deg, #cbd5e1 45deg, #64748b 90deg, #f8fafc 135deg, #94a3b8 180deg, #e2e8f0 225deg, #475569 270deg, #ffffff 360deg)',
-              animation: isPlaying ? 'dj-discoball-spin 6s linear infinite' : 'none',
+              animation: isPlaying ? `dj-discoball-spin ${(3.0 / speedMult).toFixed(2)}s linear infinite` : 'none',
             }}
           >
             {/* Mirror Facets Grid Texture */}
             <div
-              className="absolute inset-0 opacity-45 pointer-events-none"
+              className="absolute inset-0 opacity-55 pointer-events-none"
               style={{
                 backgroundImage:
                   'repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.5) 3px, rgba(0,0,0,0.5) 4px), repeating-linear-gradient(90deg, transparent, transparent 3px, rgba(0,0,0,0.5) 3px, rgba(0,0,0,0.5) 4px)',
@@ -215,12 +268,12 @@ const TurntableStage: React.FC<{
             />
 
             {/* Specular Highlight */}
-            <div className="absolute top-1 left-2 w-3 h-3 rounded-full bg-white blur-[1px] opacity-90" />
+            <div className="absolute top-1 left-2 w-3.5 h-3.5 rounded-full bg-white blur-[1px] opacity-95 shadow-[0_0_10px_#fff]" />
           </div>
 
           {/* Glint Sparkles around ball */}
           <Sparkles className="absolute -top-1 -right-3 w-4 h-4 text-amber-300 animate-pulse pointer-events-none" />
-          <Sparkles className="absolute top-4 -left-3 w-3.5 h-3.5 text-cyan-300 animate-ping pointer-events-none" />
+          <Sparkles className="absolute top-4 -left-3 w-4 h-4 text-cyan-300 animate-ping pointer-events-none" />
         </div>
       )}
 
@@ -230,35 +283,52 @@ const TurntableStage: React.FC<{
       <div className="relative flex items-center justify-center p-2 z-20">
         {/* Glow Aura behind platter */}
         <div
-          className={`absolute w-72 h-72 sm:w-88 sm:h-88 md:w-96 md:h-96 rounded-full blur-3xl transition-all duration-700 pointer-events-none ${
+          className={`absolute w-72 h-72 sm:w-88 sm:h-88 md:w-96 md:h-96 rounded-full blur-3xl transition-all duration-300 pointer-events-none ${
             isPlaying
               ? isHoregBass
-                ? 'opacity-85 bg-gradient-to-tr from-fuchsia-600 via-pink-600 to-amber-500 scale-110'
-                : 'opacity-50 bg-gradient-to-tr from-violet-600 via-fuchsia-500 to-cyan-500'
+                ? 'opacity-90 bg-gradient-to-tr from-fuchsia-600 via-pink-600 to-amber-400 scale-110 shadow-[0_0_50px_rgba(236,72,153,0.8)]'
+                : 'opacity-60 bg-gradient-to-tr from-violet-600 via-fuchsia-500 to-cyan-400'
               : 'opacity-15 bg-violet-900'
           }`}
         />
 
-        {/* Subwoofer Bass-Kick Shockwave Ring */}
+        {/* Triple Subwoofer Bass-Kick Shockwave Rings */}
         {isPlaying && (
-          <div
-            className={`absolute rounded-full pointer-events-none border-2 transition-all ${
-              isHoregBass
-                ? 'border-fuchsia-400/80 shadow-[0_0_35px_rgba(236,72,153,0.85)]'
-                : 'border-violet-400/50 shadow-[0_0_20px_rgba(139,92,246,0.6)]'
-            }`}
-            style={{
-              width: '102%',
-              height: '102%',
-              animation: `dj-bass-kick ${pulseDuration}s cubic-bezier(0.1, 0.9, 0.2, 1) infinite`,
-            }}
-          />
+          <>
+            <div
+              className={`absolute rounded-full pointer-events-none border-2 transition-all ${
+                isHoregBass
+                  ? 'border-fuchsia-400/90 shadow-[0_0_40px_rgba(236,72,153,0.9)]'
+                  : 'border-violet-400/60 shadow-[0_0_25px_rgba(139,92,246,0.7)]'
+              }`}
+              style={{
+                width: '102%',
+                height: '102%',
+                animation: `dj-bass-kick-1 ${pulseDuration}s cubic-bezier(0.1, 0.9, 0.2, 1) infinite`,
+              }}
+            />
+            {isHoregBass && (
+              <div
+                className="absolute rounded-full pointer-events-none border-2 border-amber-300/80 shadow-[0_0_30px_rgba(251,191,36,0.8)]"
+                style={{
+                  width: '106%',
+                  height: '106%',
+                  animation: `dj-bass-kick-2 ${pulseDuration}s cubic-bezier(0.1, 0.9, 0.2, 1) infinite 0.08s`,
+                }}
+              />
+            )}
+          </>
         )}
 
-        {/* Turntable Platter Base */}
-        <div className="relative w-64 h-64 sm:w-80 sm:h-80 md:w-92 md:h-92 rounded-full p-2 bg-neutral-900 border-2 border-white/15 shadow-[0_20px_60px_rgba(0,0,0,0.9)] flex items-center justify-center">
+        {/* Turntable Platter Base (with Horeg Bass physical shake!) */}
+        <div
+          className="relative w-64 h-64 sm:w-80 sm:h-80 md:w-92 md:h-92 rounded-full p-2 bg-neutral-900 border-2 border-white/20 shadow-[0_20px_60px_rgba(0,0,0,0.95)] flex items-center justify-center"
+          style={{
+            animation: isPlaying && isHoregBass ? 'dj-horeg-shake 0.12s infinite alternate' : 'none',
+          }}
+        >
           {/* Outer Strobe Rim Dots */}
-          <div className="absolute inset-1 rounded-full border border-dashed border-white/20 pointer-events-none" />
+          <div className="absolute inset-1 rounded-full border border-dashed border-white/25 pointer-events-none" />
 
           {/* Vinyl Disc Body */}
           <div
@@ -279,10 +349,10 @@ const TurntableStage: React.FC<{
 
             {/* Radial Light Sheen */}
             <div
-              className="absolute inset-0 rounded-full pointer-events-none opacity-25"
+              className="absolute inset-0 rounded-full pointer-events-none opacity-30"
               style={{
                 background:
-                  'conic-gradient(from 45deg, transparent 0deg, rgba(255,255,255,0.25) 45deg, transparent 90deg, transparent 180deg, rgba(255,255,255,0.25) 225deg, transparent 270deg)',
+                  'conic-gradient(from 45deg, transparent 0deg, rgba(255,255,255,0.3) 45deg, transparent 90deg, transparent 180deg, rgba(255,255,255,0.3) 225deg, transparent 270deg)',
               }}
             />
 
@@ -365,8 +435,13 @@ export const DJPage: React.FC<DJPageProps> = ({
   const [localShuffle, setLocalShuffle] = useState(false);
   const [localRepeat, setLocalRepeat] = useState(false);
   const [lightMode, setLightMode] = useState<DiscoLightMode>('disco');
+  const [lightSpeed, setLightSpeed] = useState<DiscoSpeed>('hyper');
   const [isManualBlitz, setIsManualBlitz] = useState(false);
+  const [isBurstingBlitz, setIsBurstingBlitz] = useState(false);
+  const [burstCount, setBurstCount] = useState(0);
   const [activeListTab, setActiveListTab] = useState<'dj-indo' | 'queue'>('dj-indo');
+
+  const burstTimerRef = useRef<number | null>(null);
 
   const isShuffle = propIsShuffle !== undefined ? propIsShuffle : localShuffle;
   const isRepeat = propIsRepeat !== undefined ? propIsRepeat : localRepeat;
@@ -387,6 +462,24 @@ export const DJPage: React.FC<DJPageProps> = ({
     }
   };
 
+  // Rapid Fire Burst Blitz Function (Fires 15 rapid flashes!)
+  const triggerRapidBurstBlitz = () => {
+    if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
+    setIsBurstingBlitz(true);
+    setBurstCount((prev) => prev + 1);
+
+    // Burst lasts 1.25 seconds of rapid strobe fire
+    burstTimerRef.current = window.setTimeout(() => {
+      setIsBurstingBlitz(false);
+    }, 1250);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
+    };
+  }, []);
+
   // Bass Boost Logic:
   // Mega Bass Horeg: +12dB on 60Hz and +8dB on 230Hz (Indonesian Sound System Horeg)
   const isHoregBass = eqGains[0] >= 11 && eqGains[1] >= 7.5;
@@ -395,7 +488,6 @@ export const DJPage: React.FC<DJPageProps> = ({
 
   const handleSetMegaBassHoreg = () => {
     if (isHoregBass) {
-      // Toggle back to flat
       onEqBandChange(0, 0);
       onEqBandChange(1, 0);
     } else {
@@ -426,16 +518,6 @@ export const DJPage: React.FC<DJPageProps> = ({
     }
   };
 
-  // Treble Boost: +5dB on 14kHz
-  const isTrebleBoostActive = eqGains[4] >= 4.5;
-  const handleToggleTrebleBoost = () => {
-    if (isTrebleBoostActive) {
-      onEqBandChange(4, 0);
-    } else {
-      onEqBandChange(4, 5);
-    }
-  };
-
   // Reset EQ: All bands to 0dB
   const handleResetEq = () => {
     [0, 1, 2, 3, 4].forEach((idx) => onEqBandChange(idx, 0));
@@ -447,14 +529,14 @@ export const DJPage: React.FC<DJPageProps> = ({
 
   // Derived or estimated BPM
   const trackIdClean = currentTrack.id.toLowerCase();
-  const knownBpm = DJ_TRACK_BPM[trackIdClean] || currentTrack.synthConfig?.bpm || 135;
+  const knownBpm = DJ_TRACK_BPM[trackIdClean] || currentTrack.synthConfig?.bpm || 150;
   const displayBpm = Math.round(knownBpm * playbackRate);
 
   const scrubberId = useId();
 
   return (
     <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-violet-500 selection:text-white pb-28">
-      {/* Embedded CSS Keyframes for Disco & Stage Lighting */}
+      {/* Embedded CSS Keyframes for High-Speed Rave & Blitz */}
       <style>{`
         @keyframes dj-vinyl-spin {
           from { transform: rotate(0deg); }
@@ -465,33 +547,65 @@ export const DJPage: React.FC<DJPageProps> = ({
           to { transform: rotate(360deg); }
         }
         @keyframes dj-spotlight-left {
-          0% { transform: rotate(-22deg) scaleX(0.85); opacity: 0.45; }
-          50% { transform: rotate(6deg) scaleX(1.15); opacity: 0.8; }
-          100% { transform: rotate(26deg) scaleX(0.9); opacity: 0.55; }
+          0% { transform: rotate(-26deg) scaleX(0.8); opacity: 0.55; }
+          50% { transform: rotate(8deg) scaleX(1.3); opacity: 0.95; }
+          100% { transform: rotate(30deg) scaleX(0.85); opacity: 0.6; }
         }
         @keyframes dj-spotlight-right {
-          0% { transform: rotate(24deg) scaleX(0.85); opacity: 0.5; }
-          50% { transform: rotate(-8deg) scaleX(1.2); opacity: 0.85; }
-          100% { transform: rotate(-28deg) scaleX(0.95); opacity: 0.45; }
+          0% { transform: rotate(28deg) scaleX(0.8); opacity: 0.6; }
+          50% { transform: rotate(-10deg) scaleX(1.35); opacity: 0.95; }
+          100% { transform: rotate(-32deg) scaleX(0.9); opacity: 0.55; }
+        }
+        @keyframes dj-spotlight-lime {
+          0% { transform: rotate(-18deg); opacity: 0.4; }
+          50% { transform: rotate(15deg); opacity: 0.85; }
+          100% { transform: rotate(35deg); opacity: 0.5; }
+        }
+        @keyframes dj-spotlight-amber {
+          0% { transform: rotate(20deg); opacity: 0.45; }
+          50% { transform: rotate(-12deg); opacity: 0.9; }
+          100% { transform: rotate(-30deg); opacity: 0.5; }
         }
         @keyframes dj-laser-sweep {
-          0% { transform: translateY(-30px) rotate(-4deg); opacity: 0.3; }
-          50% { transform: translateY(20px) rotate(3deg); opacity: 0.95; }
-          100% { transform: translateY(-10px) rotate(-2deg); opacity: 0.4; }
+          0% { transform: translateY(-40px) rotate(-6deg); opacity: 0.35; }
+          50% { transform: translateY(30px) rotate(5deg); opacity: 1; }
+          100% { transform: translateY(-15px) rotate(-3deg); opacity: 0.45; }
         }
         @keyframes dj-laser-sweep-reverse {
-          0% { transform: translateY(25px) rotate(3deg); opacity: 0.4; }
-          50% { transform: translateY(-25px) rotate(-4deg); opacity: 0.95; }
-          100% { transform: translateY(15px) rotate(2deg); opacity: 0.35; }
+          0% { transform: translateY(35px) rotate(4deg); opacity: 0.4; }
+          50% { transform: translateY(-35px) rotate(-5deg); opacity: 1; }
+          100% { transform: translateY(20px) rotate(3deg); opacity: 0.35; }
         }
-        @keyframes dj-strobe-blitz {
-          0%, 100% { opacity: 0.05; }
-          50% { opacity: 0.95; }
+        @keyframes dj-laser-diagonal {
+          0% { transform: rotate(-35deg) translateY(-20px); opacity: 0.3; }
+          50% { transform: rotate(25deg) translateY(20px); opacity: 1; }
+          100% { transform: rotate(-15deg) translateY(-10px); opacity: 0.4; }
         }
-        @keyframes dj-bass-kick {
+        @keyframes dj-hyper-blitz {
+          0%, 100% { opacity: 0.02; }
+          50% { opacity: 0.98; }
+        }
+        @keyframes dj-color-strobe {
+          0% { background-color: rgba(6, 182, 212, 0.4); }
+          50% { background-color: rgba(236, 72, 153, 0.45); }
+          100% { background-color: rgba(251, 191, 36, 0.4); }
+        }
+        @keyframes dj-bass-kick-1 {
+          0% { transform: scale(1.0); opacity: 0.9; }
+          50% { transform: scale(1.2); opacity: 0.3; }
+          100% { transform: scale(1.35); opacity: 0; }
+        }
+        @keyframes dj-bass-kick-2 {
           0% { transform: scale(1.0); opacity: 0.85; }
-          50% { transform: scale(1.16); opacity: 0.25; }
-          100% { transform: scale(1.28); opacity: 0; }
+          50% { transform: scale(1.28); opacity: 0.2; }
+          100% { transform: scale(1.45); opacity: 0; }
+        }
+        @keyframes dj-horeg-shake {
+          0% { transform: translate(0, 0); }
+          25% { transform: translate(-1.5px, 1.5px); }
+          50% { transform: translate(1.5px, -1px); }
+          75% { transform: translate(-1px, -1.5px); }
+          100% { transform: translate(1px, 1px); }
         }
         @keyframes gradient-shift {
           0% { background-position: 0% 50%; }
@@ -504,8 +618,16 @@ export const DJPage: React.FC<DJPageProps> = ({
         }
       `}</style>
 
-      {/* Top Ambient Glow Backdrop */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-72 bg-gradient-to-b from-violet-600/20 via-fuchsia-600/10 to-transparent blur-3xl pointer-events-none" />
+      {/* Top Ambient Glow Backdrop with Beat Flash Reaction */}
+      <div
+        className={`absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-80 blur-3xl pointer-events-none transition-all duration-150 ${
+          isBurstingBlitz || isManualBlitz
+            ? 'bg-gradient-to-b from-white/40 via-cyan-500/30 to-transparent opacity-95'
+            : isPlaying
+            ? 'bg-gradient-to-b from-violet-600/30 via-fuchsia-600/20 to-transparent opacity-80'
+            : 'bg-gradient-to-b from-violet-900/10 to-transparent opacity-40'
+        }`}
+      />
 
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-6 space-y-8">
         {/* =================================================================
@@ -515,13 +637,13 @@ export const DJPage: React.FC<DJPageProps> = ({
           <div className="space-y-1">
             <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-violet-500/15 border border-violet-500/30 text-violet-300 text-[11px] font-semibold tracking-wider uppercase mb-1">
               <Sparkles className="w-3.5 h-3.5 text-violet-400" />
-              <span>MallSound DJ Stage • Jedag Jedug Horeg</span>
+              <span>MallSound DJ Stage • Hyper Rave & Full Lagu</span>
             </div>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight font-display bg-gradient-to-r from-violet-400 via-fuchsia-400 to-amber-300 bg-clip-text text-transparent animate-gradient-text">
               🎧 DJ Club & Disco Studio
             </h1>
             <p className="text-xs sm:text-sm text-white/70">
-              Pencahayaan disco rave, sub-bass horeg menggelegar, dan koleksi 12 lagu DJ Indo viral pilihan.
+              Lampu disco rave super ngebut, tembakan blitz kilat frekuensi tinggi, sub-bass horeg, dan lagu full bermenit-menit.
             </p>
           </div>
 
@@ -562,14 +684,16 @@ export const DJPage: React.FC<DJPageProps> = ({
           {/* Subtle Deck Lighting Line */}
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-violet-400 to-transparent" />
 
-          {/* Interactive Turntable Stage with Disco & Lighting */}
+          {/* Interactive Turntable Stage with Hyper Disco & Blitz */}
           <TurntableStage
             coverUrl={currentTrack.coverUrl}
             isPlaying={isPlaying}
             playbackRate={playbackRate}
             title={currentTrack.title}
             lightMode={lightMode}
+            lightSpeed={lightSpeed}
             isManualBlitz={isManualBlitz}
+            isBurstingBlitz={isBurstingBlitz}
             isHoregBass={isHoregBass}
           />
 
@@ -610,15 +734,15 @@ export const DJPage: React.FC<DJPageProps> = ({
               <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-amber-500/15 text-amber-300 border border-amber-500/30">
                 ⚡ {displayBpm} BPM
               </span>
+              {durationSec > 600 && (
+                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  💿 FULL MIX ({Math.round(durationSec / 60)} MENIT)
+                </span>
+              )}
               {isHoregBass && (
                 <span className="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-fuchsia-500/20 text-fuchsia-300 border border-fuchsia-500/30 flex items-center gap-1">
                   <Flame className="w-3 h-3 text-amber-300" />
-                  Sub-Bass Horeg
-                </span>
-              )}
-              {currentTrack.bitrateLabel && (
-                <span className="px-2.5 py-0.5 rounded-full text-[11px] font-mono bg-white/5 text-white/50 border border-white/10">
-                  {currentTrack.bitrateLabel}
+                  Sub-Bass Horeg (+12dB)
                 </span>
               )}
             </div>
@@ -646,7 +770,7 @@ export const DJPage: React.FC<DJPageProps> = ({
             </div>
             <div className="flex items-center justify-between text-xs sm:text-sm font-mono text-white/60 tabular-nums px-1">
               <span className="text-violet-300 font-semibold">{formatTime(currentTimeSec)}</span>
-              <span>{formatTime(durationSec)}</span>
+              <span className="text-emerald-300 font-semibold">{formatTime(durationSec)}</span>
             </div>
           </div>
 
@@ -725,24 +849,46 @@ export const DJPage: React.FC<DJPageProps> = ({
             3. CLUB LIGHTING FX CONTROLLER (Lampu Disco, Flash & Laser)
         ================================================================= */}
         <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sun className="w-5 h-5 text-amber-400" />
               <h2 className="text-lg sm:text-xl font-bold font-display text-white">
                 Pencahayaan Panggung Disco & Laser
               </h2>
             </div>
-            <span className="text-xs text-white/50">
-              Pilih mode pencahayaan club atau picu flash blitz manual
-            </span>
+
+            {/* Speed Selector (Ngebut Mode!) */}
+            <div className="flex items-center gap-1.5 bg-black/40 p-1 rounded-2xl border border-white/10 self-start sm:self-auto">
+              <span className="text-[10px] text-white/60 font-semibold px-2 uppercase tracking-wider">
+                Kecepatan:
+              </span>
+              {[
+                { id: 'hyper', label: '🚀 HYPER NGEBUT' },
+                { id: 'turbo', label: '⚡ CEPAT' },
+                { id: 'normal', label: '🌌 SANTAI' },
+              ].map((sp) => (
+                <button
+                  key={sp.id}
+                  type="button"
+                  onClick={() => setLightSpeed(sp.id as DiscoSpeed)}
+                  className={`py-1 px-2.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer ${
+                    lightSpeed === sp.id
+                      ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-[0_0_12px_rgba(245,158,11,0.6)]'
+                      : 'text-white/60 hover:text-white'
+                  }`}
+                >
+                  {sp.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Mode Selector Chips */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
             {[
-              { id: 'disco', label: '🌈 Disco RGB', desc: 'Lampu bergerak warna-warni' },
+              { id: 'disco', label: '🌈 Disco RGB', desc: '4 Lampu sorot + laser membelah deck' },
               { id: 'strobe', label: '⚡ Strobe Blitz', desc: 'Flash kilat rave frekuensi tinggi' },
-              { id: 'laser', label: '🚨 Laser Cyber', desc: 'Sinar laser neon membelah deck' },
+              { id: 'laser', label: '🚨 Laser Cyber', desc: '4 Garis laser neon membelah panggung' },
               { id: 'ambient', label: '🌌 Club Ambient', desc: 'Nuansa club malam hangat' },
               { id: 'off', label: '🌑 Off', desc: 'Pencahayaan dinonaktifkan' },
             ].map((mode) => {
@@ -765,24 +911,44 @@ export const DJPage: React.FC<DJPageProps> = ({
             })}
           </div>
 
-          {/* Manual Flash Blitz Button (Hold or Click) */}
-          <div className="pt-2">
+          {/* Dual Blitz Control Buttons (Burst Rapid-Fire + Continuous Hold) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            {/* 1. Rapid Burst Blitz (15 Flashes Machine-Gun Fire!) */}
+            <button
+              type="button"
+              onClick={triggerRapidBurstBlitz}
+              className={`py-3.5 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-sm font-bold uppercase tracking-wider transition-all select-none cursor-pointer ${
+                isBurstingBlitz
+                  ? 'bg-white text-black border-white shadow-[0_0_40px_rgba(255,255,255,1)] scale-[0.98]'
+                  : 'bg-gradient-to-r from-cyan-500/25 via-fuchsia-500/25 to-pink-500/25 hover:from-cyan-500/35 hover:to-pink-500/35 text-cyan-200 border-cyan-400/50 hover:border-cyan-300'
+              }`}
+              title="Klik untuk menembakkan 15 rentetan blitz kilat cepat sekaligus!"
+            >
+              <Zap className={`w-5 h-5 ${isBurstingBlitz ? 'text-amber-400 animate-spin' : 'text-cyan-300'}`} />
+              <span>
+                {isBurstingBlitz
+                  ? `💥 NEMBAK CEPAT! (BURST #${burstCount})`
+                  : '⚡ TEMBAK BURST CEPAT (15x FLASH)'}
+              </span>
+            </button>
+
+            {/* 2. Continuous Manual Flash Hold Button */}
             <button
               type="button"
               onMouseDown={() => setIsManualBlitz(true)}
               onMouseUp={() => setIsManualBlitz(false)}
               onTouchStart={() => setIsManualBlitz(true)}
               onTouchEnd={() => setIsManualBlitz(false)}
-              className={`w-full py-3.5 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-sm font-bold uppercase tracking-wider transition-all select-none cursor-pointer ${
+              className={`py-3.5 px-4 rounded-2xl border flex items-center justify-center gap-2.5 text-sm font-bold uppercase tracking-wider transition-all select-none cursor-pointer ${
                 isManualBlitz
-                  ? 'bg-white text-black border-white shadow-[0_0_35px_rgba(255,255,255,1)] scale-[0.99]'
+                  ? 'bg-amber-300 text-black border-amber-200 shadow-[0_0_40px_rgba(251,191,36,1)] scale-[0.98]'
                   : 'bg-gradient-to-r from-amber-500/20 via-pink-500/20 to-violet-500/20 hover:from-amber-500/30 hover:to-violet-500/30 text-amber-200 border-amber-500/40 hover:border-amber-400'
               }`}
-              title="Tahan atau klik untuk menembakkan blitz kilat di atas panggung!"
+              title="Tahan tombol ini untuk menembak blitz terus-menerus tanpa henti!"
             >
-              <Zap className={`w-5 h-5 ${isManualBlitz ? 'text-amber-500 animate-spin' : 'text-amber-300'}`} />
+              <Flame className={`w-5 h-5 ${isManualBlitz ? 'text-amber-500 animate-bounce' : 'text-amber-300'}`} />
               <span>
-                {isManualBlitz ? '💥 BLITZ FLASH KELUAR! (MENYALA)' : '⚡ TEMBAK BLITZ / MANUAL FLASH (TAHAN / KLIK)'}
+                {isManualBlitz ? '🔥 BLITZ MENYALA TERUS! (TAHAN)' : '⚡ TEMBAK BLITZ MANUAL (TAHAN / KLIK)'}
               </span>
             </button>
           </div>
@@ -1164,7 +1330,7 @@ export const DJPage: React.FC<DJPageProps> = ({
                 }`}
               >
                 <Flame className="w-4 h-4 text-amber-300" />
-                <span>🔥 12 DJ Indo Viral (Jedag Jedug)</span>
+                <span>🔥 12 DJ Indo Viral (Full Song & Mixtape)</span>
                 <span className="px-1.5 py-0.2 rounded-full bg-white/20 text-[10px] font-mono">
                   12
                 </span>
@@ -1189,14 +1355,14 @@ export const DJPage: React.FC<DJPageProps> = ({
 
             <span className="text-xs text-white/50">
               {activeListTab === 'dj-indo'
-                ? 'Klik trek mana pun untuk langsung mix di deck!'
+                ? 'Semua lagu full berdurasi menit s/d mixtape panjang!'
                 : 'Daftar trek antrean musik aktif saat ini'}
             </span>
           </div>
 
           {/* TAB 1: 12 DJ INDO VIRAL TRACKS */}
           {activeListTab === 'dj-indo' && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[440px] overflow-y-auto pr-1">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[460px] overflow-y-auto pr-1">
               {DJ_INDO_TRACKS.map((track, idx) => {
                 const isSelected = track.id === currentTrack.id || track.title === currentTrack.title;
                 const trackLiked = isTrackLiked(track.id);
@@ -1261,6 +1427,9 @@ export const DJPage: React.FC<DJPageProps> = ({
                           </span>
                           <span className="px-1.5 py-0.2 rounded text-[9px] font-mono text-amber-300 bg-amber-500/10 border border-amber-500/20">
                             {trackBpm} BPM
+                          </span>
+                          <span className="px-1.5 py-0.2 rounded text-[9px] font-mono text-emerald-300 bg-emerald-500/10 border border-emerald-500/20">
+                            {formatTime(track.durationSec)}
                           </span>
                         </div>
                       </div>
