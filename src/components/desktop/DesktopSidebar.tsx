@@ -4,11 +4,10 @@ import {
   Compass,
   Disc3,
   Library,
-  User as UserIcon,
+  Sliders,
   FolderDown,
   Heart,
   Plus,
-  LogIn,
   Music2,
   Sparkles,
 } from 'lucide-react';
@@ -23,8 +22,8 @@ export interface DesktopSidebarProps {
   onSelectPlaylist: (playlistId: string) => void;
   onOpenCreatePlaylist: () => void;
   onOpenImportPlaylist: () => void;
-  user: User | null;
-  onSignIn: () => void;
+  user?: User | null;
+  onSignIn?: () => void;
   accentColor?: string;
   isNowPlayingExpanded?: boolean;
   onToggleNowPlaying?: () => void;
@@ -37,8 +36,6 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
   onSelectPlaylist,
   onOpenCreatePlaylist,
   onOpenImportPlaylist,
-  user,
-  onSignIn,
   accentColor = '#8b5cf6',
   isNowPlayingExpanded,
   onToggleNowPlaying,
@@ -48,7 +45,7 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
     { id: 'search', label: 'Explore', icon: Compass },
     { id: 'dj', label: 'DJ Studio', icon: Disc3 },
     { id: 'library', label: 'Library', icon: Library },
-    { id: 'profile', label: 'Profile', icon: UserIcon },
+    { id: 'profile', label: 'Pengaturan', icon: Sliders },
   ];
 
   return (
@@ -184,23 +181,6 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
         </div>
       </div>
 
-      {/* Bottom Sidebar Box: Sign-in promo / User state (YouTube Music style) */}
-      {!user && (
-        <div className="p-4 m-3 rounded-2xl bg-white/5 border border-white/5 space-y-2">
-          <p className="text-xs font-semibold text-white">Sign in to MallSound</p>
-          <p className="text-[11px] text-white/50 leading-relaxed">
-            Dapatkan rekomendasi playlist personal dan sinkronisasi koleksi ke cloud.
-          </p>
-          <button
-            type="button"
-            onClick={onSignIn}
-            className="w-full py-2 px-3 rounded-xl text-xs font-bold bg-white text-black hover:bg-white/90 transition-all flex items-center justify-center gap-1.5 shadow-sm cursor-pointer"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Sign in</span>
-          </button>
-        </div>
-      )}
     </aside>
   );
 };

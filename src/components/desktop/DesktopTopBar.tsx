@@ -111,38 +111,6 @@ export const DesktopTopBar: React.FC<DesktopTopBarProps> = ({
         >
           <Sliders className="w-4 h-4" />
         </button>
-
-        {/* User Account / Sign In */}
-        {user ? (
-          <div className="flex items-center gap-2 pl-2 border-l border-white/10">
-            {user.photoURL ? (
-              <img
-                src={user.photoURL}
-                alt={user.displayName || 'User'}
-                className="w-8 h-8 rounded-full border border-white/20 object-cover"
-              />
-            ) : (
-              <div
-                className="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs text-white shadow-sm"
-                style={{ backgroundColor: accentColor }}
-              >
-                {user.displayName ? user.displayName.charAt(0).toUpperCase() : 'U'}
-              </div>
-            )}
-            <span className="text-xs font-medium text-white/80 max-w-[120px] truncate hidden lg:inline">
-              {user.displayName || user.email}
-            </span>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={onSignIn}
-            className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-white text-black hover:bg-white/90 transition-all shadow-sm"
-          >
-            <LogIn className="w-3.5 h-3.5" />
-            <span>Sign in</span>
-          </button>
-        )}
       </div>
     </header>
   );

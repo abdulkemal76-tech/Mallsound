@@ -1,5 +1,5 @@
 import React from 'react';
-import { Home, Search, Disc3, Library, User } from 'lucide-react';
+import { Home, Search, Disc3, Library, Sliders } from 'lucide-react';
 
 export type BottomNavTab = 'home' | 'search' | 'dj' | 'library' | 'profile';
 
@@ -21,7 +21,7 @@ const NAV_ITEMS: readonly NavItem[] = [
   { id: 'search', label: 'Cari', icon: Search },
   { id: 'dj', label: 'DJ', icon: Disc3 },
   { id: 'library', label: 'Koleksi', icon: Library },
-  { id: 'profile', label: 'Profil', icon: User },
+  { id: 'profile', label: 'Pengaturan', icon: Sliders },
 ] as const;
 
 export const BottomNav: React.FC<BottomNavProps> = ({
