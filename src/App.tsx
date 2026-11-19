@@ -1659,9 +1659,10 @@ export function App() {
                 setIsPlaying(true);
               }
             }}
-          </div>
-        );
-      })()}
+          />
+        </div>
+      );
+    })()}
     </div>
   );
 }
