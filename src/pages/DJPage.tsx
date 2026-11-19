@@ -1079,8 +1079,6 @@ export const DJPage: React.FC<DJPageProps> = ({
                 <Heart className={`w-5 h-5 ${isLiked ? 'fill-current' : ''}`} />
               </button>
             </div>
-
-            </div>
           </div>
 
           {/* Large Progress Bar */}
