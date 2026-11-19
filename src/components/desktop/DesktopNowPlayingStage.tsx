@@ -25,7 +25,7 @@ export interface DesktopNowPlayingStageProps {
   isPlaying: boolean;
   onSelectTrack: (track: Track) => void;
   queueTracks: Track[];
-  videoStageSlot: React.ReactNode;
+  videoStageSlot?: React.ReactNode;
   stageMode: 'cover' | 'video';
   onSwitchStageMode: (mode: 'cover' | 'video') => void;
   activeLyricIndex: number;

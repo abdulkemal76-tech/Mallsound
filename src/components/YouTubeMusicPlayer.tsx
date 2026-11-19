@@ -152,8 +152,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               onPlayingChange(true);
             } else if (e.data === 2) {
               // Browser auto-pauses iframe video when screen locks, tab is hidden, or desktop window loses focus
-              const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
-              if (isBackground && isPlayingPropRef.current) {
+              if (isPlayingPropRef.current) {
                 // Do not mark as paused in UI, and attempt immediate resume
                 setTimeout(() => {
                   try {
@@ -163,7 +162,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                   } catch {
                     // ignore
                   }
-                }, 120);
+                }, 100);
                 return;
               }
               onPlayingChange(false);
@@ -272,6 +271,25 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     }, 600);
 
     return () => window.clearInterval(resumeInterval);
+  }, []);
+
+  // Immediate revival on visibility change or window focus
+  useEffect(() => {
+    const handleVisOrFocus = () => {
+      if (isPlayingPropRef.current && playerRef.current && readyRef.current) {
+        try {
+          playerRef.current.playVideo();
+        } catch {
+          // ignore
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisOrFocus);
+    window.addEventListener('focus', handleVisOrFocus);
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisOrFocus);
+      window.removeEventListener('focus', handleVisOrFocus);
+    };
   }, []);
 
   return (

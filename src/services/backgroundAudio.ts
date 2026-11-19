@@ -37,7 +37,7 @@ class BackgroundAudioService {
   public init(handlers: MediaSessionHandlers) {
     this.handlers = handlers;
     try {
-      // 1-second silent PCM WAV looped to hold the OS audio session open on desktop browsers
+      // 1-second silent PCM WAV looped to hold the OS audio session open on mobile Android & desktop
       this.silentAudioElement = new Audio(
         'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
       );
@@ -49,6 +49,34 @@ class BackgroundAudioService {
     this.registerMediaSessionHandlers();
     this.registerVisibilityHandler();
     this.startSilentAudioKeepAlive();
+  }
+
+  /**
+   * Update action handlers so closures never become stale
+   */
+  public updateHandlers(handlers: MediaSessionHandlers) {
+    this.handlers = handlers;
+  }
+
+  /**
+   * Must be called synchronously during user click/touch gesture
+   * to unlock Android Chrome audio background permission!
+   */
+  public ensureAudioActive() {
+    try {
+      if (this.silentAudioElement) {
+        const p = this.silentAudioElement.play();
+        if (p && typeof p.catch === 'function') {
+          p.catch(() => {});
+        }
+      }
+      if (this.silentCtx && this.silentCtx.state === 'suspended') {
+        this.silentCtx.resume().catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
+    this.acquireWakeLock();
   }
 
   /**

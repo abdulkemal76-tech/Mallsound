@@ -35,7 +35,7 @@ interface FullScreenPlayerProps {
   durationSec: number;
   stageMode: 'cover' | 'video';
   onSwitchStageMode: (mode: 'cover' | 'video') => void;
-  videoStageSlot: React.ReactNode;
+  videoStageSlot?: React.ReactNode;
   onTogglePlay: () => void;
   onPrevTrack: () => void;
   onNextTrack: (fromEnded?: boolean) => void;

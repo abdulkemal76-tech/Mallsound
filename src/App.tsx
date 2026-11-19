@@ -268,16 +268,25 @@ export function App() {
     }
   }, [currentTimeSec]);
 
-  // ── Background Audio Service Init ──
-  // Runs once on mount to register Media Session handlers and enable
-  // lock-screen controls / notification media controls on Android & iOS.
+  // ── Background Audio Service Init & Handlers ──
+  const handlersRef = useRef({
+    onPlay: () => {},
+    onPause: () => {},
+    onNextTrack: () => {},
+    onPrevTrack: () => {},
+    onSeekTo: (_sec: number) => {},
+  });
+
   useEffect(() => {
-    backgroundAudioService.init({
-      onPlay: handleTogglePlay,
+    handlersRef.current = {
+      onPlay: () => {
+        backgroundAudioService.ensureAudioActive();
+        handleTogglePlay();
+      },
       onPause: handleTogglePlay,
       onNextTrack: () => handleNextTrack(),
       onPrevTrack: handlePrevTrack,
-      onSeekTo: (sec) => {
+      onSeekTo: (sec: number) => {
         setCurrentTimeSec(sec);
         if (engineMode === 'hifi-eq') {
           studioAudioEngine.seek(sec);
@@ -285,9 +294,19 @@ export function App() {
           setYtSeekRequest({ sec, nonce: Date.now() });
         }
       },
+    };
+    backgroundAudioService.updateHandlers(handlersRef.current);
+  });
+
+  useEffect(() => {
+    backgroundAudioService.init({
+      onPlay: () => handlersRef.current.onPlay(),
+      onPause: () => handlersRef.current.onPause(),
+      onNextTrack: () => handlersRef.current.onNextTrack(),
+      onPrevTrack: () => handlersRef.current.onPrevTrack(),
+      onSeekTo: (sec) => handlersRef.current.onSeekTo(sec),
     });
     return () => backgroundAudioService.destroy();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ── Media Session: Update now playing metadata on track change ──
@@ -638,6 +657,8 @@ export function App() {
       setIsFullScreenPlayerOpen(true);
     }
 
+    backgroundAudioService.ensureAudioActive();
+
     if (currentTrack.id === track.id && !forceMode) {
       if (!isPlaying) {
         handleTogglePlay();
@@ -661,6 +682,7 @@ export function App() {
   };
 
   const handleTogglePlay = () => {
+    backgroundAudioService.ensureAudioActive();
     if (isPlaying) {
       if (engineMode === 'hifi-eq') {
         studioAudioEngine.pause();
@@ -1305,25 +1327,6 @@ export function App() {
         isPlaying={isPlaying}
         onSelectTrack={(trk) => handleSelectTrack(trk, undefined, true)}
         queueTracks={displayedTracks.length > 0 ? displayedTracks : allKnownTracks}
-        videoStageSlot={
-          engineMode === 'yt-music' ? (
-            <YouTubeMusicPlayer
-              videoId={currentYtVideoId}
-              candidateIds={currentYtCandidates}
-              isPlaying={isPlaying}
-              volume={volume}
-              isMuted={isMuted}
-              seekRequest={ytSeekRequest}
-              onTimeUpdate={(cur, dur) => {
-                setCurrentTimeSec(cur);
-                setDurationSec(dur);
-              }}
-              onEnded={() => handleNextTrack(true)}
-              onPlayingChange={(playing) => setIsPlaying(playing)}
-              onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
-            />
-          ) : null
-        }
         stageMode={stageMode}
         onSwitchStageMode={(mode) => {
           setStageMode(mode);
@@ -1338,12 +1341,27 @@ export function App() {
       />
 
       {/* =====================================================================
-          BACKGROUND YOUTUBE AUDIO ANCHOR (Desktop & Mobile Continuous Playback)
+          SINGLETON GLOBAL YOUTUBE AUDIO/VIDEO ENGINE (Continuous Playback)
+          Single permanent instance at app root.
+          - NEVER unmounts, NEVER duplicates (100% immune to double audio).
+          - Plays continuously across ALL menus (Home, Search, Library/Folders, DJ, Profile).
+          - Holds active background playback on mobile and desktop without freezing.
+          - Smoothly displays video when user switches to Video Mode.
       ===================================================================== */}
-      {engineMode === 'yt-music' && !isFullScreenPlayerOpen && !isDesktopNowPlayingExpanded && (
+      {engineMode === 'yt-music' && (
         <div
-          aria-hidden="true"
-          className="fixed -bottom-96 -right-96 w-64 h-64 opacity-[0.01] pointer-events-none overflow-hidden z-0"
+          id="mallsound-global-youtube-engine"
+          aria-hidden={!(stageMode === 'video' && (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded))}
+          className={`transition-all duration-300 overflow-hidden ${
+            // 1. Mobile FullScreenPlayer Video Mode (centered in stage)
+            isFullScreenPlayerOpen && stageMode === 'video'
+              ? 'fixed z-[60] left-1/2 -translate-x-1/2 top-[16%] w-[calc(100vw-3rem)] max-w-md aspect-square rounded-3xl shadow-2xl pointer-events-auto opacity-100 border border-white/10'
+              // 2. Desktop Now Playing Stage Video Mode
+              : isDesktopNowPlayingExpanded && stageMode === 'video'
+              ? 'hidden md:block fixed z-[40] top-[14%] left-12 w-[480px] max-w-[42vw] aspect-square rounded-3xl shadow-2xl pointer-events-auto opacity-100 border border-white/10'
+              // 3. Audio & Background across ALL menus (Home, Search, Library, DJ, Profile, and Cover Art mode)
+              : 'fixed bottom-24 right-4 w-[160px] h-[90px] z-[-1] opacity-[0.01] pointer-events-none rounded-lg'
+          }`}
         >
           <YouTubeMusicPlayer
             videoId={currentYtVideoId}
@@ -1357,7 +1375,11 @@ export function App() {
               setDurationSec(dur);
             }}
             onEnded={() => handleNextTrack(true)}
-            onPlayingChange={(playing) => setIsPlaying(playing)}
+            onPlayingChange={(playing) => {
+              if (playing) {
+                setIsPlaying(true);
+              }
+            }}
             onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
           />
         </div>
@@ -1380,25 +1402,6 @@ export function App() {
             handleSwitchEngineMode('yt-music');
           }
         }}
-        videoStageSlot={
-          engineMode === 'yt-music' ? (
-            <YouTubeMusicPlayer
-              videoId={currentYtVideoId}
-              candidateIds={currentYtCandidates}
-              isPlaying={isPlaying}
-              volume={volume}
-              isMuted={isMuted}
-              seekRequest={ytSeekRequest}
-              onTimeUpdate={(cur, dur) => {
-                setCurrentTimeSec(cur);
-                setDurationSec(dur);
-              }}
-              onEnded={() => handleNextTrack(true)}
-              onPlayingChange={(playing) => setIsPlaying(playing)}
-              onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
-            />
-          ) : null
-        }
         onTogglePlay={handleTogglePlay}
         onPrevTrack={handlePrevTrack}
         onNextTrack={handleNextTrack}
