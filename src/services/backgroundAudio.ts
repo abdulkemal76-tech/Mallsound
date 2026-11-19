@@ -25,6 +25,7 @@ class BackgroundAudioService {
   private silentGain: GainNode | null = null;
   private silentCtx: AudioContext | null = null;
   private silentTimerId: number | null = null;
+  private silentAudioElement: HTMLAudioElement | null = null;
   private handlers: MediaSessionHandlers | null = null;
   private currentTrack: Track | null = null;
   private isPlaying = false;
@@ -35,6 +36,16 @@ class BackgroundAudioService {
    */
   public init(handlers: MediaSessionHandlers) {
     this.handlers = handlers;
+    try {
+      // 1-second silent PCM WAV looped to hold the OS audio session open on desktop browsers
+      this.silentAudioElement = new Audio(
+        'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+      );
+      this.silentAudioElement.loop = true;
+      this.silentAudioElement.volume = 0.001;
+    } catch {
+      // ignore
+    }
     this.registerMediaSessionHandlers();
     this.registerVisibilityHandler();
     this.startSilentAudioKeepAlive();
@@ -103,6 +114,24 @@ class BackgroundAudioService {
    */
   public updatePlaybackState(playing: boolean) {
     this.isPlaying = playing;
+    if (playing) {
+      try {
+        this.silentAudioElement?.play().catch(() => {});
+        if (this.silentCtx && this.silentCtx.state === 'suspended') {
+          this.silentCtx.resume().catch(() => {});
+        }
+      } catch {
+        // ignore
+      }
+      this.acquireWakeLock();
+    } else {
+      try {
+        this.silentAudioElement?.pause();
+      } catch {
+        // ignore
+      }
+      this.releaseWakeLock();
+    }
     if (!('mediaSession' in navigator)) return;
     navigator.mediaSession.playbackState = playing ? 'playing' : 'paused';
   }

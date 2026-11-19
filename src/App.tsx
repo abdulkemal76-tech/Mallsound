@@ -63,6 +63,12 @@ import { ProfilePage } from './pages/ProfilePage';
 // Theme Configuration
 import { getSavedThemeAccent, applyThemeAccent } from './theme/themeConfig';
 
+// Desktop Experience Components (YouTube Music desktop style)
+import { DesktopTopBar } from './components/desktop/DesktopTopBar';
+import { DesktopSidebar } from './components/desktop/DesktopSidebar';
+import { DesktopPlayerBar } from './components/desktop/DesktopPlayerBar';
+import { DesktopNowPlayingStage } from './components/desktop/DesktopNowPlayingStage';
+
 type PlaybackEngineMode = 'hifi-eq' | 'yt-music';
 
 function parseLyricsLines(rawText: string, durationSec: number): LyricLine[] {
@@ -196,11 +202,22 @@ export function App() {
   }, [accentColor]);
 
   const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
+  const [isDesktopNowPlayingExpanded, setIsDesktopNowPlayingExpanded] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
   const [isAddTrackModalOpen, setIsAddTrackModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isLoadingLyrics, setIsLoadingLyrics] = useState(false);
+
+  // Persistent Imported Tracks (Spotify & YouTube Music)
+  const [importedTracks, setImportedTracks] = useState<Track[]>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_imported_tracks');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
 
   // Sync localFavorites to localStorage
   useEffect(() => {
@@ -859,19 +876,48 @@ export function App() {
   };
 
   const handleImportPlaylistComplete = async (tracks: Track[], playlistTitle: string) => {
-    // Cache imported tracks in localSessionTracks
+    // 1. Cache imported tracks in localSessionTracks
     setLocalSessionTracks((prev) => {
       const merged = [...tracks, ...prev];
       return merged.filter((t, idx, self) => self.findIndex((x) => x.id === t.id) === idx);
+    });
+
+    // 2. Persist in importedTracks folder state & localStorage
+    setImportedTracks((prev) => {
+      const merged = [...tracks, ...prev];
+      const unique = merged.filter((t, idx, self) => self.findIndex((x) => x.id === t.id) === idx);
+      try {
+        localStorage.setItem('mallsound_imported_tracks', JSON.stringify(unique));
+      } catch {
+        // ignore
+      }
+      return unique;
     });
 
     tracks.forEach((t) => {
       setResolvedSavedTracks((prev) => ({ ...prev, [t.id]: t }));
     });
 
+    const playlistId = `pl_import_${Date.now()}`;
+    const newPlaylist: Playlist = {
+      id: playlistId,
+      title: playlistTitle.slice(0, 80),
+      description: `Diimpor dari Spotify / YouTube (${tracks.length} lagu)`,
+      coverTheme: 'indigo',
+      trackIds: tracks.map((t) => t.id).slice(0, 50),
+      ownerId: user?.uid || 'local',
+      ownerName: user?.displayName || 'Kurator',
+      isPublic: false,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+
+    // Add to cloudPlaylists state so a new folder immediately appears!
+    setCloudPlaylists((prev) => [newPlaylist, ...prev]);
+    setActivePlaylistId(playlistId);
+
     // Save as cloud playlist if user is signed in
     if (user) {
-      const playlistId = `pl_import_${Date.now()}`;
       try {
         await setDoc(doc(db, 'playlists', playlistId), {
           title: playlistTitle.slice(0, 80),
@@ -884,7 +930,6 @@ export function App() {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-        setActivePlaylistId(playlistId);
       } catch (err) {
         console.warn('Failed to save imported playlist to firestore:', err);
       }
@@ -927,12 +972,53 @@ export function App() {
   const progressPercent = durationSec > 0 ? (currentTimeSec / durationSec) * 100 : 0;
 
   return (
-    <div className={`min-h-screen bg-neutral-950 text-white flex flex-col font-sans ${isDark ? 'dark' : ''}`}>
+    <div
+      className={`min-h-screen bg-neutral-950 text-white flex flex-col md:flex-row font-sans ${
+        isDark ? 'dark' : ''
+      }`}
+    >
       {/* Offline PWA Indicator */}
       <OfflineIndicator />
 
-      {/* Main Page Body (Scrollable container with bottom padding for mini player & nav) */}
-      <main className="flex-1 pb-36">
+      {/* Desktop Left Navigation Sidebar (Hidden on Mobile) */}
+      <DesktopSidebar
+        activeTab={activeTab}
+        onTabChange={(tab) => {
+          setIsDesktopNowPlayingExpanded(false);
+          setActiveTab(tab);
+        }}
+        playlists={cloudPlaylists}
+        onSelectPlaylist={(plId) => {
+          setIsDesktopNowPlayingExpanded(false);
+          setActivePlaylistId(plId);
+        }}
+        onOpenCreatePlaylist={() => setIsPlaylistModalOpen(true)}
+        onOpenImportPlaylist={() => setIsImportModalOpen(true)}
+        user={user}
+        onSignIn={handleGoogleSignIn}
+        accentColor={accentColor}
+        isNowPlayingExpanded={isDesktopNowPlayingExpanded}
+        onToggleNowPlaying={() => setIsDesktopNowPlayingExpanded(!isDesktopNowPlayingExpanded)}
+      />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0 min-h-screen">
+        {/* Desktop Top Header Bar (Search & Actions, hidden on Mobile) */}
+        <DesktopTopBar
+          onSearch={(queryTerm) => {
+            setIsDesktopNowPlayingExpanded(false);
+            setSearchQueryFromExternal(queryTerm);
+            setActiveTab('search');
+          }}
+          onOpenSettings={() => setIsSettingsModalOpen(true)}
+          onOpenTheme={() => setActiveTab('profile')}
+          onSignIn={handleGoogleSignIn}
+          user={user}
+          accentColor={accentColor}
+        />
+
+        {/* Main Page Body (Scrollable container with bottom padding for mini player & nav) */}
+        <main className="flex-1 pb-36 md:pb-24">
         {activeTab === 'home' && (
           <HomePage
             onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
@@ -1005,6 +1091,9 @@ export function App() {
             onOpenImportPlaylist={() => setIsImportModalOpen(true)}
             favoriteTracks={favoriteTracks}
             recentlyPlayed={recentlyPlayed}
+            importedTracks={importedTracks}
+            allTracks={allKnownTracks}
+            accentColor={accentColor}
             onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
@@ -1037,14 +1126,15 @@ export function App() {
           />
         )}
       </main>
+      </div>
 
       {/* =====================================================================
-          FLOATING MINI PLAYER (Docked right above BottomNav, hidden on DJ tab)
+          FLOATING MINI PLAYER (Docked right above BottomNav on Mobile, hidden on DJ tab)
       ===================================================================== */}
       {activeTab !== 'dj' && currentTrack && (
         <aside
           aria-label="Pemutar Musik Cepat"
-          className="fixed bottom-18 left-3 right-3 z-40 max-w-xl mx-auto bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:border-violet-500/40"
+          className="md:hidden fixed bottom-18 left-3 right-3 z-40 max-w-xl mx-auto bg-neutral-900/90 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl overflow-hidden cursor-pointer transition-all duration-200 hover:border-violet-500/40"
           onClick={() => setIsFullScreenPlayerOpen(true)}
         >
           {/* Top border progress bar */}
@@ -1150,16 +1240,128 @@ export function App() {
       )}
 
       {/* =====================================================================
-          BOTTOM NAVIGATION BAR
+          BOTTOM NAVIGATION BAR (Mobile Only)
       ===================================================================== */}
-      <BottomNav
-        activeTab={activeTab}
-        accentColor={accentColor}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
+      <div className="md:hidden">
+        <BottomNav
+          activeTab={activeTab}
+          accentColor={accentColor}
+          onTabChange={(tab) => {
+            setActiveTab(tab);
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+        />
+      </div>
+
+      {/* =====================================================================
+          DESKTOP PERSISTENT PLAYER BAR (YouTube Music Desktop layout)
+      ===================================================================== */}
+      <DesktopPlayerBar
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onTogglePlay={handleTogglePlay}
+        onPrevTrack={handlePrevTrack}
+        onNextTrack={handleNextTrack}
+        currentTimeSec={currentTimeSec}
+        durationSec={durationSec}
+        onSeek={(sec) => {
+          setCurrentTimeSec(sec);
+          if (engineMode === 'hifi-eq') {
+            studioAudioEngine.seek(sec);
+          } else {
+            setYtSeekRequest({ sec, nonce: Date.now() });
+          }
         }}
+        volume={volume}
+        isMuted={isMuted}
+        onVolumeChange={handleVolumeChange}
+        onToggleMute={handleToggleMute}
+        isRepeat={isRepeat}
+        onToggleRepeat={() => setIsRepeat(!isRepeat)}
+        isShuffle={isShuffle}
+        onToggleShuffle={() => setIsShuffle(!isShuffle)}
+        isLiked={isTrackLiked(currentTrack.id)}
+        onToggleLike={handleToggleLike}
+        isNowPlayingExpanded={isDesktopNowPlayingExpanded}
+        onToggleNowPlaying={() => setIsDesktopNowPlayingExpanded(!isDesktopNowPlayingExpanded)}
+        stageMode={stageMode}
+        onSwitchStageMode={(mode) => {
+          setStageMode(mode);
+          if (mode === 'video' && engineMode !== 'yt-music') {
+            handleSwitchEngineMode('yt-music');
+          }
+        }}
+        accentColor={accentColor}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
       />
+
+      {/* =====================================================================
+          DESKTOP NOW PLAYING STAGE (Center Artwork + Right Queue/Lyrics/Related)
+      ===================================================================== */}
+      <DesktopNowPlayingStage
+        isOpen={isDesktopNowPlayingExpanded}
+        onClose={() => setIsDesktopNowPlayingExpanded(false)}
+        currentTrack={currentTrack}
+        isPlaying={isPlaying}
+        onSelectTrack={(trk) => handleSelectTrack(trk, undefined, true)}
+        queueTracks={displayedTracks.length > 0 ? displayedTracks : allKnownTracks}
+        videoStageSlot={
+          engineMode === 'yt-music' ? (
+            <YouTubeMusicPlayer
+              videoId={currentYtVideoId}
+              candidateIds={currentYtCandidates}
+              isPlaying={isPlaying}
+              volume={volume}
+              isMuted={isMuted}
+              seekRequest={ytSeekRequest}
+              onTimeUpdate={(cur, dur) => {
+                setCurrentTimeSec(cur);
+                setDurationSec(dur);
+              }}
+              onEnded={() => handleNextTrack(true)}
+              onPlayingChange={(playing) => setIsPlaying(playing)}
+              onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
+            />
+          ) : null
+        }
+        stageMode={stageMode}
+        onSwitchStageMode={(mode) => {
+          setStageMode(mode);
+          if (mode === 'video' && engineMode !== 'yt-music') {
+            handleSwitchEngineMode('yt-music');
+          }
+        }}
+        activeLyricIndex={activeLyricIndex}
+        isLoadingLyrics={isLoadingLyrics}
+        accentColor={accentColor}
+        onOpenSettings={() => setIsSettingsModalOpen(true)}
+      />
+
+      {/* =====================================================================
+          BACKGROUND YOUTUBE AUDIO ANCHOR (Desktop & Mobile Continuous Playback)
+      ===================================================================== */}
+      {engineMode === 'yt-music' && !isFullScreenPlayerOpen && !isDesktopNowPlayingExpanded && (
+        <div
+          aria-hidden="true"
+          className="fixed -bottom-96 -right-96 w-64 h-64 opacity-[0.01] pointer-events-none overflow-hidden z-0"
+        >
+          <YouTubeMusicPlayer
+            videoId={currentYtVideoId}
+            candidateIds={currentYtCandidates}
+            isPlaying={isPlaying}
+            volume={volume}
+            isMuted={isMuted}
+            seekRequest={ytSeekRequest}
+            onTimeUpdate={(cur, dur) => {
+              setCurrentTimeSec(cur);
+              setDurationSec(dur);
+            }}
+            onEnded={() => handleNextTrack(true)}
+            onPlayingChange={(playing) => setIsPlaying(playing)}
+            onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
+          />
+        </div>
+      )}
 
       {/* =====================================================================
           FULLSCREEN PLAYER MODAL (Holds YouTube Stage Slot for continuity)

@@ -151,8 +151,9 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               }
               onPlayingChange(true);
             } else if (e.data === 2) {
-              // Browser auto-pauses iframe video when screen locks or tab is hidden
-              if (document.hidden && isPlayingPropRef.current) {
+              // Browser auto-pauses iframe video when screen locks, tab is hidden, or desktop window loses focus
+              const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
+              if (isBackground && isPlayingPropRef.current) {
                 // Do not mark as paused in UI, and attempt immediate resume
                 setTimeout(() => {
                   try {
@@ -162,7 +163,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                   } catch {
                     // ignore
                   }
-                }, 100);
+                }, 120);
                 return;
               }
               onPlayingChange(false);
@@ -251,15 +252,16 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     return () => window.clearInterval(interval);
   }, [isPlaying, onTimeUpdate]);
 
-  // Aggressive background playback poller: automatically revives YouTube audio when screen is turned off
+  // Aggressive background playback poller: automatically revives YouTube audio when screen turns off or desktop window is minimized/blurred
   useEffect(() => {
     const resumeInterval = window.setInterval(() => {
-      if (document.hidden && isPlayingPropRef.current && playerRef.current && readyRef.current) {
+      const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
+      if (isBackground && isPlayingPropRef.current && playerRef.current && readyRef.current) {
         try {
           const stateGetter = (playerRef.current as unknown as { getPlayerState?: () => number }).getPlayerState;
           if (typeof stateGetter === 'function') {
             const st = stateGetter.call(playerRef.current);
-            if (st === 2 || st === 5) {
+            if (st === 2 || st === 5 || st === -1) {
               playerRef.current.playVideo();
             }
           }
