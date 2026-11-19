@@ -34,11 +34,13 @@ export const GLOBAL_ARTISTS: ArtistItem[] = [
   { id: 'sal-priadi', name: 'Sal Priadi', category: 'Pop & R&B Hits', subtitle: 'Eksplorasi Pop Teatrikal & Puitis', query: 'Sal Priadi', isIndonesian: true },
   { id: 'maliq', name: "Maliq & D'Essentials", category: 'Pop & R&B Hits', subtitle: 'Soul, Funk & Groove Jakarta', query: "Maliq & D'Essentials", isIndonesian: true },
   { id: 'pamungkas', name: 'Pamungkas', category: 'Indie & Senja', subtitle: 'Modern Bedroom Pop & Balada', query: 'Pamungkas', isIndonesian: true },
+  { id: 'tenxi', name: 'Tenxi', category: 'Populer Indonesia', subtitle: 'Pioneer Hipdut & Trap Koplo Sidoarjo', query: 'Tenxi', isIndonesian: true },
   { id: 'dongker', name: 'Dongker', category: 'Indie & Senja', subtitle: 'Punk / Indie Alternatif Bandung', query: 'Dongker', isIndonesian: true },
   { id: 'fourtwnty', name: 'Fourtwnty', category: 'Indie & Senja', subtitle: 'Folk Senja & Akustik Santai', query: 'Fourtwnty', isIndonesian: true },
   { id: 'feast', name: '.Feast', category: 'Indie & Senja', subtitle: 'Rock Alternatif & Kritik Sosial', query: '.Feast', isIndonesian: true },
 
   // Global & Asia Artists
+  { id: 'rex-orange-county', name: 'Rex Orange County', category: 'Rock & Alternatif Global', subtitle: 'Indie Pop, Bedroom Pop & Neo-Soul', query: 'Rex Orange County', isIndonesian: false },
   { id: 'coldplay', name: 'Coldplay', category: 'Rock & Alternatif Global', subtitle: 'Stadium Alternative Rock', query: 'Coldplay', isIndonesian: false },
   { id: 'taylor-swift', name: 'Taylor Swift', category: 'Global Pop', subtitle: 'Global Pop Superstar', query: 'Taylor Swift', isIndonesian: false },
   { id: 'the-weeknd', name: 'The Weeknd', category: 'Global Pop', subtitle: 'Dark R&B & Synth Pop Master', query: 'The Weeknd', isIndonesian: false },

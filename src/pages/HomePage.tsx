@@ -175,6 +175,9 @@ const RECOMMENDATION_QUERIES = [
   'Nadin Amizah',
   'Perunggu',
   'Sal Priadi',
+  'Tenxi',
+  'Dongker',
+  'Rex Orange County',
 ];
 
 export const HomePage: React.FC<HomePageProps> = ({
@@ -372,7 +375,7 @@ export const HomePage: React.FC<HomePageProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         className="relative overflow-hidden rounded-3xl border border-white/15 shadow-2xl transition-all duration-500 bg-neutral-950"
       >
-        {/* ===================== SLIDE 0: DJ INDO PARGOY ===================== */}
+        {/* ===================== SLIDE 0: TENXI ===================== */}
         {activeSlide === 0 && (
           <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-violet-950/90 via-black to-fuchsia-950/80 animate-fade-in">
             {/* Ambient Lighting Orbs */}
@@ -384,25 +387,25 @@ export const HomePage: React.FC<HomePageProps> = ({
               <div className="max-w-2xl space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-md">
-                    <Flame className="w-3.5 h-3.5" /> SPOTLIGHT DJ INDO #1
+                    <Flame className="w-3.5 h-3.5" /> SPOTLIGHT ARTIS #1
                   </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    🔊 CLUB BASS +12dB
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-violet-500/20 text-violet-300 border border-violet-500/30">
+                    ⚡ PELOPOR HIPDUT
                   </span>
                   <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-cyan-300 bg-cyan-500/20 border border-cyan-500/30">
-                    34:19 Nonstop
+                    Sidoarjo Trap Koplo
                   </span>
                 </div>
 
                 <div className="space-y-2">
                   <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
-                    DJ Ublag Ublag Arab Sakit Lagi{' '}
+                    Tenxi{' '}
                     <span className="text-transparent bg-clip-text bg-gradient-to-r from-violet-400 via-fuchsia-400 to-pink-400">
-                      (Breakbeat Mengkane)
+                      (Hipdut & Trap Koplo)
                     </span>
                   </h2>
                   <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
-                    Dentuman sub-bass horeg khas Jawa Timur & breakbeat viral TikTok 2026. Putar mixtape full nonstop dengan mode pencahayaan disko dinamis!
+                    Joan Pasha Syahputra (Tenxi) asal Sidoarjo—pelopor fenomena genre Hipdut yang menggabungkan trap modern dengan kendang koplo nusantara. Populer lewat anthem viral Garam & Madu (Sakit Dadaku), Kasih Aba-Aba, hingga mejikuhibiniu.
                   </p>
                 </div>
 
@@ -410,29 +413,26 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => onSelectTrack(DJ_INDO_TRACKS[0])}
+                    onClick={() => onNavigateToSearch('Tenxi')}
                     className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-violet-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                   >
                     <Play className="w-5 h-5 fill-current" />
-                    <span>Putar Mixtape DJ (34:19)</span>
+                    <span>Putar Lagu Tenxi</span>
                   </button>
 
-                  {onNavigateToDJ && (
-                    <button
-                      type="button"
-                      onClick={onNavigateToDJ}
-                      className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-                    >
-                      <Sliders className="w-4 h-4 text-violet-400" />
-                      <span>Buka DJ Console 🎛️</span>
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Tenxi Garam dan Madu')}
+                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Music className="w-4 h-4 text-violet-400" />
+                    <span>Garam & Madu 🍯</span>
+                  </button>
                 </div>
               </div>
 
               {/* Right Column: 3D Rotating Vinyl Artwork */}
               <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
-                {/* Vinyl Record */}
                 <div
                   className={`w-40 h-40 sm:w-52 sm:h-52 rounded-full border-4 border-neutral-900 bg-neutral-950 shadow-2xl relative flex items-center justify-center ${
                     isPlaying ? 'animate-spin-slow' : ''
@@ -442,7 +442,6 @@ export const HomePage: React.FC<HomePageProps> = ({
                     boxShadow: '0 0 35px rgba(168, 85, 247, 0.45)',
                   }}
                 >
-                  {/* Vinyl Grooves */}
                   <div className="absolute inset-3 rounded-full border border-white/10 pointer-events-none" />
                   <div className="absolute inset-7 rounded-full border border-white/5 pointer-events-none" />
                   <div className="absolute inset-11 rounded-full border border-white/10 pointer-events-none" />
@@ -450,163 +449,193 @@ export const HomePage: React.FC<HomePageProps> = ({
                   {/* Center Label */}
                   <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
                     <img
-                      src={DJ_INDO_TRACKS[0].coverUrl}
-                      alt="DJ Ublag Ublag"
+                      src="https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=300&h=300&fit=crop"
+                      alt="Tenxi"
                       className="w-full h-full object-cover"
                     />
                   </div>
-                  {/* Spindle hole */}
                   <div className="w-3.5 h-3.5 rounded-full bg-neutral-900 border border-white/30 absolute z-10" />
                 </div>
 
-                {/* Animated Equalizer Waves Floating Badge */}
-                <div className="absolute -bottom-3 -right-2 px-3 py-1.5 rounded-2xl bg-neutral-900/90 border border-white/20 shadow-xl backdrop-blur-md flex items-center gap-1.5 text-xs font-mono text-emerald-400">
+                <div className="absolute -bottom-3 -right-2 px-3 py-1.5 rounded-2xl bg-neutral-900/90 border border-white/20 shadow-xl backdrop-blur-md flex items-center gap-1.5 text-xs font-mono text-cyan-300">
                   <Activity className="w-3.5 h-3.5 animate-pulse" />
-                  <span>320kbps Horeg</span>
+                  <span>320kbps Hipdut</span>
                 </div>
               </div>
             </div>
           </div>
         )}
 
-        {/* ===================== SLIDE 1: TOP HITS INDONESIA ===================== */}
+        {/* ===================== SLIDE 1: DONGKER ===================== */}
         {activeSlide === 1 && (
-          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-pink-950/90 via-black to-purple-950/80 animate-fade-in">
-            <div className="absolute -top-24 -left-24 w-80 h-80 bg-pink-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
-            <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-purple-600/30 rounded-full blur-3xl pointer-events-none" />
-
-            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="max-w-2xl space-y-4">
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 text-white shadow-md">
-                    <Sparkles className="w-3.5 h-3.5" /> TOP PICKS 2026
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-pink-500/20 text-pink-300 border border-pink-500/30">
-                    🏆 POP INDONESIA HITS
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-white/70 bg-white/10 border border-white/15">
-                    10 Juta+ Stream
-                  </span>
-                </div>
-
-                <div className="space-y-2">
-                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
-                    Deretan Hits Paling Viral{' '}
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-pink-400 via-rose-300 to-amber-300">
-                      Minggu Ini
-                    </span>
-                  </h2>
-                  <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
-                    Nikmati lagu-lagu populer dari Bernadya, Sal Priadi, Juicy Luicy, dan Nadin Amizah dengan lirik sinkron waktu nyata dan vokal sebening kristal.
-                  </p>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToSearch('Top Hits Indonesia')}
-                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-pink-500 via-rose-500 to-amber-500 hover:from-pink-600 hover:to-amber-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-pink-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-                  >
-                    <Play className="w-5 h-5 fill-current" />
-                    <span>Mulai Dengarkan Hits</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => onNavigateToSearch('Bernadya')}
-                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
-                  >
-                    <Search className="w-4 h-4 text-pink-300" />
-                    <span>Lagu Bernadya</span>
-                  </button>
-                </div>
-              </div>
-
-              <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
-                <div
-                  className="w-40 h-40 sm:w-52 sm:h-52 rounded-3xl overflow-hidden shadow-2xl border-2 border-pink-500/40 relative group"
-                  style={{ boxShadow: '0 0 35px rgba(244, 63, 94, 0.4)' }}
-                >
-                  <img
-                    src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=500&h=500&fit=crop"
-                    alt="Top Hits Indonesia"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
-                    <span className="font-bold text-xs text-white">#1 di Tangga Lagu</span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* ===================== SLIDE 2: INDIE SENJA & AKUSTIK ===================== */}
-        {activeSlide === 2 && (
-          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-amber-950/90 via-black to-orange-950/80 animate-fade-in">
-            <div className="absolute -top-24 -left-24 w-80 h-80 bg-amber-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
+          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-red-950/90 via-black to-zinc-950/80 animate-fade-in">
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-red-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
             <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-orange-600/30 rounded-full blur-3xl pointer-events-none" />
 
             <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
               <div className="max-w-2xl space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-md">
-                    <Coffee className="w-3.5 h-3.5" /> TEMAN NGOPI SORE
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 text-white shadow-md">
+                    <Zap className="w-3.5 h-3.5" /> SPOTLIGHT BAND #2
                   </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    ☕ INDIE & AKUSTIK
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-red-500/20 text-red-300 border border-red-500/30">
+                    ⚡ PUNK ROCK BANDUNG
                   </span>
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-amber-200 bg-amber-500/10 border border-amber-500/20">
-                    Syahdu Santai
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-amber-300 bg-amber-500/20 border border-amber-500/30">
+                    Distorsi & Katarsis
                   </span>
                 </div>
 
                 <div className="space-y-2">
                   <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
-                    Melodi Senja Syahdu &{' '}
-                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-orange-300 to-rose-300">
-                      Petikan Akustik
+                    Dongker{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 via-rose-300 to-amber-300">
+                      (Balada Api & Distorsi Mentah)
                     </span>
                   </h2>
                   <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
-                    Petikan gitar hangat, harmoni tenang, dan suasana santai pelepas penat setelah seharian beraktivitas diiringi lirik puitis.
+                    Kuartet punk rock eksplosif asal Bandung dengan riff gitar berenergi tinggi, ketukan drum bertempo cepat, serta lirik balada perlawanan penuh emosi. Dikenal lewat Bertaruh Pada Api, Lautan Bunga Warna Merah, dan Tuhan di Reruntuh Kota.
                   </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => onNavigateToSearch('Indie Indonesia Senja')}
-                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 hover:from-amber-600 hover:to-rose-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                    onClick={() => onNavigateToSearch('Dongker')}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-red-500 via-rose-500 to-amber-500 hover:from-red-600 hover:to-amber-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-red-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                   >
                     <Play className="w-5 h-5 fill-current" />
-                    <span>Putar Suasana Senja 🌅</span>
+                    <span>Putar Lagu Dongker</span>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => onNavigateToSearch('Akustik Santai Indonesia')}
+                    onClick={() => onNavigateToSearch('Dongker Bertaruh Pada Api')}
                     className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                   >
-                    <Coffee className="w-4 h-4 text-amber-300" />
-                    <span>Musik Santai</span>
+                    <Flame className="w-4 h-4 text-red-300" />
+                    <span>Bertaruh Pada Api 🔥</span>
                   </button>
                 </div>
               </div>
 
+              {/* Right Column: 3D Rotating Vinyl Artwork */}
               <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
                 <div
-                  className="w-40 h-40 sm:w-52 sm:h-52 rounded-3xl overflow-hidden shadow-2xl border-2 border-amber-500/40 relative group"
-                  style={{ boxShadow: '0 0 35px rgba(245, 158, 11, 0.4)' }}
+                  className={`w-40 h-40 sm:w-52 sm:h-52 rounded-full border-4 border-neutral-900 bg-neutral-950 shadow-2xl relative flex items-center justify-center ${
+                    isPlaying ? 'animate-spin-slow' : ''
+                  }`}
+                  style={{
+                    background: 'radial-gradient(circle, #1a1a1a 0%, #0d0d0d 60%, #000 100%)',
+                    boxShadow: '0 0 35px rgba(239, 68, 68, 0.45)',
+                  }}
                 >
-                  <img
-                    src="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=500&h=500&fit=crop"
-                    alt="Indie Senja"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
-                    <span className="font-bold text-xs text-amber-200">Koleksi Senja Sore</span>
+                  <div className="absolute inset-3 rounded-full border border-white/10 pointer-events-none" />
+                  <div className="absolute inset-7 rounded-full border border-white/5 pointer-events-none" />
+                  <div className="absolute inset-11 rounded-full border border-white/10 pointer-events-none" />
+
+                  {/* Center Label */}
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+                    <img
+                      src="https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?w=300&h=300&fit=crop"
+                      alt="Dongker"
+                      className="w-full h-full object-cover"
+                    />
                   </div>
+                  <div className="w-3.5 h-3.5 rounded-full bg-neutral-900 border border-white/30 absolute z-10" />
+                </div>
+
+                <div className="absolute -bottom-3 -right-2 px-3 py-1.5 rounded-2xl bg-neutral-900/90 border border-white/20 shadow-xl backdrop-blur-md flex items-center gap-1.5 text-xs font-mono text-red-400">
+                  <Activity className="w-3.5 h-3.5 animate-pulse" />
+                  <span>Raw Punk 24-bit</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ===================== SLIDE 2: REX ORANGE COUNTY ===================== */}
+        {activeSlide === 2 && (
+          <div className="relative p-6 sm:p-10 lg:p-12 bg-gradient-to-br from-amber-950/90 via-black to-yellow-950/80 animate-fade-in">
+            <div className="absolute -top-24 -left-24 w-80 h-80 bg-amber-600/35 rounded-full blur-3xl pointer-events-none animate-pulse" />
+            <div className="absolute -bottom-24 -right-24 w-80 h-80 bg-yellow-600/30 rounded-full blur-3xl pointer-events-none" />
+
+            <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="max-w-2xl space-y-4">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 text-white shadow-md">
+                    <Sparkles className="w-3.5 h-3.5" /> SPOTLIGHT GLOBAL #3
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    🌻 INDIE POP & NEO-SOUL
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-mono text-yellow-200 bg-yellow-500/10 border border-yellow-500/20">
+                    Lo-Fi Horns & Jazz
+                  </span>
+                </div>
+
+                <div className="space-y-2">
+                  <h2 className="font-display text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight text-white">
+                    Rex Orange County{' '}
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-yellow-300 to-orange-400">
+                      (Harmoni Manis & Romansa Hangat)
+                    </span>
+                  </h2>
+                  <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
+                    Penyanyi & multi-instrumentalis asal Inggris (Alexander O'Connor) dengan vokal soulful hangat, piano jazzy ceria, dan lirik cinta personal. Terkenal di seluruh dunia lewat hits abadi Sunflower, Best Friend, Pluto Projector, hingga The Shade.
+                  </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Rex Orange County')}
+                    className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-amber-500 via-yellow-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-amber-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Play className="w-5 h-5 fill-current" />
+                    <span>Putar Rex Orange County</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => onNavigateToSearch('Rex Orange County Sunflower')}
+                    className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
+                  >
+                    <Sparkles className="w-4 h-4 text-yellow-300" />
+                    <span>Sunflower 🌻</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Right Column: 3D Rotating Vinyl Artwork */}
+              <div className="relative shrink-0 flex items-center justify-center mx-auto md:mx-0">
+                <div
+                  className={`w-40 h-40 sm:w-52 sm:h-52 rounded-full border-4 border-neutral-900 bg-neutral-950 shadow-2xl relative flex items-center justify-center ${
+                    isPlaying ? 'animate-spin-slow' : ''
+                  }`}
+                  style={{
+                    background: 'radial-gradient(circle, #1a1a1a 0%, #0d0d0d 60%, #000 100%)',
+                    boxShadow: '0 0 35px rgba(245, 158, 11, 0.45)',
+                  }}
+                >
+                  <div className="absolute inset-3 rounded-full border border-white/10 pointer-events-none" />
+                  <div className="absolute inset-7 rounded-full border border-white/5 pointer-events-none" />
+                  <div className="absolute inset-11 rounded-full border border-white/10 pointer-events-none" />
+
+                  {/* Center Label */}
+                  <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full overflow-hidden border-2 border-white/20 shadow-inner">
+                    <img
+                      src="https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=300&h=300&fit=crop"
+                      alt="Rex Orange County"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="w-3.5 h-3.5 rounded-full bg-neutral-900 border border-white/30 absolute z-10" />
+                </div>
+
+                <div className="absolute -bottom-3 -right-2 px-3 py-1.5 rounded-2xl bg-neutral-900/90 border border-white/20 shadow-xl backdrop-blur-md flex items-center gap-1.5 text-xs font-mono text-amber-300">
+                  <Activity className="w-3.5 h-3.5 animate-pulse" />
+                  <span>Bedroom Pop 24-bit</span>
                 </div>
               </div>
             </div>
@@ -620,37 +649,37 @@ export const HomePage: React.FC<HomePageProps> = ({
             <button
               type="button"
               onClick={() => setActiveSlide(0)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSlide === 0
                   ? 'bg-violet-500 text-white shadow-md shadow-violet-500/30'
                   : 'bg-white/5 hover:bg-white/10 text-white/50'
               }`}
             >
-              🔥 1. DJ Horeg Pargoy
+              ⚡ 1. Tenxi
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSlide(1)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSlide === 1
-                  ? 'bg-pink-500 text-white shadow-md shadow-pink-500/30'
+                  ? 'bg-red-500 text-white shadow-md shadow-red-500/30'
                   : 'bg-white/5 hover:bg-white/10 text-white/50'
               }`}
             >
-              ✨ 2. Top Hits Indonesia
+              🎸 2. Dongker
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSlide(2)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                 activeSlide === 2
                   ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
                   : 'bg-white/5 hover:bg-white/10 text-white/50'
               }`}
             >
-              ☕ 3. Senja Akustik
+              🌻 3. Rex Orange County
             </button>
           </div>
 
