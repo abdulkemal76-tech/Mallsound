@@ -1,4 +1,4 @@
-const CACHE_NAME = 'mallsound-pwa-v3';
+const CACHE_NAME = 'mallsound-pwa-v4';
 const AUDIO_CACHE_NAME = 'mallsound-audio-v1';
 
 const PRECACHE_ASSETS = [
