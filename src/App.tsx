@@ -882,7 +882,9 @@ export function App() {
   const handleSelectTrack = (
     track: Track,
     forceMode?: PlaybackEngineMode,
-    openFullScreen = false
+    openFullScreen = false,
+    contextTracks?: Track[],
+    preserveQueue = false
   ) => {
     // Add to recently played
     setRecentlyPlayed((prev) => {
@@ -895,6 +897,30 @@ export function App() {
       }
       return updated;
     });
+
+    // Manage locked playback queue
+    if (!preserveQueue) {
+      if (contextTracks && contextTracks.length > 0) {
+        const idx = contextTracks.findIndex((t) => t.id === track.id);
+        const upcoming = idx !== -1
+          ? contextTracks.slice(idx + 1)
+          : contextTracks.filter((t) => t.id !== track.id);
+        setPlaybackQueue(upcoming);
+        try {
+          localStorage.setItem('mallsound_playback_queue', JSON.stringify(upcoming));
+        } catch {}
+      } else {
+        // If track was clicked directly within the active queue drawer
+        const qIdx = playbackQueue.findIndex((t) => t.id === track.id);
+        if (qIdx !== -1) {
+          const upcoming = playbackQueue.slice(qIdx + 1);
+          setPlaybackQueue(upcoming);
+          try {
+            localStorage.setItem('mallsound_playback_queue', JSON.stringify(upcoming));
+          } catch {}
+        }
+      }
+    }
 
     const isLocalBlob = track.audioUrl.startsWith('blob:');
     const targetMode: PlaybackEngineMode = isLocalBlob
@@ -1075,7 +1101,7 @@ export function App() {
           return updated;
         });
       }
-      handleSelectTrack(nextTrack, undefined, isFullScreenPlayerOpen);
+      handleSelectTrack(nextTrack, undefined, isFullScreenPlayerOpen, undefined, true);
       return;
     }
 
@@ -1459,6 +1485,25 @@ export function App() {
     showToast(`✓ "${track.title}" ditambahkan ke antrean`);
   };
 
+  const handleRemoveFromQueue = (trackId: string) => {
+    setPlaybackQueue((prev) => {
+      const updated = prev.filter((t) => t.id !== trackId);
+      try {
+        localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    showToast('✓ Lagu dihapus dari antrean');
+  };
+
+  const handleClearQueue = () => {
+    setPlaybackQueue([]);
+    try {
+      localStorage.removeItem('mallsound_playback_queue');
+    } catch {}
+    showToast('✓ Antrean dibersihkan');
+  };
+
   const handleStartRadio = (track: Track) => {
     handleSelectTrack(track);
     const others = allKnownTracks.filter((t) => t.id !== track.id);
@@ -1625,7 +1670,7 @@ export function App() {
         <main className="flex-1 pb-36 md:pb-24">
         {activeTab === 'home' && (
           <HomePage
-            onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
+            onSelectTrack={(trk, ctx) => handleSelectTrack(trk, undefined, false, ctx)}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             isTrackLiked={isTrackLiked}
@@ -1641,7 +1686,7 @@ export function App() {
 
         {activeTab === 'search' && (
           <SearchPage
-            onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
+            onSelectTrack={(trk, ctx) => handleSelectTrack(trk, undefined, false, ctx)}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             isTrackLiked={isTrackLiked}
@@ -1678,7 +1723,7 @@ export function App() {
             onEqBandChange={handleEqBandChange}
             onApplyEqGains={handleApplyFullEqGains}
             queueTracks={playbackQueue.length > 0 ? playbackQueue : (displayedTracks.length > 0 ? displayedTracks : allKnownTracks)}
-            onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
+            onSelectTrack={(trk, ctx) => handleSelectTrack(trk, undefined, false, ctx || DJ_INDO_TRACKS)}
             isTrackLiked={isTrackLiked}
             onToggleLike={handleToggleLike}
             onOpenActions={(trk) => setActionModalTrack(trk)}
@@ -1707,7 +1752,7 @@ export function App() {
             importedTracks={importedTracks}
             allTracks={allKnownTracks}
             accentColor={accentColor}
-            onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
+            onSelectTrack={(trk, ctx) => handleSelectTrack(trk, undefined, false, ctx)}
             onQueueTracks={handleQueueMultipleTracks}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
@@ -1930,7 +1975,7 @@ export function App() {
         currentTrack={currentTrack}
         isPlaying={isPlaying}
         onSelectTrack={(trk) => handleSelectTrack(trk, undefined, true)}
-        queueTracks={displayedTracks.length > 0 ? displayedTracks : allKnownTracks}
+        queueTracks={playbackQueue.length > 0 ? playbackQueue : (displayedTracks.length > 0 ? displayedTracks : allKnownTracks)}
         stageMode={stageMode}
         onSwitchStageMode={(mode) => {
           setStageMode(mode);
@@ -1988,8 +2033,12 @@ export function App() {
         onToggleMute={handleToggleMute}
         activeLyricIndex={activeLyricIndex}
         isLoadingLyrics={isLoadingLyrics}
-        queueTracks={playbackQueue.length > 0 ? playbackQueue : displayedTracks}
+        queueTracks={playbackQueue}
         onSelectTrack={(trk) => handleSelectTrack(trk, undefined, true)}
+        onRemoveFromQueue={handleRemoveFromQueue}
+        onClearQueue={handleClearQueue}
+        onAddToQueue={handleAddToQueue}
+        allAvailableTracks={allKnownTracks}
         playlists={allPlaylists}
         onAddTrackToPlaylist={handleAddTrackToPlaylist}
         onOpenCreatePlaylist={() => setIsPlaylistModalOpen(true)}

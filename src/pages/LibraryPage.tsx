@@ -50,7 +50,7 @@ export interface LibraryPageProps {
   // All tracks dictionary for resolving playlist items
   allTracks?: Track[];
   // Track actions
-  onSelectTrack: (track: Track) => void;
+  onSelectTrack: (track: Track, contextTracks?: Track[]) => void;
   onQueueTracks?: (tracks: Track[]) => void;
   currentTrack: Track;
   isPlaying: boolean;
@@ -315,7 +315,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   // Play All handler
   const handlePlayAll = (tracks: Track[]) => {
     if (tracks.length === 0) return;
-    onSelectTrack(tracks[0]);
+    onSelectTrack(tracks[0], tracks);
     if (tracks.length > 1 && onQueueTracks) {
       onQueueTracks(tracks.slice(1));
     }
@@ -326,7 +326,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   const handleShuffleAll = (tracks: Track[]) => {
     if (tracks.length === 0) return;
     const shuffled = [...tracks].sort(() => Math.random() - 0.5);
-    onSelectTrack(shuffled[0]);
+    onSelectTrack(shuffled[0], shuffled);
     if (shuffled.length > 1 && onQueueTracks) {
       onQueueTracks(shuffled.slice(1));
     }
@@ -367,6 +367,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     options?: {
       playlistId?: string;
       canRemove?: boolean;
+      contextTracks?: Track[];
     }
   ) => {
     const isCurrent = currentTrack?.id === track.id;
@@ -375,7 +376,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     return (
       <div
         key={`${track.id}-${index}`}
-        onClick={() => onSelectTrack(track)}
+        onClick={() => onSelectTrack(track, options?.contextTracks)}
         className={`group relative flex items-center justify-between p-2.5 sm:p-3.5 rounded-2xl cursor-pointer transition-all duration-200 border ${
           isCurrent
             ? 'bg-violet-500/15 border-violet-500/40 shadow-lg shadow-violet-500/10'
@@ -682,6 +683,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 renderTrackRow(track, idx, {
                   playlistId: activePlaylist.id,
                   canRemove: true,
+                  contextTracks: activePlaylistTracks,
                 })
               )}
             </div>
@@ -785,7 +787,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           </div>
         ) : (
           <div className="space-y-2">
-            {selectedFolder.tracks.map((track, idx) => renderTrackRow(track, idx))}
+            {selectedFolder.tracks.map((track, idx) =>
+              renderTrackRow(track, idx, { contextTracks: selectedFolder.tracks })
+            )}
           </div>
         )}
       </div>
@@ -1192,7 +1196,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               </div>
 
               <div className="space-y-2">
-                {favoriteTracks.map((track, idx) => renderTrackRow(track, idx))}
+                {favoriteTracks.map((track, idx) =>
+                  renderTrackRow(track, idx, { contextTracks: favoriteTracks })
+                )}
               </div>
             </div>
           )}
@@ -1246,7 +1252,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               </div>
 
               <div className="space-y-2">
-                {recentlyPlayed.map((track, idx) => renderTrackRow(track, idx))}
+                {recentlyPlayed.map((track, idx) =>
+                  renderTrackRow(track, idx, { contextTracks: recentlyPlayed })
+                )}
               </div>
             </div>
           )}
@@ -1306,7 +1314,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 <span>Lagu Kustom ({resolvedCustomTracks.length})</span>
                 <span className="hidden sm:inline">Durasi</span>
               </div>
-              {resolvedCustomTracks.map((track, idx) => renderTrackRow(track, idx))}
+              {resolvedCustomTracks.map((track, idx) =>
+                renderTrackRow(track, idx, { contextTracks: resolvedCustomTracks })
+              )}
             </div>
           )}
         </div>

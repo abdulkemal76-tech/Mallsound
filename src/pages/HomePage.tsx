@@ -30,7 +30,7 @@ import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
-  onSelectTrack: (track: Track) => void;
+  onSelectTrack: (track: Track, contextTracks?: Track[]) => void;
   currentTrack: Track;
   isPlaying: boolean;
   isTrackLiked: (trackId: string) => boolean;
@@ -330,7 +330,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               key={item.id}
               onClick={() => {
                 if (item.djTrack) {
-                  onSelectTrack(item.djTrack);
+                  onSelectTrack(item.djTrack, DJ_INDO_TRACKS);
                 } else if (item.actionQuery) {
                   onNavigateToSearch(item.actionQuery);
                 }
@@ -799,7 +799,7 @@ export const HomePage: React.FC<HomePageProps> = ({
               return (
                 <div
                   key={track.id}
-                  onClick={() => onSelectTrack(track)}
+                  onClick={() => onSelectTrack(track, recommendedTracks)}
                   className={`group relative bg-white/[0.04] hover:bg-white/[0.09] backdrop-blur-md border rounded-2xl p-3 sm:p-3.5 transition-all duration-200 cursor-pointer flex flex-col justify-between ${
                     isCurrent
                       ? 'border-violet-500/60 shadow-lg shadow-violet-500/20 ring-1 ring-violet-500/30'

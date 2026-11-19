@@ -51,7 +51,7 @@ export interface DJPageProps {
   onApplyEqGains?: (gains: [number, number, number, number, number]) => void;
   // Queue
   queueTracks: Track[];
-  onSelectTrack: (track: Track) => void;
+  onSelectTrack: (track: Track, contextTracks?: Track[]) => void;
   isTrackLiked: (trackId: string) => boolean;
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
   onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
@@ -1581,7 +1581,7 @@ export const DJPage: React.FC<DJPageProps> = ({
                 return (
                   <div
                     key={track.id}
-                    onClick={() => onSelectTrack(track)}
+                    onClick={() => onSelectTrack(track, DJ_INDO_TRACKS)}
                     className={`flex items-center justify-between p-2.5 sm:p-3 rounded-2xl transition-all cursor-pointer border ${
                       isSelected
                         ? 'bg-violet-600/25 border-violet-400 text-white'
@@ -1671,7 +1671,7 @@ export const DJPage: React.FC<DJPageProps> = ({
 
                       <button
                         type="button"
-                        onClick={() => onSelectTrack(track)}
+                        onClick={() => onSelectTrack(track, DJ_INDO_TRACKS)}
                         className={`py-1.5 px-2.5 rounded-xl text-[11px] font-bold uppercase tracking-wider transition-all flex items-center gap-1 cursor-pointer ${
                           isSelected && isPlaying
                             ? 'bg-emerald-500 text-neutral-950'

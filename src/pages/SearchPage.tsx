@@ -24,7 +24,7 @@ import { GLOBAL_ARTISTS, ARTIST_CATEGORIES, ArtistItem } from '../data/artists';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface SearchPageProps {
-  onSelectTrack: (track: Track) => void;
+  onSelectTrack: (track: Track, contextTracks?: Track[]) => void;
   currentTrack: Track;
   isPlaying: boolean;
   isTrackLiked: (trackId: string) => boolean;
@@ -454,7 +454,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                 return (
                   <div
                     key={track.id}
-                    onClick={() => onSelectTrack(track)}
+                    onClick={() => onSelectTrack(track, searchResults)}
                     className={`group flex sm:grid sm:grid-cols-[40px_1fr_160px_80px_40px_40px] items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded-2xl backdrop-blur-md transition-all duration-200 cursor-pointer ${
                       isCurrent
                         ? 'bg-violet-950/40 border border-violet-500/40 shadow-md'
