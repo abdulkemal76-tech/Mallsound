@@ -58,6 +58,7 @@ const PLAYBACK_SPEEDS = [0.5, 0.75, 1.0, 1.25, 1.5];
 
 const SLEEP_TIMER_OPTIONS: { label: string; value: number | null }[] = [
   { label: 'Mati', value: null },
+  { label: '5 Menit', value: 5 },
   { label: '15 Menit', value: 15 },
   { label: '30 Menit', value: 30 },
   { label: '45 Menit', value: 45 },
@@ -469,39 +470,51 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
 
-        {/* Pintasan Layar Utama (Add to Home Screen / Web to App) */}
+        {/* APK Pintasan MallSound Langsung Pasang (33 KB) */}
         <div className="pt-2 border-t border-sky-500/20 space-y-2">
           <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-            Pintasan Layar Utama (Web ke Beranda HP):
+            APK Pintasan MallSound (Langsung Pasang):
           </p>
 
-          <button
-            type="button"
-            onClick={handleAddShortcut}
-            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-xl bg-gradient-to-r from-emerald-600/25 to-teal-600/25 hover:from-emerald-600/35 hover:to-teal-600/35 border border-emerald-500/40 text-white transition-all group shadow-lg shadow-emerald-950/20 text-left"
+          <a
+            href="/MallSound-Pintasan.apk"
+            download="MallSound-Pintasan.apk"
+            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-emerald-700/30 hover:from-emerald-600/40 hover:to-teal-600/40 border border-emerald-500/50 text-white transition-all group shadow-lg shadow-emerald-950/20"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex-shrink-0 group-hover:scale-105 transition-transform">
+              <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0 group-hover:scale-105 transition-transform">
                 <Smartphone className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="text-xs sm:text-sm font-bold text-white truncate">
-                    Pasang Pintasan ke Layar Utama
+                    Download APK Pintasan MallSound
                   </h4>
-                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-mono">
-                    Instan
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-mono font-bold">
+                    33 KB • Langsung Instal
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-200/70 truncate">
-                  Pasang ikon MallSound di layar beranda tanpa unduh file APK besar
+                <p className="text-[11px] text-emerald-200/80 truncate">
+                  File APK shortcut super ringan (33 KB) &bull; Solusi jika pintasan browser tidak muncul di HP
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg bg-emerald-500 text-neutral-950 font-bold text-xs flex-shrink-0 group-hover:bg-emerald-400 transition-colors shadow-sm">
-              <Plus className="w-3.5 h-3.5" />
-              <span>Pasang Pintasan</span>
+            <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-neutral-950 font-bold text-xs flex-shrink-0 group-hover:bg-emerald-400 transition-colors shadow-md">
+              <Download className="w-3.5 h-3.5" />
+              <span>Unduh APK (33 KB)</span>
             </div>
+          </a>
+
+          {/* Opsi Pintasan Browser Cepat */}
+          <button
+            type="button"
+            onClick={handleAddShortcut}
+            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs transition-colors cursor-pointer"
+          >
+            <span className="text-[11px]">Atau coba tambah pintasan lewat menu browser HP</span>
+            <span className="text-sky-400 font-semibold text-[11px] flex items-center gap-1">
+              Petunjuk Browser <Info className="w-3 h-3" />
+            </span>
           </button>
 
           {showInstallGuide && (

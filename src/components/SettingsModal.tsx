@@ -363,9 +363,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                     <Clock className="w-3 h-3" />
                     <span>Sleep Timer</span>
                   </label>
-                  <div className="grid grid-cols-4 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-zinc-900">
+                  <div className="grid grid-cols-5 gap-1 p-1 rounded-xl bg-slate-100 dark:bg-zinc-900">
                     {[
                       { min: null, label: 'Off' },
+                      { min: 5, label: '5m' },
                       { min: 15, label: '15m' },
                       { min: 30, label: '30m' },
                       { min: 60, label: '60m' },

@@ -425,14 +425,14 @@ export const HomePage: React.FC<HomePageProps> = ({
         </div>
 
         {/* Quick Mode Switcher & Guide */}
-        <div className="flex items-center gap-2 flex-wrap">
+        <div className="flex items-center gap-2.5 flex-wrap">
           {onNavigateToDJ && (
             <button
               type="button"
               onClick={onNavigateToDJ}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 hover:from-violet-600/50 hover:to-fuchsia-600/50 border border-violet-500/40 text-violet-200 text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="inline-flex items-center justify-center gap-2 h-10 px-3.5 rounded-2xl bg-gradient-to-r from-violet-600/30 to-fuchsia-600/30 hover:from-violet-600/50 hover:to-fuchsia-600/50 border border-violet-500/40 text-violet-200 text-xs sm:text-sm font-bold shadow-lg shadow-violet-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap leading-none shrink-0"
             >
-              <Disc3 className="w-4 h-4 text-violet-400 animate-spin" />
+              <Disc3 className="w-4 h-4 text-violet-400 animate-spin shrink-0" />
               <span>Buka Menu DJ 🎛️</span>
             </button>
           )}
@@ -440,9 +440,9 @@ export const HomePage: React.FC<HomePageProps> = ({
           <button
             type="button"
             onClick={() => setShowGuideModal(true)}
-            className="inline-flex items-center gap-2 px-3.5 py-2 rounded-2xl bg-gradient-to-r from-sky-600/30 to-teal-600/30 hover:from-sky-600/50 hover:to-teal-600/50 border border-sky-500/40 text-sky-200 text-xs sm:text-sm font-bold shadow-lg shadow-sky-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer"
+            className="inline-flex items-center justify-center gap-2 h-10 px-3.5 rounded-2xl bg-gradient-to-r from-sky-600/30 to-teal-600/30 hover:from-sky-600/50 hover:to-teal-600/50 border border-sky-500/40 text-sky-200 text-xs sm:text-sm font-bold shadow-lg shadow-sky-500/10 hover:scale-105 active:scale-95 transition-all cursor-pointer whitespace-nowrap leading-none shrink-0"
           >
-            <HelpCircle className="w-4 h-4 text-sky-400" />
+            <HelpCircle className="w-4 h-4 text-sky-400 shrink-0" />
             <span>Buka Menu Panduan 📖</span>
           </button>
         </div>
@@ -1219,11 +1219,29 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <ExternalLink className="w-3.5 h-3.5 opacity-80" />
               </a>
 
+              {/* Direct APK Pintasan Download (33 KB) */}
+              <a
+                href="/MallSound-Pintasan.apk"
+                download="MallSound-Pintasan.apk"
+                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-emerald-700/30 border border-emerald-500/50 text-white font-bold text-xs shadow-lg shadow-emerald-950/20 hover:opacity-95 transition-all"
+              >
+                <div className="flex items-center gap-2.5">
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  <div className="text-left">
+                    <p className="font-bold text-white">Download APK Pintasan MallSound</p>
+                    <p className="text-[10px] text-emerald-300 font-normal">Super Ringan (33 KB) &bull; Langsung Pasang di HP</p>
+                  </div>
+                </div>
+                <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-neutral-950 font-bold text-[11px] shrink-0">
+                  Unduh (33 KB)
+                </span>
+              </a>
+
               {/* Add to Home Shortcut Tip */}
               <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 space-y-1.5 text-xs text-white/75">
                 <p className="font-semibold text-white">💡 Tips Pintasan ke Layar Utama:</p>
                 <p className="text-[11px] leading-relaxed">
-                  Di browser, ketuk <b>Menu Titik Tiga (⋮)</b> &gt; pilih <b>&quot;Tambahkan ke Layar Utama&quot;</b> agar ikon MallSound ada di beranda HP kamu.
+                  Jika tidak ingin mengunduh APK, kamu juga bisa ketuk <b>Menu Titik Tiga (⋮)</b> di browser &gt; pilih <b>&quot;Tambahkan ke Layar Utama&quot;</b>.
                 </p>
               </div>
             </div>
