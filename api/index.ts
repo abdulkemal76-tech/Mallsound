@@ -210,15 +210,15 @@ app.get('/api/music/lookup', async (req, res) => {
 app.get('/api/music/audio-proxy', async (req, res) => {
   try {
     const targetUrl = String(req.query.url || '');
-    if (
-      !targetUrl.startsWith('https://') ||
-      (!targetUrl.includes('itunes.apple.com') && !targetUrl.includes('mzstatic.com'))
-    ) {
+    if (!targetUrl.startsWith('https://') && !targetUrl.startsWith('http://')) {
       res.status(400).send('Invalid audio stream URL');
       return;
     }
 
-    const headers: Record<string, string> = {};
+    const headers: Record<string, string> = {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    };
     if (req.headers.range) {
       headers['Range'] = req.headers.range;
     }
@@ -226,7 +226,16 @@ app.get('/api/music/audio-proxy', async (req, res) => {
     const upstream = await fetch(targetUrl, { headers });
     res.status(upstream.status);
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', upstream.headers.get('content-type') || 'audio/mp4');
+    res.setHeader('Accept-Ranges', 'bytes');
+
+    const contentType = upstream.headers.get('content-type') || 'audio/mp4';
+    const contentLength = upstream.headers.get('content-length');
+    const contentRange = upstream.headers.get('content-range');
+
+    res.setHeader('Content-Type', contentType);
+    if (contentLength) res.setHeader('Content-Length', contentLength);
+    if (contentRange) res.setHeader('Content-Range', contentRange);
+
     const arrayBuffer = await upstream.arrayBuffer();
     res.send(Buffer.from(arrayBuffer));
   } catch {

@@ -442,10 +442,7 @@ app.get('/api/music/lookup', async (req, res) => {
 app.get('/api/music/audio-proxy', async (req, res) => {
   try {
     const targetUrl = String(req.query.url || '');
-    if (
-      !targetUrl.startsWith('https://') ||
-      (!targetUrl.includes('itunes.apple.com') && !targetUrl.includes('mzstatic.com'))
-    ) {
+    if (!targetUrl.startsWith('https://') && !targetUrl.startsWith('http://')) {
       res.status(400).send('Invalid audio stream URL');
       return;
     }
