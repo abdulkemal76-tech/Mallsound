@@ -126,6 +126,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
+          enablejsapi: 1,
         },
         events: {
           onReady: (e) => {
@@ -249,6 +250,27 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
 
     return () => window.clearInterval(interval);
   }, [isPlaying, onTimeUpdate]);
+
+  // Aggressive background playback poller: automatically revives YouTube audio when screen is turned off
+  useEffect(() => {
+    const resumeInterval = window.setInterval(() => {
+      if (document.hidden && isPlayingPropRef.current && playerRef.current && readyRef.current) {
+        try {
+          const stateGetter = (playerRef.current as unknown as { getPlayerState?: () => number }).getPlayerState;
+          if (typeof stateGetter === 'function') {
+            const st = stateGetter.call(playerRef.current);
+            if (st === 2 || st === 5) {
+              playerRef.current.playVideo();
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    }, 600);
+
+    return () => window.clearInterval(resumeInterval);
+  }, []);
 
   return (
     <div className="w-full h-full bg-black relative overflow-hidden">

@@ -78,8 +78,16 @@ function parseLyricsLines(rawText: string, durationSec: number): LyricLine[] {
 }
 
 export function App() {
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<BottomNavTab>('home');
+  // Navigation State (Restored from last session)
+  const [activeTab, setActiveTab] = useState<BottomNavTab>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_active_tab') as BottomNavTab;
+      if (['home', 'search', 'dj', 'library', 'profile'].includes(saved)) return saved;
+    } catch {
+      // ignore
+    }
+    return 'home';
+  });
   const [searchQueryFromExternal, setSearchQueryFromExternal] = useState<string>('');
 
   // Firebase Auth & Cloud Sync
@@ -126,11 +134,38 @@ export function App() {
   const [resolvedSavedTracks, setResolvedSavedTracks] = useState<Record<string, Track>>({});
   const [activePlaylistId, setActivePlaylistId] = useState<string | null>(null);
 
-  // Audio Playback State
-  const [currentTrack, setCurrentTrack] = useState<Track>(BUILT_IN_TRACKS[0]);
+  // Audio Playback State (Restored from last session so it never resets to beginning)
+  const [currentTrack, setCurrentTrack] = useState<Track>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_saved_track');
+      if (saved) return JSON.parse(saved);
+    } catch {
+      // ignore
+    }
+    return BUILT_IN_TRACKS[0];
+  });
   const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTimeSec, setCurrentTimeSec] = useState(0);
-  const [durationSec, setDurationSec] = useState(BUILT_IN_TRACKS[0].durationSec);
+  const [currentTimeSec, setCurrentTimeSec] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_saved_time');
+      if (saved) return Number(saved) || 0;
+    } catch {
+      // ignore
+    }
+    return 0;
+  });
+  const [durationSec, setDurationSec] = useState<number>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_saved_track');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.durationSec) return parsed.durationSec;
+      }
+    } catch {
+      // ignore
+    }
+    return BUILT_IN_TRACKS[0].durationSec;
+  });
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
@@ -176,6 +211,37 @@ export function App() {
     }
   }, [crossfadeSec]);
 
+  // ── Auto-Save Active Tab to localStorage ──
+  useEffect(() => {
+    try {
+      localStorage.setItem('mallsound_active_tab', activeTab);
+    } catch {
+      // ignore
+    }
+  }, [activeTab]);
+
+  // ── Auto-Save Current Track to localStorage so playback never resets ──
+  useEffect(() => {
+    if (currentTrack && currentTrack.id) {
+      try {
+        localStorage.setItem('mallsound_saved_track', JSON.stringify(currentTrack));
+      } catch {
+        // ignore
+      }
+    }
+  }, [currentTrack]);
+
+  // ── Auto-Save Playback Position to localStorage ──
+  useEffect(() => {
+    if (currentTimeSec > 0) {
+      try {
+        localStorage.setItem('mallsound_saved_time', String(Math.floor(currentTimeSec)));
+      } catch {
+        // ignore
+      }
+    }
+  }, [currentTimeSec]);
+
   // ── Background Audio Service Init ──
   // Runs once on mount to register Media Session handlers and enable
   // lock-screen controls / notification media controls on Android & iOS.
@@ -219,17 +285,59 @@ export function App() {
     // Throttled — runs every time currentTimeSec changes (driven by audio engine)
   }, [currentTimeSec, durationSec, playbackRate]);
 
-  // Initial catalog load
+  // Initial catalog load: Fresh viral hits (Bernadya, Sal Priadi, Juicy Luicy, Mahalini, Nadin Amizah)
   useEffect(() => {
     let cancelled = false;
     async function loadInitialCatalog() {
       try {
-        const { tracks } = await searchCatalogWithMeta('Top Hits Indonesia', 24);
-        if (!cancelled && tracks.length > 0) {
-          setCatalogTracks(tracks);
-          setCurrentTrack(tracks[0]);
-          setDurationSec(tracks[0].durationSec);
-          enrichTrackMetadata(tracks[0]);
+        const [bernadyaRes, salPriadiRes, juicyLuicyRes] = await Promise.all([
+          searchCatalogWithMeta('Bernadya', 8),
+          searchCatalogWithMeta('Sal Priadi', 8),
+          searchCatalogWithMeta('Juicy Luicy', 8),
+        ]);
+
+        if (cancelled) return;
+
+        const merged: Track[] = [];
+        const seen = new Set<string>();
+        const maxLen = Math.max(
+          bernadyaRes.tracks.length,
+          salPriadiRes.tracks.length,
+          juicyLuicyRes.tracks.length
+        );
+
+        for (let i = 0; i < maxLen; i++) {
+          if (bernadyaRes.tracks[i] && !seen.has(bernadyaRes.tracks[i].id)) {
+            seen.add(bernadyaRes.tracks[i].id);
+            merged.push(bernadyaRes.tracks[i]);
+          }
+          if (salPriadiRes.tracks[i] && !seen.has(salPriadiRes.tracks[i].id)) {
+            seen.add(salPriadiRes.tracks[i].id);
+            merged.push(salPriadiRes.tracks[i]);
+          }
+          if (juicyLuicyRes.tracks[i] && !seen.has(juicyLuicyRes.tracks[i].id)) {
+            seen.add(juicyLuicyRes.tracks[i].id);
+            merged.push(juicyLuicyRes.tracks[i]);
+          }
+        }
+
+        if (merged.length > 0) {
+          setCatalogTracks(merged);
+          // Only set first track as currentTrack if user does NOT have a saved track in localStorage!
+          const hasSavedTrack = localStorage.getItem('mallsound_saved_track');
+          if (!hasSavedTrack) {
+            setCurrentTrack(merged[0]);
+            setDurationSec(merged[0].durationSec);
+            enrichTrackMetadata(merged[0]);
+          } else {
+            // Enrich the restored saved track with lyrics & video
+            try {
+              const saved = JSON.parse(hasSavedTrack);
+              enrichTrackMetadata(saved);
+            } catch {
+              // ignore
+            }
+          }
         }
       } catch {
         // fallback to BUILT_IN_TRACKS
