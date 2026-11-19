@@ -10,7 +10,6 @@ import {
   VolumeX,
   Disc3,
   RotateCcw,
-  Zap,
   Music,
   Heart,
   Sliders,
@@ -47,6 +46,7 @@ export interface DJPageProps {
   // EQ
   eqGains: [number, number, number, number, number];
   onEqBandChange: (idx: number, val: number) => void;
+  onApplyEqGains?: (gains: [number, number, number, number, number]) => void;
   // Queue
   queueTracks: Track[];
   onSelectTrack: (track: Track) => void;
@@ -97,16 +97,12 @@ const NeonDJCanvasStage: React.FC<{
   playbackRate: number;
   lightMode: DiscoLightMode;
   lightSpeed: DiscoSpeed;
-  isManualBlitz: boolean;
-  isBurstingBlitz: boolean;
   isHoregBass: boolean;
 }> = ({
   isPlaying,
   playbackRate,
   lightMode,
   lightSpeed,
-  isManualBlitz,
-  isBurstingBlitz,
   isHoregBass,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -119,7 +115,6 @@ const NeonDJCanvasStage: React.FC<{
   const lightModeRef = useRef(lightMode);
   const lightSpeedRef = useRef(lightSpeed);
   const isHoregBassRef = useRef(isHoregBass);
-  const isBlitzRef = useRef(isManualBlitz || isBurstingBlitz);
 
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -127,8 +122,7 @@ const NeonDJCanvasStage: React.FC<{
     lightModeRef.current = lightMode;
     lightSpeedRef.current = lightSpeed;
     isHoregBassRef.current = isHoregBass;
-    isBlitzRef.current = isManualBlitz || isBurstingBlitz;
-  }, [isPlaying, playbackRate, lightMode, lightSpeed, isManualBlitz, isBurstingBlitz, isHoregBass]);
+  }, [isPlaying, playbackRate, lightMode, lightSpeed, isHoregBass]);
 
   // Canvas render engine
   useEffect(() => {
@@ -194,39 +188,130 @@ const NeonDJCanvasStage: React.FC<{
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      const beamConfigs = [
-        { originX: width * 0.15, originY: -15, baseAngle: 0.42, swing: 0.35, speed: 1.0, color: 'rgba(236, 72, 153, 0.35)', width: 0.16 },
-        { originX: width * 0.85, originY: -15, baseAngle: -0.42, swing: 0.35, speed: 1.0, color: 'rgba(34, 211, 238, 0.32)', width: 0.16 },
-        { originX: width * 0.35, originY: -15, baseAngle: 0.18, swing: 0.45, speed: 2.0, color: 'rgba(192, 38, 211, 0.28)', width: 0.13 },
-        { originX: width * 0.65, originY: -15, baseAngle: -0.18, swing: 0.45, speed: 2.0, color: 'rgba(168, 85, 247, 0.28)', width: 0.13 },
-      ];
-
       const pulse = 0.7 + 0.3 * Math.sin(beatPhase * Math.PI);
-      const beamLength = Math.hypot(width, height) * 1.1;
+      const beamLength = Math.hypot(width, height) * 1.15;
 
-      beamConfigs.forEach((b, idx) => {
-        const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
-        const leftAngle = angle - b.width;
-        const rightAngle = angle + b.width;
+      if (mode === 'laser') {
+        // High-intensity sharp cyber laser array
+        const laserConfigs = [
+          { originX: width * 0.1, originY: -10, baseAngle: 0.52, swing: 0.45, speed: 2.4, color: '#00f0ff' },
+          { originX: width * 0.9, originY: -10, baseAngle: -0.52, swing: 0.45, speed: 2.4, color: '#ff007f' },
+          { originX: width * 0.3, originY: -10, baseAngle: 0.25, swing: 0.55, speed: 3.2, color: '#39ff14' },
+          { originX: width * 0.7, originY: -10, baseAngle: -0.25, swing: 0.55, speed: 3.2, color: '#ffb700' },
+          { originX: width * 0.5, originY: -10, baseAngle: 0.0, swing: 0.65, speed: 1.8, color: '#a855f7' },
+        ];
 
-        const grad = ctx.createLinearGradient(
-          b.originX,
-          b.originY,
-          b.originX + Math.sin(angle) * beamLength,
-          b.originY + Math.cos(angle) * beamLength
-        );
-        grad.addColorStop(0, b.color);
-        grad.addColorStop(0.65, b.color.replace(/0\.\d+\)/, (0.1 * pulse).toFixed(2) + ')'));
-        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        laserConfigs.forEach((b, idx) => {
+          const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
+          const endX = b.originX + Math.sin(angle) * beamLength;
+          const endY = b.originY + Math.cos(angle) * beamLength;
 
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(b.originX, b.originY);
-        ctx.lineTo(b.originX + Math.sin(leftAngle) * beamLength, b.originY + Math.cos(leftAngle) * beamLength);
-        ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, b.originY + Math.cos(rightAngle) * beamLength);
-        ctx.closePath();
-        ctx.fill();
-      });
+          // Glowing laser fan
+          const fanGrad = ctx.createLinearGradient(b.originX, b.originY, endX, endY);
+          fanGrad.addColorStop(0, b.color);
+          fanGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
+          ctx.strokeStyle = fanGrad;
+          ctx.lineWidth = 4 + pulse * 2;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, b.originY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+
+          // Intense razor core
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 1.8;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, b.originY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        });
+      } else if (mode === 'strobe') {
+        // High-energy strobe flashes synced to beat kick
+        const strobeKick = Math.pow(Math.sin(beatPhase * Math.PI), 4);
+        if (strobeKick > 0.4) {
+          const strobeConfigs = [
+            { originX: width * 0.2, angle: 0.35, color: '#ffffff' },
+            { originX: width * 0.5, angle: (Math.sin(timeSec * 8) * 0.25), color: '#67e8f9' },
+            { originX: width * 0.8, angle: -0.35, color: '#ffffff' },
+          ];
+          strobeConfigs.forEach((s) => {
+            const grad = ctx.createLinearGradient(
+              s.originX, -10,
+              s.originX + Math.sin(s.angle) * beamLength,
+              Math.cos(s.angle) * beamLength
+            );
+            grad.addColorStop(0, s.color);
+            grad.addColorStop(0.8, 'rgba(255,255,255,0)');
+            ctx.fillStyle = grad;
+            const w = 0.24 * strobeKick;
+            ctx.beginPath();
+            ctx.moveTo(s.originX, -10);
+            ctx.lineTo(s.originX + Math.sin(s.angle - w) * beamLength, Math.cos(s.angle - w) * beamLength);
+            ctx.lineTo(s.originX + Math.sin(s.angle + w) * beamLength, Math.cos(s.angle + w) * beamLength);
+            ctx.closePath();
+            ctx.fill();
+          });
+        }
+      } else if (mode === 'ambient') {
+        // Deep club aurora rolling spotlights
+        const ambientConfigs = [
+          { originX: width * 0.25, baseAngle: 0.2, swing: 0.25, speed: 0.8, color: 'rgba(147, 51, 234, 0.65)', width: 0.28 },
+          { originX: width * 0.75, baseAngle: -0.2, swing: 0.25, speed: 0.8, color: 'rgba(6, 182, 212, 0.65)', width: 0.28 },
+        ];
+        ambientConfigs.forEach((b, idx) => {
+          const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
+          const leftAngle = angle - b.width;
+          const rightAngle = angle + b.width;
+          const grad = ctx.createLinearGradient(
+            b.originX, -15,
+            b.originX + Math.sin(angle) * beamLength,
+            -15 + Math.cos(angle) * beamLength
+          );
+          grad.addColorStop(0, b.color);
+          grad.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, -15);
+          ctx.lineTo(b.originX + Math.sin(leftAngle) * beamLength, -15 + Math.cos(leftAngle) * beamLength);
+          ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, -15 + Math.cos(rightAngle) * beamLength);
+          ctx.closePath();
+          ctx.fill();
+        });
+      } else {
+        // Default 'disco' RGB: 6 sweeping moving-head concert beams with rich neon punch
+        const beamConfigs = [
+          { originX: width * 0.1, originY: -15, baseAngle: 0.46, swing: 0.38, speed: 1.2, color: 'rgba(236, 72, 153, 0.7)', width: 0.2 },
+          { originX: width * 0.9, originY: -15, baseAngle: -0.46, swing: 0.38, speed: 1.2, color: 'rgba(34, 211, 238, 0.7)', width: 0.2 },
+          { originX: width * 0.28, originY: -15, baseAngle: 0.22, swing: 0.48, speed: 1.8, color: 'rgba(168, 85, 247, 0.65)', width: 0.18 },
+          { originX: width * 0.72, originY: -15, baseAngle: -0.22, swing: 0.48, speed: 1.8, color: 'rgba(244, 63, 94, 0.65)', width: 0.18 },
+          { originX: width * 0.45, originY: -15, baseAngle: 0.08, swing: 0.52, speed: 2.2, color: 'rgba(251, 191, 36, 0.6)', width: 0.16 },
+          { originX: width * 0.55, originY: -15, baseAngle: -0.08, swing: 0.52, speed: 2.2, color: 'rgba(52, 211, 153, 0.6)', width: 0.16 },
+        ];
+
+        beamConfigs.forEach((b, idx) => {
+          const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
+          const leftAngle = angle - b.width;
+          const rightAngle = angle + b.width;
+
+          const grad = ctx.createLinearGradient(
+            b.originX,
+            b.originY,
+            b.originX + Math.sin(angle) * beamLength,
+            b.originY + Math.cos(angle) * beamLength
+          );
+          grad.addColorStop(0, b.color);
+          grad.addColorStop(0.7, b.color.replace(/0\.\d+\)/, (0.15 * pulse).toFixed(2) + ')'));
+          grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, b.originY);
+          ctx.lineTo(b.originX + Math.sin(leftAngle) * beamLength, b.originY + Math.cos(leftAngle) * beamLength);
+          ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, b.originY + Math.cos(rightAngle) * beamLength);
+          ctx.closePath();
+          ctx.fill();
+        });
+      }
 
       ctx.restore();
     }
@@ -240,17 +325,17 @@ const NeonDJCanvasStage: React.FC<{
       ctx.globalCompositeOperation = 'screen';
 
       pillarPositions.forEach((px, idx) => {
-        const color = idx === 0 ? '#f0abfc' : '#67e8f9';
+        const color = idx === 0 ? '#f472b6' : '#22d3ee';
 
-        const glowGrad = ctx.createLinearGradient(px - 40, 0, px + 40, 0);
+        const glowGrad = ctx.createLinearGradient(px - 55, 0, px + 55, 0);
         glowGrad.addColorStop(0, 'rgba(0,0,0,0)');
-        glowGrad.addColorStop(0.5, idx === 0 ? `rgba(217, 70, 239, ${0.28 + pulse * 0.2})` : `rgba(6, 182, 212, ${0.25 + pulse * 0.2})`);
+        glowGrad.addColorStop(0.5, idx === 0 ? `rgba(236, 72, 153, ${0.4 + pulse * 0.3})` : `rgba(6, 182, 212, ${0.4 + pulse * 0.3})`);
         glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
         ctx.fillStyle = glowGrad;
-        ctx.fillRect(px - 40, 0, 80, height * 0.78);
+        ctx.fillRect(px - 55, 0, 110, height * 0.8);
 
         ctx.strokeStyle = color;
-        ctx.lineWidth = 3;
+        ctx.lineWidth = 4.5;
         ctx.beginPath();
         ctx.moveTo(px, 0);
         ctx.lineTo(px, height * 0.76);
@@ -265,15 +350,14 @@ const NeonDJCanvasStage: React.FC<{
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      // 3 optimized wave layers
       for (let l = 0; l < 3; l++) {
         ctx.beginPath();
-        const baseY = deskY - height * 0.15 + l * 12;
-        const amp = (24 + l * 8) * (0.8 + pulse * 0.4);
+        const baseY = deskY - height * 0.16 + l * 14;
+        const amp = (32 + l * 10) * (0.9 + pulse * 0.5);
         const freq = 0.006 + l * 0.0015;
         const speed = timeSec * Math.PI * (l % 2 === 0 ? 1 : -1) + l;
 
-        for (let x = 0; x <= width; x += 22) {
+        for (let x = 0; x <= width; x += 20) {
           const normX = x / width;
           const envelope = Math.sin(normX * Math.PI);
           const y = baseY - Math.sin(x * freq + speed) * amp * envelope;
@@ -282,9 +366,9 @@ const NeonDJCanvasStage: React.FC<{
         }
 
         ctx.strokeStyle = l % 2 === 0
-          ? `rgba(232, 121, 249, ${0.26 + pulse * 0.15})`
-          : `rgba(34, 211, 238, ${0.22 + pulse * 0.15})`;
-        ctx.lineWidth = 1.6;
+          ? `rgba(244, 114, 182, ${0.45 + pulse * 0.25})`
+          : `rgba(34, 211, 238, ${0.4 + pulse * 0.25})`;
+        ctx.lineWidth = 2.6;
         ctx.stroke();
       }
 
@@ -293,28 +377,28 @@ const NeonDJCanvasStage: React.FC<{
 
     function drawEqualizer(deskY: number, timeSec: number, beatPhase: number, activePlaying: boolean, horeg: boolean) {
       if (!ctx) return;
-      const totalWidth = Math.min(width * 0.8, 860);
+      const totalWidth = Math.min(width * 0.85, 900);
       const startX = (width - totalWidth) / 2;
       const step = totalWidth / EQ_COUNT;
-      const barWidth = Math.max(3.5, step * 0.6);
+      const barWidth = Math.max(4.0, step * 0.65);
 
       ctx.save();
       ctx.globalCompositeOperation = 'screen';
 
-      const horegBoost = horeg ? 1.4 : 1.0;
+      const horegBoost = horeg ? 1.65 : 1.0;
 
       for (let i = 0; i < EQ_COUNT; i++) {
         const centerDist = Math.abs(i - (EQ_COUNT - 1) / 2) / ((EQ_COUNT - 1) / 2);
-        const arch = 1 - Math.pow(centerDist, 1.6) * 0.55;
+        const arch = 1 - Math.pow(centerDist, 1.5) * 0.5;
 
         const wave1 = Math.sin(timeSec * Math.PI * 4 + i * 0.6);
         const wave2 = Math.cos(timeSec * Math.PI * 2 - i * 0.9);
         const kick = Math.pow(Math.sin(beatPhase * Math.PI), 3);
 
         const targetH = activePlaying
-          ? (24 + Math.abs(wave1 * 0.5 + wave2 * 0.5) * 100 + kick * 60) * arch * (height / 700) * horegBoost
-          : 10 * arch;
-        eqHeights[i] += (targetH - eqHeights[i]) * 0.4;
+          ? (28 + Math.abs(wave1 * 0.5 + wave2 * 0.5) * 110 + kick * 75) * arch * (height / 680) * horegBoost
+          : 12 * arch;
+        eqHeights[i] += (targetH - eqHeights[i]) * 0.42;
 
         const bx = startX + i * step + (step - barWidth) / 2;
         const bh = Math.max(5, eqHeights[i]);
@@ -322,8 +406,9 @@ const NeonDJCanvasStage: React.FC<{
 
         const barGrad = ctx.createLinearGradient(bx, by, bx, deskY);
         barGrad.addColorStop(0, '#ffffff');
-        barGrad.addColorStop(0.3, i % 3 === 0 ? '#67e8f9' : '#f472b6');
-        barGrad.addColorStop(1, 'rgba(192, 38, 211, 0)');
+        barGrad.addColorStop(0.25, i % 3 === 0 ? '#38bdf8' : '#ec4899');
+        barGrad.addColorStop(0.7, '#a855f7');
+        barGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
 
         ctx.fillStyle = barGrad;
         ctx.fillRect(bx, by, barWidth, bh);
@@ -620,12 +705,9 @@ const NeonDJCanvasStage: React.FC<{
       // 8. DJ Booth
       drawDJBooth(deskY, loopSec, beatPhase, activePlaying);
 
-      // 9. Strobe Blitz Overlays
-      if (isBlitzRef.current) {
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-        ctx.fillRect(0, 0, width, height);
-      } else if (activePlaying && pulse > 0.9) {
-        ctx.fillStyle = `rgba(232, 121, 249, ${(pulse - 0.9) * 0.45})`;
+      // 9. Bass Kick Atmosphere Glow
+      if (activePlaying && pulse > 0.92) {
+        ctx.fillStyle = `rgba(232, 121, 249, ${(pulse - 0.92) * 0.4})`;
         ctx.fillRect(0, 0, width, height);
       }
 
@@ -708,6 +790,7 @@ export const DJPage: React.FC<DJPageProps> = ({
   onToggleMute,
   eqGains,
   onEqBandChange,
+  onApplyEqGains,
   queueTracks,
   onSelectTrack,
   isTrackLiked,
@@ -722,11 +805,7 @@ export const DJPage: React.FC<DJPageProps> = ({
   const [localRepeat, setLocalRepeat] = useState(false);
   const [lightMode, setLightMode] = useState<DiscoLightMode>('disco');
   const [lightSpeed, setLightSpeed] = useState<DiscoSpeed>('hyper');
-  const [isManualBlitz, setIsManualBlitz] = useState(false);
-  const [isBurstingBlitz, setIsBurstingBlitz] = useState(false);
   const [activeListTab, setActiveListTab] = useState<'dj-indo' | 'queue'>('dj-indo');
-
-  const burstTimerRef = useRef<number | null>(null);
 
   const isShuffle = propIsShuffle !== undefined ? propIsShuffle : localShuffle;
   const isRepeat = propIsRepeat !== undefined ? propIsRepeat : localRepeat;
@@ -747,62 +826,74 @@ export const DJPage: React.FC<DJPageProps> = ({
     }
   };
 
-  // Rapid Fire Burst Blitz Function
-  const triggerRapidBurstBlitz = () => {
-    if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
-    setIsBurstingBlitz(true);
-
-    burstTimerRef.current = window.setTimeout(() => {
-      setIsBurstingBlitz(false);
-    }, 1200);
-  };
-
-  useEffect(() => {
-    return () => {
-      if (burstTimerRef.current) window.clearTimeout(burstTimerRef.current);
-    };
-  }, []);
-
   // Bass Boost Logic:
   // Mega Bass Horeg: +12dB on 60Hz and +8dB on 230Hz
-  const isHoregBass = eqGains[0] >= 11 && eqGains[1] >= 7.5;
-  const isSubBassClub = !isHoregBass && eqGains[0] >= 5.5 && eqGains[1] >= 3.5;
+  const isHoregBass = eqGains[0] >= 10;
+  const isSubBassClub = !isHoregBass && eqGains[0] >= 5;
 
   const handleSetMegaBassHoreg = () => {
     if (isHoregBass) {
-      onEqBandChange(0, 0);
-      onEqBandChange(1, 0);
+      if (onApplyEqGains) {
+        onApplyEqGains([0, 0, eqGains[2], eqGains[3], eqGains[4]]);
+      } else {
+        onEqBandChange(0, 0);
+        onEqBandChange(1, 0);
+      }
     } else {
-      onEqBandChange(0, 12);
-      onEqBandChange(1, 8);
+      if (onApplyEqGains) {
+        onApplyEqGains([12, 8, eqGains[2], eqGains[3], eqGains[4]]);
+      } else {
+        onEqBandChange(0, 12);
+        onEqBandChange(1, 8);
+      }
     }
   };
 
   const handleSetSubBassClub = () => {
     if (isSubBassClub) {
-      onEqBandChange(0, 0);
-      onEqBandChange(1, 0);
+      if (onApplyEqGains) {
+        onApplyEqGains([0, 0, eqGains[2], eqGains[3], eqGains[4]]);
+      } else {
+        onEqBandChange(0, 0);
+        onEqBandChange(1, 0);
+      }
     } else {
-      onEqBandChange(0, 6);
-      onEqBandChange(1, 4);
+      if (onApplyEqGains) {
+        onApplyEqGains([6, 4, eqGains[2], eqGains[3], eqGains[4]]);
+      } else {
+        onEqBandChange(0, 6);
+        onEqBandChange(1, 4);
+      }
     }
   };
 
-  // Vocal Boost: +4dB on 910Hz and 3.6kHz
-  const isVocalBoostActive = eqGains[2] >= 3.5 && eqGains[3] >= 3.5;
+  // Vocal Boost: +4dB on 910Hz and +3dB on 3.6kHz
+  const isVocalBoostActive = eqGains[2] >= 3.5;
   const handleToggleVocalBoost = () => {
     if (isVocalBoostActive) {
-      onEqBandChange(2, 0);
-      onEqBandChange(3, 0);
+      if (onApplyEqGains) {
+        onApplyEqGains([eqGains[0], eqGains[1], 0, 0, eqGains[4]]);
+      } else {
+        onEqBandChange(2, 0);
+        onEqBandChange(3, 0);
+      }
     } else {
-      onEqBandChange(2, 4);
-      onEqBandChange(3, 4);
+      if (onApplyEqGains) {
+        onApplyEqGains([eqGains[0], eqGains[1], 4, 3, eqGains[4]]);
+      } else {
+        onEqBandChange(2, 4);
+        onEqBandChange(3, 3);
+      }
     }
   };
 
   // Reset EQ
   const handleResetEq = () => {
-    [0, 1, 2, 3, 4].forEach((idx) => onEqBandChange(idx, 0));
+    if (onApplyEqGains) {
+      onApplyEqGains([0, 0, 0, 0, 0]);
+    } else {
+      [0, 1, 2, 3, 4].forEach((idx) => onEqBandChange(idx, 0));
+    }
   };
 
   const isLiked = isTrackLiked(currentTrack.id);
@@ -838,15 +929,11 @@ export const DJPage: React.FC<DJPageProps> = ({
 
       {/* Top Ambient Glow */}
       <div
-        className={`absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-64 blur-3xl pointer-events-none transition-opacity duration-300 ${
-          isBurstingBlitz || isManualBlitz
-            ? 'bg-cyan-500/25 opacity-90'
-            : isPlaying
-            ? 'bg-violet-600/25 opacity-70'
-            : 'bg-violet-900/10 opacity-30'
+        className={`absolute top-0 inset-x-0 w-full h-64 blur-3xl pointer-events-none transition-opacity duration-300 ${
+          isPlaying
+            ? 'bg-violet-600/20 opacity-60'
+            : 'bg-violet-900/10 opacity-20'
         }`}
-      />
-
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
         {/* =================================================================
             1. CLEAN HEADER
@@ -898,8 +985,6 @@ export const DJPage: React.FC<DJPageProps> = ({
             playbackRate={playbackRate}
             lightMode={lightMode}
             lightSpeed={lightSpeed}
-            isManualBlitz={isManualBlitz}
-            isBurstingBlitz={isBurstingBlitz}
             isHoregBass={isHoregBass}
           />
 
@@ -1080,8 +1165,8 @@ export const DJPage: React.FC<DJPageProps> = ({
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
             {[
               { id: 'disco', label: '🌈 Disco RGB' },
-              { id: 'strobe', label: '⚡ Strobe Blitz' },
-              { id: 'laser', label: '🚨 Laser Cyber' },
+              { id: 'laser', label: '🚨 Cyber Laser' },
+              { id: 'strobe', label: '⚡ Strobe Club' },
               { id: 'ambient', label: '🌌 Club Ambient' },
               { id: 'off', label: '🌑 Off' },
             ].map((mode) => {
@@ -1101,38 +1186,6 @@ export const DJPage: React.FC<DJPageProps> = ({
                 </button>
               );
             })}
-          </div>
-
-          {/* Dual Blitz Control Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-            <button
-              type="button"
-              onClick={triggerRapidBurstBlitz}
-              className={`py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all select-none cursor-pointer ${
-                isBurstingBlitz
-                  ? 'bg-white text-black border-white shadow-[0_0_30px_#fff] scale-[0.98]'
-                  : 'bg-gradient-to-r from-cyan-500/20 to-fuchsia-500/20 hover:from-cyan-500/30 hover:to-fuchsia-500/30 text-cyan-200 border-cyan-400/40'
-              }`}
-            >
-              <Zap className={`w-4 h-4 ${isBurstingBlitz ? 'text-amber-400 animate-spin' : 'text-cyan-300'}`} />
-              <span>{isBurstingBlitz ? '💥 BURST AKTIF!' : '⚡ BURST FLASH (15x)'}</span>
-            </button>
-
-            <button
-              type="button"
-              onMouseDown={() => setIsManualBlitz(true)}
-              onMouseUp={() => setIsManualBlitz(false)}
-              onTouchStart={() => setIsManualBlitz(true)}
-              onTouchEnd={() => setIsManualBlitz(false)}
-              className={`py-3 px-4 rounded-xl border flex items-center justify-center gap-2 text-xs sm:text-sm font-bold uppercase tracking-wider transition-all select-none cursor-pointer ${
-                isManualBlitz
-                  ? 'bg-amber-300 text-black border-amber-200 shadow-[0_0_30px_#fbbf24] scale-[0.98]'
-                  : 'bg-gradient-to-r from-amber-500/20 to-violet-500/20 hover:from-amber-500/30 hover:to-violet-500/30 text-amber-200 border-amber-500/40'
-              }`}
-            >
-              <Flame className={`w-4 h-4 ${isManualBlitz ? 'text-amber-500 animate-bounce' : 'text-amber-300'}`} />
-              <span>{isManualBlitz ? '🔥 MENYALA (TAHAN)' : '⚡ MANUAL BLITZ (TAHAN)'}</span>
-            </button>
           </div>
         </section>
 

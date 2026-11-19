@@ -95,6 +95,14 @@ export class StudioAudioEngine {
       if (!this.htmlAudio) {
         this.htmlAudio = new Audio();
         this.htmlAudio.crossOrigin = 'anonymous';
+        try {
+          if (!this.mediaElementSource && this.ctx) {
+            this.mediaElementSource = this.ctx.createMediaElementSource(this.htmlAudio);
+            this.mediaElementSource.connect(this.getInputNode());
+          }
+        } catch (e) {
+          console.warn('AudioContext mediaElementSource fallback:', e);
+        }
         this.htmlAudio.addEventListener('timeupdate', () => {
           if (this.htmlAudio && !this.currentTrack?.audioUrl.startsWith('synth://')) {
             this.currentTimeSec = this.htmlAudio.currentTime;

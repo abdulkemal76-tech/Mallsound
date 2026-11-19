@@ -902,11 +902,19 @@ export function App() {
   };
 
   const handleEqBandChange = (bandIndex: number, newGain: number) => {
-    const updated = [...eqGains] as [number, number, number, number, number];
-    updated[bandIndex] = newGain;
-    setEqGains(updated);
+    setEqGains((prev) => {
+      const updated = [...prev] as [number, number, number, number, number];
+      updated[bandIndex] = newGain;
+      studioAudioEngine.setEqualizerGains(updated);
+      return updated;
+    });
     setActiveEqPreset('custom');
-    studioAudioEngine.setEqualizerGains(updated);
+  };
+
+  const handleApplyFullEqGains = (newGains: [number, number, number, number, number]) => {
+    setEqGains(newGains);
+    setActiveEqPreset('custom');
+    studioAudioEngine.setEqualizerGains(newGains);
   };
 
   const handleApplyEqPreset = (presetId: string) => {
@@ -1223,6 +1231,7 @@ export function App() {
             onToggleMute={handleToggleMute}
             eqGains={eqGains}
             onEqBandChange={handleEqBandChange}
+            onApplyEqGains={handleApplyFullEqGains}
             queueTracks={displayedTracks.length > 0 ? displayedTracks : allKnownTracks}
             onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
             isTrackLiked={isTrackLiked}
@@ -1592,35 +1601,47 @@ export function App() {
           - Holds active background playback on mobile and desktop without freezing.
           - When stageMode === 'video', matches the exact pixel bounds of the stage target!
       ===================================================================== */}
-      {engineMode === 'yt-music' && (
-        <div
-          id="mallsound-global-youtube-engine"
-          aria-hidden={!(stageMode === 'video' && (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded))}
-          style={
-            videoStageRect && stageMode === 'video' && (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded)
-              ? {
-                  position: 'fixed',
-                  top: `${videoStageRect.top}px`,
-                  left: `${videoStageRect.left}px`,
-                  width: `${videoStageRect.width}px`,
-                  height: `${videoStageRect.height}px`,
-                  zIndex: 75,
-                  opacity: 1,
-                  pointerEvents: 'auto',
-                }
-              : {
-                  position: 'fixed',
-                  bottom: '96px',
-                  right: '16px',
-                  width: '160px',
-                  height: '90px',
-                  zIndex: -1,
-                  opacity: 0.01,
-                  pointerEvents: 'none',
-                }
-          }
-          className="transition-all duration-300 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
-        >
+      {engineMode === 'yt-music' && (() => {
+        const isVideoStageActive = Boolean(
+          videoStageRect &&
+          stageMode === 'video' &&
+          (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded)
+        );
+        return (
+          <div
+            id="mallsound-global-youtube-engine"
+            aria-hidden={!isVideoStageActive}
+            style={
+              isVideoStageActive && videoStageRect
+                ? {
+                    position: 'fixed',
+                    top: `${videoStageRect.top}px`,
+                    left: `${videoStageRect.left}px`,
+                    width: `${videoStageRect.width}px`,
+                    height: `${videoStageRect.height}px`,
+                    zIndex: 75,
+                    opacity: 1,
+                    pointerEvents: 'auto',
+                  }
+                : {
+                    position: 'fixed',
+                    top: '-9999px',
+                    left: '-9999px',
+                    width: '240px',
+                    height: '180px',
+                    zIndex: -100,
+                    opacity: 0,
+                    pointerEvents: 'none',
+                    boxShadow: 'none',
+                    border: 'none',
+                  }
+            }
+            className={
+              isVideoStageActive
+                ? "transition-all duration-300 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+                : "pointer-events-none opacity-0 border-0 shadow-none"
+            }
+          >
           <YouTubeMusicPlayer
             videoId={currentYtVideoId}
             candidateIds={currentYtCandidates}
@@ -1638,9 +1659,9 @@ export function App() {
                 setIsPlaying(true);
               }
             }}
-          />
-        </div>
-      )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
