@@ -53,6 +53,7 @@ import { SettingsModal } from './components/SettingsModal';
 import { OfflineIndicator } from './components/AppDownloadHub';
 import { PlaylistImportModal } from './components/PlaylistImportModal';
 import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
+import { DJ_INDO_TRACKS } from './data/djIndoTracks';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -521,6 +522,7 @@ export function App() {
       ...catalogTracks,
       ...recentlyPlayed,
       ...Object.values(resolvedSavedTracks),
+      ...DJ_INDO_TRACKS,
       ...BUILT_IN_TRACKS,
     ].forEach((t) => {
       if (!map.has(t.id)) {

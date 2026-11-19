@@ -456,6 +456,28 @@ export const POPULAR_YT_MAP: Record<string, string> = {
   'separuh nafas': '6M2P2mJ8vL0',
   'cemburu': 'L9v2X3n7m1A',
   'kamulah satu-satunya': 'K3b9P7q2v1M',
+  // DJ Indo Jedag Jedug & Breakbeat
+  'dj ublag': 'aUJeFdg_hRw',
+  'ublag': 'aUJeFdg_hRw',
+  'dj sia sia': '4THHQefmCa4',
+  'sia sia mengharap cintamu': '4THHQefmCa4',
+  'dj karna su sayang': 'Wyqlqo6xXXQ',
+  'dj malam pagi': 'Wola2tvRHIE',
+  'malam pagi': 'Wola2tvRHIE',
+  'dj tabrak': 'LXpV6FLi4VI',
+  'tabrak tabrak masuk': 'LXpV6FLi4VI',
+  'dj komang': 'yPn2YsBQKzM',
+  'dj sial': 'M0-rGVu200w',
+  'dj domba kuring': 'yTKYTZWQvpc',
+  'domba kuring': 'yTKYTZWQvpc',
+  'dj cikini': '0ZawFnlPLVQ',
+  'cikini ke gondangdia': '0ZawFnlPLVQ',
+  'dj alay': 'CTuoxjmdtO4',
+  'alay gaya kaya artis': 'CTuoxjmdtO4',
+  'dj santri pekok': 'z3XgUiL42OY',
+  'santri pekok': 'z3XgUiL42OY',
+  'dj stecu': '9CjG0SHQAfs',
+  'stecu stecu': '9CjG0SHQAfs',
 };
 
 export async function resolveYouTubeVideoId(
