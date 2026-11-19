@@ -26,8 +26,19 @@ import {
 import { RepeatMode, Track } from '../types/music';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 
-export type DiscoLightMode = 'disco' | 'strobe' | 'laser' | 'ambient' | 'off';
+export type DiscoLightMode =
+  | 'disco'
+  | 'laser'
+  | 'strobe'
+  | 'inferno'
+  | 'aurora'
+  | 'matrix'
+  | 'supernova'
+  | 'uv'
+  | 'ambient'
+  | 'off';
 export type DiscoSpeed = 'hyper' | 'turbo' | 'normal';
+export type LightIntensity = 'soft' | 'boost' | 'ultra';
 
 export interface DJPageProps {
   currentTrack: Track;
@@ -101,12 +112,14 @@ const NeonDJCanvasStage: React.FC<{
   playbackRate: number;
   lightMode: DiscoLightMode;
   lightSpeed: DiscoSpeed;
+  lightIntensity?: LightIntensity;
   isHoregBass: boolean;
 }> = ({
   isPlaying,
   playbackRate,
   lightMode,
   lightSpeed,
+  lightIntensity = 'boost',
   isHoregBass,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -118,6 +131,7 @@ const NeonDJCanvasStage: React.FC<{
   const playbackRateRef = useRef(playbackRate);
   const lightModeRef = useRef(lightMode);
   const lightSpeedRef = useRef(lightSpeed);
+  const lightIntensityRef = useRef(lightIntensity);
   const isHoregBassRef = useRef(isHoregBass);
 
   useEffect(() => {
@@ -125,8 +139,9 @@ const NeonDJCanvasStage: React.FC<{
     playbackRateRef.current = playbackRate;
     lightModeRef.current = lightMode;
     lightSpeedRef.current = lightSpeed;
+    lightIntensityRef.current = lightIntensity;
     isHoregBassRef.current = isHoregBass;
-  }, [isPlaying, playbackRate, lightMode, lightSpeed, isHoregBass]);
+  }, [isPlaying, playbackRate, lightMode, lightSpeed, lightIntensity, isHoregBass]);
 
   // Canvas render engine
   useEffect(() => {
@@ -193,6 +208,8 @@ const NeonDJCanvasStage: React.FC<{
       ctx.globalCompositeOperation = 'screen';
 
       const pulse = 0.7 + 0.3 * Math.sin(beatPhase * Math.PI);
+      const intensityMult =
+        lightIntensityRef.current === 'ultra' ? 1.45 : lightIntensityRef.current === 'soft' ? 0.65 : 1.0;
       const beamLength = Math.hypot(width, height) * 1.15;
 
       if (mode === 'laser') {
@@ -215,7 +232,7 @@ const NeonDJCanvasStage: React.FC<{
           fanGrad.addColorStop(0, b.color);
           fanGrad.addColorStop(0.7, 'rgba(0,0,0,0)');
           ctx.strokeStyle = fanGrad;
-          ctx.lineWidth = 4 + pulse * 2;
+          ctx.lineWidth = (4 + pulse * 2) * intensityMult;
           ctx.beginPath();
           ctx.moveTo(b.originX, b.originY);
           ctx.lineTo(endX, endY);
@@ -223,7 +240,7 @@ const NeonDJCanvasStage: React.FC<{
 
           // Intense razor core
           ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 1.8;
+          ctx.lineWidth = 1.8 * intensityMult;
           ctx.beginPath();
           ctx.moveTo(b.originX, b.originY);
           ctx.lineTo(endX, endY);
@@ -232,22 +249,23 @@ const NeonDJCanvasStage: React.FC<{
       } else if (mode === 'strobe') {
         // High-energy strobe flashes synced to beat kick
         const strobeKick = Math.pow(Math.sin(beatPhase * Math.PI), 4);
-        if (strobeKick > 0.4) {
+        if (strobeKick > 0.35) {
           const strobeConfigs = [
-            { originX: width * 0.2, angle: 0.35, color: '#ffffff' },
-            { originX: width * 0.5, angle: (Math.sin(timeSec * 8) * 0.25), color: '#67e8f9' },
-            { originX: width * 0.8, angle: -0.35, color: '#ffffff' },
+            { originX: width * 0.15, angle: 0.4, color: '#ffffff' },
+            { originX: width * 0.5, angle: Math.sin(timeSec * 8) * 0.3, color: '#67e8f9' },
+            { originX: width * 0.85, angle: -0.4, color: '#ffffff' },
           ];
           strobeConfigs.forEach((s) => {
             const grad = ctx.createLinearGradient(
-              s.originX, -10,
+              s.originX,
+              -10,
               s.originX + Math.sin(s.angle) * beamLength,
               Math.cos(s.angle) * beamLength
             );
             grad.addColorStop(0, s.color);
             grad.addColorStop(0.8, 'rgba(255,255,255,0)');
             ctx.fillStyle = grad;
-            const w = 0.24 * strobeKick;
+            const w = 0.25 * strobeKick * intensityMult;
             ctx.beginPath();
             ctx.moveTo(s.originX, -10);
             ctx.lineTo(s.originX + Math.sin(s.angle - w) * beamLength, Math.cos(s.angle - w) * beamLength);
@@ -267,7 +285,8 @@ const NeonDJCanvasStage: React.FC<{
           const leftAngle = angle - b.width;
           const rightAngle = angle + b.width;
           const grad = ctx.createLinearGradient(
-            b.originX, -15,
+            b.originX,
+            -15,
             b.originX + Math.sin(angle) * beamLength,
             -15 + Math.cos(angle) * beamLength
           );
@@ -280,6 +299,132 @@ const NeonDJCanvasStage: React.FC<{
           ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, -15 + Math.cos(rightAngle) * beamLength);
           ctx.closePath();
           ctx.fill();
+        });
+      } else if (mode === 'inferno') {
+        // 🔥 INFERNO FLAME: Fiery magma pillars radiating with turbulent heat flare
+        const flameBeams = [
+          { originX: width * 0.12, originY: height + 10, baseAngle: 3.35, swing: 0.35, speed: 2.2, color: 'rgba(239, 68, 68, 0.85)', width: 0.22 },
+          { originX: width * 0.88, originY: height + 10, baseAngle: 2.85, swing: 0.35, speed: 2.2, color: 'rgba(239, 68, 68, 0.85)', width: 0.22 },
+          { originX: width * 0.3, originY: -10, baseAngle: 0.3, swing: 0.45, speed: 2.8, color: 'rgba(249, 115, 22, 0.8)', width: 0.2 },
+          { originX: width * 0.7, originY: -10, baseAngle: -0.3, swing: 0.45, speed: 2.8, color: 'rgba(249, 115, 22, 0.8)', width: 0.2 },
+          { originX: width * 0.5, originY: -10, baseAngle: 0.0, swing: 0.55, speed: 3.4, color: 'rgba(234, 179, 8, 0.85)', width: 0.24 },
+        ];
+        flameBeams.forEach((b, idx) => {
+          const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
+          const leftAngle = angle - b.width;
+          const rightAngle = angle + b.width;
+          const grad = ctx.createLinearGradient(
+            b.originX,
+            b.originY,
+            b.originX + Math.sin(angle) * beamLength,
+            b.originY + Math.cos(angle) * beamLength
+          );
+          grad.addColorStop(0, b.color);
+          grad.addColorStop(0.6, 'rgba(239, 68, 68, 0.18)');
+          grad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, b.originY);
+          ctx.lineTo(b.originX + Math.sin(leftAngle) * beamLength, b.originY + Math.cos(leftAngle) * beamLength);
+          ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, b.originY + Math.cos(rightAngle) * beamLength);
+          ctx.closePath();
+          ctx.fill();
+        });
+      } else if (mode === 'aurora') {
+        // ✨ AURORA BOREALIS: Smooth undulating arctic light curtains
+        const layers = [
+          { color: 'rgba(52, 211, 153, 0.45)', speed: 1.1, offset: 0, amp: 35 },
+          { color: 'rgba(6, 182, 212, 0.5)', speed: 1.4, offset: 1.5, amp: 45 },
+          { color: 'rgba(168, 85, 247, 0.45)', speed: 0.9, offset: 3, amp: 55 },
+        ];
+        layers.forEach((layer) => {
+          ctx.beginPath();
+          ctx.moveTo(0, height * 0.15);
+          for (let x = 0; x <= width; x += 16) {
+            const wave = Math.sin((x / width) * 4 + timeSec * layer.speed + layer.offset) * layer.amp;
+            ctx.lineTo(x, height * 0.32 + wave + pulse * 18);
+          }
+          ctx.lineTo(width, 0);
+          ctx.lineTo(0, 0);
+          ctx.closePath();
+          ctx.fillStyle = layer.color;
+          ctx.fill();
+        });
+      } else if (mode === 'matrix') {
+        // 🪐 CYBER MATRIX: Scanning vertical laser lines sweeping across the stage
+        const barCount = 7;
+        for (let i = 0; i < barCount; i++) {
+          const sweep = Math.sin(timeSec * 2.2 + i * 0.8) * 0.5 + 0.5;
+          const x = width * sweep;
+          const laserGrad = ctx.createLinearGradient(x, 0, x, height);
+          laserGrad.addColorStop(0, 'rgba(57, 255, 20, 0.85)');
+          laserGrad.addColorStop(0.5, 'rgba(0, 240, 255, 0.7)');
+          laserGrad.addColorStop(1, 'rgba(57, 255, 20, 0)');
+          ctx.strokeStyle = laserGrad;
+          ctx.lineWidth = (2.5 + pulse * 2.5) * intensityMult;
+          ctx.beginPath();
+          ctx.moveTo(x, 0);
+          ctx.lineTo(x, height);
+          ctx.stroke();
+        }
+      } else if (mode === 'supernova') {
+        // 💥 SUPERNOVA PULSE: 360-degree radial blast rays from center console
+        const centerX = width * 0.5;
+        const centerY = height * 0.45;
+        const rayCount = 12;
+        const kickPower = Math.pow(Math.sin(beatPhase * Math.PI), 3);
+        const rayLength = Math.min(width, height) * (0.65 + kickPower * 0.55);
+
+        for (let r = 0; r < rayCount; r++) {
+          const rayAngle = (r / rayCount) * Math.PI * 2 + timeSec * 0.8;
+          const endX = centerX + Math.cos(rayAngle) * rayLength;
+          const endY = centerY + Math.sin(rayAngle) * rayLength;
+
+          const rayGrad = ctx.createLinearGradient(centerX, centerY, endX, endY);
+          rayGrad.addColorStop(0, '#ffffff');
+          rayGrad.addColorStop(0.3, r % 2 === 0 ? '#ff007f' : '#00f0ff');
+          rayGrad.addColorStop(1, 'rgba(0,0,0,0)');
+
+          ctx.strokeStyle = rayGrad;
+          ctx.lineWidth = (3 + kickPower * 4) * intensityMult;
+          ctx.beginPath();
+          ctx.moveTo(centerX, centerY);
+          ctx.lineTo(endX, endY);
+          ctx.stroke();
+        }
+      } else if (mode === 'uv') {
+        // 💜 UV BLACKLIGHT: Deep ultraviolet beams with magenta lasers
+        const uvBeams = [
+          { originX: width * 0.2, baseAngle: 0.35, swing: 0.4, speed: 1.5, color: 'rgba(168, 85, 247, 0.8)' },
+          { originX: width * 0.5, baseAngle: 0.0, swing: 0.5, speed: 2.0, color: 'rgba(217, 70, 239, 0.8)' },
+          { originX: width * 0.8, baseAngle: -0.35, swing: 0.4, speed: 1.5, color: 'rgba(147, 51, 234, 0.8)' },
+        ];
+        uvBeams.forEach((b, idx) => {
+          const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
+          const leftAngle = angle - 0.22;
+          const rightAngle = angle + 0.22;
+          const grad = ctx.createLinearGradient(
+            b.originX,
+            -10,
+            b.originX + Math.sin(angle) * beamLength,
+            Math.cos(angle) * beamLength
+          );
+          grad.addColorStop(0, b.color);
+          grad.addColorStop(0.7, 'rgba(0,0,0,0)');
+          ctx.fillStyle = grad;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, -10);
+          ctx.lineTo(b.originX + Math.sin(leftAngle) * beamLength, Math.cos(leftAngle) * beamLength);
+          ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, Math.cos(rightAngle) * beamLength);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.strokeStyle = '#f0abfc';
+          ctx.lineWidth = 2 * intensityMult;
+          ctx.beginPath();
+          ctx.moveTo(b.originX, -10);
+          ctx.lineTo(b.originX + Math.sin(angle) * beamLength, Math.cos(angle) * beamLength);
+          ctx.stroke();
         });
       } else {
         // Default 'disco' RGB: 6 sweeping moving-head concert beams with rich neon punch
@@ -836,6 +981,19 @@ export const DJPage: React.FC<DJPageProps> = ({
     return 'hyper';
   });
 
+  const [lightIntensity, setLightIntensity] = useState<LightIntensity>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_dj_console_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.lightIntensity) return parsed.lightIntensity;
+      }
+    } catch {
+      // ignore
+    }
+    return 'boost';
+  });
+
   const [activeListTab, setActiveListTab] = useState<'dj-indo' | 'queue'>(() => {
     try {
       const saved = localStorage.getItem('mallsound_dj_console_settings');
@@ -858,6 +1016,7 @@ export const DJPage: React.FC<DJPageProps> = ({
       const payload = {
         lightMode,
         lightSpeed,
+        lightIntensity,
         activeListTab,
         eqGains,
         playbackRate,
@@ -871,7 +1030,7 @@ export const DJPage: React.FC<DJPageProps> = ({
     } catch {
       // ignore
     }
-  }, [lightMode, lightSpeed, activeListTab, eqGains, playbackRate]);
+  }, [lightMode, lightSpeed, lightIntensity, activeListTab, eqGains, playbackRate]);
 
   const isShuffle = propIsShuffle !== undefined ? propIsShuffle : localShuffle;
   const isRepeat = propIsRepeat !== undefined ? propIsRepeat : localRepeat;
@@ -1056,6 +1215,7 @@ export const DJPage: React.FC<DJPageProps> = ({
             playbackRate={playbackRate}
             lightMode={lightMode}
             lightSpeed={lightSpeed}
+            lightIntensity={lightIntensity}
             isHoregBass={isHoregBass}
           />
 
@@ -1196,48 +1356,81 @@ export const DJPage: React.FC<DJPageProps> = ({
         </section>
 
         {/* =================================================================
-            3. CLUB LIGHTING FX CONTROLLER (Clean & Minimalist)
+            3. CLUB LIGHTING FX CONTROLLER (Full Stage Lighting Studio)
         ================================================================= */}
-        <section className="bg-white/[0.04] border border-white/10 rounded-3xl p-5 space-y-3.5">
-          <div className="flex items-center justify-between gap-3">
+        <section className="bg-white/[0.04] border border-white/10 rounded-3xl p-5 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <Sun className="w-4 h-4 text-amber-400" />
-              <h2 className="text-base sm:text-lg font-bold font-display text-white">
-                Pencahayaan
-              </h2>
+              <div>
+                <h2 className="text-base sm:text-lg font-bold font-display text-white">
+                  Pencahayaan Studio & Konser
+                </h2>
+                <p className="text-[11px] text-white/50">10 Efek Visual Cahaya Panggung Interaktif</p>
+              </div>
             </div>
 
-            {/* Clean Speed Selector */}
-            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-xl border border-white/10">
-              {[
-                { id: 'hyper', label: '🚀 HYPER' },
-                { id: 'turbo', label: '⚡ FAST' },
-                { id: 'normal', label: '🌌 NORMAL' },
-              ].map((sp) => (
-                <button
-                  key={sp.id}
-                  type="button"
-                  onClick={() => setLightSpeed(sp.id as DiscoSpeed)}
-                  className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                    lightSpeed === sp.id
-                      ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-sm'
-                      : 'text-white/60 hover:text-white'
-                  }`}
-                >
-                  {sp.label}
-                </button>
-              ))}
+            {/* Speed & Intensity Dual Selector */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Speed Selector */}
+              <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
+                {[
+                  { id: 'hyper', label: '🚀 HYPER' },
+                  { id: 'turbo', label: '⚡ FAST' },
+                  { id: 'normal', label: '🌌 NORMAL' },
+                ].map((sp) => (
+                  <button
+                    key={sp.id}
+                    type="button"
+                    onClick={() => setLightSpeed(sp.id as DiscoSpeed)}
+                    className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      lightSpeed === sp.id
+                        ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-sm'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    {sp.label}
+                  </button>
+                ))}
+              </div>
+
+              {/* Intensity Selector */}
+              <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
+                {[
+                  { id: 'soft', label: '🔅 SOFT' },
+                  { id: 'boost', label: '🔆 BOOST' },
+                  { id: 'ultra', label: '💥 ULTRA' },
+                ].map((int) => (
+                  <button
+                    key={int.id}
+                    type="button"
+                    onClick={() => setLightIntensity(int.id as LightIntensity)}
+                    className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                      lightIntensity === int.id
+                        ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-neutral-950 shadow-sm'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    {int.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          {/* Clean Mode Chips */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+          {/* 10 Clean Mode Chips in Responsive Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2.5">
             {[
-              { id: 'disco', label: '🌈 Disco RGB' },
-              { id: 'laser', label: '🚨 Cyber Laser' },
-              { id: 'strobe', label: '⚡ Strobe Club' },
-              { id: 'ambient', label: '🌌 Club Ambient' },
-              { id: 'off', label: '🌑 Off' },
+              { id: 'disco', label: '🌈 Disco RGB', sub: 'Konser 6 Sinar' },
+              { id: 'laser', label: '🚨 Cyber Laser', sub: 'Laser Tajam Razor' },
+              { id: 'strobe', label: '⚡ Strobe Club', sub: 'Kilat Beat Kick' },
+              { id: 'inferno', label: '🔥 Inferno Flame', sub: 'Pilar Api & Magma' },
+              { id: 'aurora', label: '✨ Aurora Borealis', sub: 'Gelombang Kutub' },
+              { id: 'matrix', label: '🪐 Cyber Matrix', sub: 'Grid Pemindai' },
+              { id: 'supernova', label: '💥 Supernova Pulse', sub: 'Ledakan Radial 360°' },
+              { id: 'uv', label: '💜 UV Blacklight', sub: 'Ultraviolet Gelap' },
+              { id: 'ambient', label: '🌌 Club Ambient', sub: 'Sorot Lampu Santai' },
+              { id: 'off', label: '🌑 Off', sub: 'Matikan Lampu' },
             ].map((mode) => {
               const isActive = lightMode === mode.id;
               return (
@@ -1245,13 +1438,16 @@ export const DJPage: React.FC<DJPageProps> = ({
                   key={mode.id}
                   type="button"
                   onClick={() => setLightMode(mode.id as DiscoLightMode)}
-                  className={`py-2.5 px-3 rounded-xl border text-center font-bold text-xs transition-all cursor-pointer ${
+                  className={`py-2.5 px-3 rounded-2xl border text-center transition-all cursor-pointer flex flex-col items-center justify-center gap-0.5 ${
                     isActive
-                      ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 border-violet-400 text-white shadow-sm'
-                      : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/70 hover:text-white'
+                      ? 'bg-gradient-to-br from-violet-600 via-fuchsia-600 to-pink-600 border-violet-400 text-white shadow-lg shadow-fuchsia-500/25 scale-[1.02]'
+                      : 'bg-white/5 hover:bg-white/10 border-white/10 text-white/80 hover:text-white'
                   }`}
                 >
-                  {mode.label}
+                  <span className="font-bold text-xs truncate w-full">{mode.label}</span>
+                  <span className={`text-[10px] truncate w-full ${isActive ? 'text-white/80 font-medium' : 'text-white/40'}`}>
+                    {mode.sub}
+                  </span>
                 </button>
               );
             })}
