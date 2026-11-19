@@ -36,6 +36,7 @@ import {
   Track,
 } from './types/music';
 import { studioAudioEngine } from './services/audioEngine';
+import { backgroundAudioService } from './services/backgroundAudio';
 import {
   searchCatalogWithMeta,
   lookupCatalogTracksByIds,
@@ -137,8 +138,8 @@ export function App() {
   const [playbackRate, setPlaybackRate] = useState(1.0);
   const [sleepTimerMinutes, setSleepTimerMinutes] = useState<number | null>(null);
 
-  // Dual Playback Engine & YouTube
-  const [engineMode, setEngineMode] = useState<PlaybackEngineMode>('yt-music');
+  // Dual Playback Engine & YouTube (Default to 'hifi-eq' for native background and lockscreen playback)
+  const [engineMode, setEngineMode] = useState<PlaybackEngineMode>('hifi-eq');
   const [currentYtVideoId, setCurrentYtVideoId] = useState<string | null>(null);
   const [currentYtCandidates, setCurrentYtCandidates] = useState<string[]>([]);
   const [ytSeekRequest, setYtSeekRequest] = useState<{ sec: number; nonce: number } | null>(null);
@@ -174,6 +175,49 @@ export function App() {
       // ignore
     }
   }, [crossfadeSec]);
+
+  // ── Background Audio Service Init ──
+  // Runs once on mount to register Media Session handlers and enable
+  // lock-screen controls / notification media controls on Android & iOS.
+  useEffect(() => {
+    backgroundAudioService.init({
+      onPlay: handleTogglePlay,
+      onPause: handleTogglePlay,
+      onNextTrack: () => handleNextTrack(),
+      onPrevTrack: handlePrevTrack,
+      onSeekTo: (sec) => {
+        setCurrentTimeSec(sec);
+        if (engineMode === 'hifi-eq') {
+          studioAudioEngine.seek(sec);
+        } else {
+          setYtSeekRequest({ sec, nonce: Date.now() });
+        }
+      },
+    });
+    return () => backgroundAudioService.destroy();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Media Session: Update now playing metadata on track change ──
+  useEffect(() => {
+    backgroundAudioService.updateNowPlaying(currentTrack);
+  }, [currentTrack]);
+
+  // ── Media Session: Update playback state + Wake Lock on play/pause ──
+  useEffect(() => {
+    backgroundAudioService.updatePlaybackState(isPlaying);
+    if (isPlaying) {
+      backgroundAudioService.acquireWakeLock();
+    } else {
+      backgroundAudioService.releaseWakeLock();
+    }
+  }, [isPlaying]);
+
+  // ── Media Session: Update position state for lock screen progress bar ──
+  useEffect(() => {
+    backgroundAudioService.updatePositionState(currentTimeSec, durationSec, playbackRate);
+    // Throttled — runs every time currentTimeSec changes (driven by audio engine)
+  }, [currentTimeSec, durationSec, playbackRate]);
 
   // Initial catalog load
   useEffect(() => {
@@ -443,11 +487,9 @@ export function App() {
       return updated;
     });
 
-    const isLocalOrSynth =
-      track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:');
-    const targetMode: PlaybackEngineMode = isLocalOrSynth
-      ? 'hifi-eq'
-      : forceMode || 'yt-music';
+    const hasAudioUrl = Boolean(track.audioUrl && track.audioUrl.trim().length > 0);
+    const targetMode: PlaybackEngineMode =
+      forceMode || (hasAudioUrl ? 'hifi-eq' : 'yt-music');
 
     if (targetMode !== engineMode) {
       setEngineMode(targetMode);

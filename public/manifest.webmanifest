@@ -2,14 +2,19 @@
   "id": "/",
   "name": "MallSound — Streaming Musik & Audio Studio",
   "short_name": "MallSound",
-  "description": "Aplikasi streaming musik penuh (Spotify & YouTube Music style) dengan Equalizer 5-Band, Lirik Tersinkronisasi, dan Koleksi Awan.",
+  "description": "Aplikasi streaming musik penuh (Spotify & YouTube Music style) dengan Equalizer 5-Band, Lirik Tersinkronisasi, DJ Mode, dan Koleksi Awan.",
   "theme_color": "#09090b",
   "background_color": "#09090b",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "start_url": "/",
   "scope": "/",
   "categories": ["music", "entertainment", "multimedia"],
+  "handle_links": "preferred",
+  "launch_handler": {
+    "client_mode": "navigate-new"
+  },
   "icons": [
     {
       "src": "/pwa-192x192.png",
@@ -29,5 +34,28 @@
       "type": "image/png",
       "purpose": "maskable"
     }
-  ]
+  ],
+  "shortcuts": [
+    {
+      "name": "Putar Musik",
+      "short_name": "Putar",
+      "description": "Langsung putar musik",
+      "url": "/?autoplay=1",
+      "icons": [
+        { "src": "/pwa-192x192.png", "sizes": "192x192" }
+      ]
+    },
+    {
+      "name": "DJ Mode",
+      "short_name": "DJ",
+      "description": "Buka DJ Studio",
+      "url": "/?tab=dj",
+      "icons": [
+        { "src": "/pwa-192x192.png", "sizes": "192x192" }
+      ]
+    }
+  ],
+  "screenshots": [],
+  "related_applications": [],
+  "prefer_related_applications": false
 }

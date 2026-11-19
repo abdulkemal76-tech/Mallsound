@@ -134,15 +134,7 @@ export class StudioAudioEngine {
 
       this.htmlAudio.src = track.audioUrl;
       this.htmlAudio.playbackRate = this.playbackRate;
-
-      if (!this.mediaElementSource && this.ctx) {
-        try {
-          this.mediaElementSource = this.ctx.createMediaElementSource(this.htmlAudio);
-          this.mediaElementSource.connect(this.getInputNode());
-        } catch {
-          // Already connected
-        }
-      }
+      this.htmlAudio.volume = this.isMuted ? 0 : this.volume;
     }
 
     this.onTimeUpdateCallback?.(0, track.durationSec);
@@ -189,6 +181,9 @@ export class StudioAudioEngine {
 
   public setVolume(val: number) {
     this.volume = Math.max(0, Math.min(1, val));
+    if (this.htmlAudio) {
+      this.htmlAudio.volume = this.isMuted ? 0 : this.volume;
+    }
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setTargetAtTime(
         this.isMuted ? 0 : this.volume,
@@ -200,6 +195,9 @@ export class StudioAudioEngine {
 
   public setMuted(muted: boolean) {
     this.isMuted = muted;
+    if (this.htmlAudio) {
+      this.htmlAudio.volume = this.isMuted ? 0 : this.volume;
+    }
     if (this.masterGain && this.ctx) {
       this.masterGain.gain.setTargetAtTime(
         this.isMuted ? 0 : this.volume,
