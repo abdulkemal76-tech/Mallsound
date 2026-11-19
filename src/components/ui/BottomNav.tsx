@@ -7,6 +7,7 @@ export interface BottomNavProps {
   activeTab: BottomNavTab;
   onTabChange: (tab: BottomNavTab) => void;
   hidden?: boolean;
+  accentColor?: string;
 }
 
 interface NavItem {
@@ -27,6 +28,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   activeTab,
   onTabChange,
   hidden = false,
+  accentColor,
 }) => {
   if (hidden) {
     return null;
@@ -55,9 +57,14 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               <div
                 className={`relative flex items-center justify-center transition-all duration-300 ease-out ${
                   isActive
-                    ? 'scale-110 text-violet-400 -translate-y-0.5'
+                    ? 'scale-110 -translate-y-0.5'
                     : 'text-white/40 group-hover:text-white/70 group-active:scale-95'
                 }`}
+                style={
+                  isActive
+                    ? { color: accentColor || 'var(--accent-color, #a78bfa)' }
+                    : undefined
+                }
               >
                 <Icon className="w-5 h-5 transition-transform duration-200" />
 
@@ -65,7 +72,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 {isActive && (
                   <span
                     aria-hidden="true"
-                    className="absolute inset-0 -m-1 rounded-full bg-violet-500/20 blur-sm pointer-events-none"
+                    className="absolute inset-0 -m-1 rounded-full blur-sm pointer-events-none"
+                    style={{
+                      backgroundColor: accentColor
+                        ? `${accentColor}33`
+                        : 'rgba(139, 92, 246, 0.2)',
+                    }}
                   />
                 )}
               </div>
@@ -73,8 +85,13 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               {/* Tab Label */}
               <span
                 className={`text-[11px] font-medium tracking-tight mt-1 transition-colors duration-200 ${
-                  isActive ? 'text-violet-400 font-semibold' : 'text-white/40 group-hover:text-white/70'
+                  isActive ? 'font-semibold' : 'text-white/40 group-hover:text-white/70'
                 }`}
+                style={
+                  isActive
+                    ? { color: accentColor || 'var(--accent-color, #a78bfa)' }
+                    : undefined
+                }
               >
                 {item.label}
               </span>
@@ -84,7 +101,11 @@ export const BottomNav: React.FC<BottomNavProps> = ({
                 {isActive ? (
                   <span
                     aria-hidden="true"
-                    className="w-1.5 h-1.5 rounded-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 shadow-[0_0_8px_rgba(168,85,247,0.7)]"
+                    className="w-1.5 h-1.5 rounded-full shadow-sm"
+                    style={{
+                      backgroundColor: accentColor || 'var(--accent-color, #8b5cf6)',
+                      boxShadow: `0 0 8px ${accentColor || 'rgba(139, 92, 246, 0.8)'}`,
+                    }}
                   />
                 ) : (
                   <span aria-hidden="true" className="w-1.5 h-1.5 opacity-0" />

@@ -6,6 +6,10 @@
     --font-display: 'Bricolage Grotesque', 'Plus Jakarta Sans', sans-serif;
     --font-sans: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
     --font-mono: 'JetBrains Mono', monospace;
+    --accent-color: #8b5cf6;
+    --accent-glow: rgba(139, 92, 246, 0.45);
+    --accent-subtle: rgba(139, 92, 246, 0.15);
+    --accent-border: rgba(139, 92, 246, 0.35);
   }
 
   body {

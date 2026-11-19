@@ -94,10 +94,62 @@ async function fetchItunesSearch(queryTerm: string, limit: number) {
     .map(mapItunesItemToTrack);
 }
 
+const MODERN_HITS_INDO_ARTISTS = [
+  'Bernadya',
+  'Sal Priadi',
+  'Juicy Luicy',
+  'Mahalini',
+  'Nadin Amizah',
+  'Hindia',
+  'Sheila On 7',
+  'Tulus',
+];
+
+async function fetchCuratedIndoHits(limit: number) {
+  const perArtistLimit = 5;
+  const artistResults = await Promise.all(
+    MODERN_HITS_INDO_ARTISTS.map((artist) => fetchItunesSearch(artist, perArtistLimit))
+  );
+
+  const merged: Array<ReturnType<typeof mapItunesItemToTrack>> = [];
+  const seenIds = new Set<string>();
+
+  for (let round = 0; round < perArtistLimit; round++) {
+    for (const tracks of artistResults) {
+      if (tracks[round]) {
+        const t = tracks[round];
+        if (
+          !seenIds.has(t.id) &&
+          !t.artist.toLowerCase().includes('sandhy') &&
+          !t.artist.toLowerCase().includes('sondoro')
+        ) {
+          seenIds.add(t.id);
+          merged.push(t);
+        }
+      }
+    }
+  }
+  return merged.slice(0, limit);
+}
+
 app.get('/api/music/search', async (req, res) => {
   try {
     const rawQuery = String(req.query.q || 'Sheila On 7').trim();
     const limit = Math.min(40, Math.max(5, Number(req.query.limit) || 28));
+
+    const isTopHitsIndo = /^(top\s*hits\s*indonesia|hits\s*indonesia|lagu\s*hits\s*indonesia|trending\s*indonesia|viral\s*indonesia)$/i.test(
+      rawQuery
+    );
+
+    if (isTopHitsIndo) {
+      const curated = await fetchCuratedIndoHits(limit);
+      res.json({
+        tracks: curated,
+        correctedQuery: null,
+      });
+      return;
+    }
+
     const correctedQuery = smartCorrectQuery(rawQuery);
 
     const [primaryTracks, rawTracks] = await Promise.all([

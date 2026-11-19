@@ -60,6 +60,9 @@ import { DJPage } from './pages/DJPage';
 import { LibraryPage } from './pages/LibraryPage';
 import { ProfilePage } from './pages/ProfilePage';
 
+// Theme Configuration
+import { getSavedThemeAccent, applyThemeAccent } from './theme/themeConfig';
+
 type PlaybackEngineMode = 'hifi-eq' | 'yt-music';
 
 function parseLyricsLines(rawText: string, durationSec: number): LyricLine[] {
@@ -186,6 +189,12 @@ export function App() {
 
   // Theme & Modals
   const [isDark, setIsDark] = useState(true);
+  const [accentColor, setAccentColor] = useState<string>(() => getSavedThemeAccent());
+
+  useEffect(() => {
+    applyThemeAccent(accentColor);
+  }, [accentColor]);
+
   const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   const [isPlaylistModalOpen, setIsPlaylistModalOpen] = useState(false);
@@ -1013,6 +1022,8 @@ export function App() {
             onSignOut={() => signOutUser()}
             isDark={isDark}
             onToggleTheme={() => setIsDark(!isDark)}
+            accentColor={accentColor}
+            onAccentColorChange={(hex) => setAccentColor(hex)}
             eqGains={eqGains}
             activeEqPreset={activeEqPreset}
             onEqBandChange={handleEqBandChange}
@@ -1039,8 +1050,12 @@ export function App() {
           {/* Top border progress bar */}
           <div className="w-full h-1 bg-white/10">
             <div
-              className="h-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 transition-all duration-300"
-              style={{ width: `${progressPercent}%` }}
+              className="h-full transition-all duration-300"
+              style={{
+                width: `${progressPercent}%`,
+                backgroundColor: accentColor || '#8b5cf6',
+                boxShadow: `0 0 8px ${accentColor || '#8b5cf6'}`,
+              }}
             />
           </div>
 
@@ -1056,13 +1071,19 @@ export function App() {
                     loading="lazy"
                   />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-violet-400">
+                  <div
+                    className="w-full h-full flex items-center justify-center"
+                    style={{ color: accentColor || '#8b5cf6' }}
+                  >
                     <Disc className="w-5 h-5 animate-spin" />
                   </div>
                 )}
                 {isPlaying && (
                   <div className="absolute inset-0 bg-black/30 flex items-center justify-center">
-                    <div className="w-2 h-2 rounded-full bg-violet-400 animate-ping" />
+                    <div
+                      className="w-2 h-2 rounded-full animate-ping"
+                      style={{ backgroundColor: accentColor || '#8b5cf6' }}
+                    />
                   </div>
                 )}
               </div>
@@ -1101,7 +1122,11 @@ export function App() {
               <button
                 type="button"
                 onClick={handleTogglePlay}
-                className="w-10 h-10 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white flex items-center justify-center shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                className="w-10 h-10 rounded-full text-white flex items-center justify-center shadow-lg hover:brightness-110 active:scale-95 transition-all"
+                style={{
+                  backgroundColor: accentColor || '#8b5cf6',
+                  boxShadow: `0 0 16px ${accentColor ? `${accentColor}66` : 'rgba(139, 92, 246, 0.4)'}`,
+                }}
                 title={isPlaying ? 'Jeda' : 'Putar'}
               >
                 {isPlaying ? (
@@ -1129,6 +1154,7 @@ export function App() {
       ===================================================================== */}
       <BottomNav
         activeTab={activeTab}
+        accentColor={accentColor}
         onTabChange={(tab) => {
           setActiveTab(tab);
           window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1213,6 +1239,8 @@ export function App() {
         onClose={() => setIsSettingsModalOpen(false)}
         isDark={isDark}
         onToggleDark={() => setIsDark(!isDark)}
+        accentColor={accentColor}
+        onAccentColorChange={(hex) => setAccentColor(hex)}
         engineMode={engineMode}
         onSwitchEngineMode={handleSwitchEngineMode}
         eqGains={eqGains}

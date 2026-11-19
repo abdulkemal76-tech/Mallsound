@@ -279,14 +279,23 @@ export async function searchCatalogWithMeta(
   }
 
   try {
+    const isTopHits = /^(top\s*hits\s*indonesia|hits\s*indonesia|lagu\s*hits\s*indonesia)$/i.test(
+      normalized
+    );
+    const searchTarget = isTopHits ? 'Bernadya Sal Priadi' : normalized;
     const directRes = await fetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(
-        normalized
+        searchTarget
       )}&country=ID&media=music&entity=song&limit=${limit}`
     );
     const data = await directRes.json();
     const tracks = (data.results || [])
-      .filter((item: Record<string, unknown>) => Boolean(item.trackId && item.previewUrl))
+      .filter(
+        (item: Record<string, unknown>) =>
+          Boolean(item.trackId && item.previewUrl) &&
+          !String(item.artistName || '').toLowerCase().includes('sandhy') &&
+          !String(item.artistName || '').toLowerCase().includes('sondoro')
+      )
       .map((item: Record<string, unknown>) => ({
         id: `itunes_${item.trackId}`,
         title: String(item.trackName || 'Tanpa Judul'),

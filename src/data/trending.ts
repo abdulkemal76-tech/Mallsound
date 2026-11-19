@@ -13,7 +13,7 @@ export const TRENDING_SECTIONS: TrendingSection[] = [
     title: 'Top Hits Indonesia',
     subtitle: 'Lagu terpopuler dan paling viral minggu ini',
     icon: '🔥',
-    query: 'Bernadya',
+    query: 'Top Hits Indonesia',
     gradient: 'from-violet-600 via-purple-600 to-indigo-700',
   },
   {

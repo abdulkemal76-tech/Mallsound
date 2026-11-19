@@ -16,8 +16,8 @@ import {
   Sparkles,
   Smartphone,
   Music4,
-} from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
+import { ThemeColorPicker } from '../components/ThemeColorPicker';
 
 export interface ProfilePageProps {
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -25,6 +25,8 @@ export interface ProfilePageProps {
   onSignOut: () => void;
   isDark: boolean;
   onToggleTheme: () => void;
+  accentColor?: string;
+  onAccentColorChange?: (hex: string) => void;
   // EQ settings
   eqGains: [number, number, number, number, number];
   activeEqPreset: string;
@@ -66,6 +68,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   onSignOut,
   isDark,
   onToggleTheme,
+  accentColor,
+  onAccentColorChange,
   eqGains,
   activeEqPreset,
   onEqBandChange,
@@ -428,6 +432,14 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               )}
             </span>
           </button>
+        </div>
+
+        {/* Dynamic Theme Color Customizer */}
+        <div className="mt-5 pt-4 border-t border-white/10">
+          <ThemeColorPicker
+            currentAccent={accentColor || '#8b5cf6'}
+            onSelectAccent={onAccentColorChange || (() => {})}
+          />
         </div>
       </section>
 

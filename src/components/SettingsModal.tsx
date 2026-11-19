@@ -22,6 +22,8 @@ import { User } from 'firebase/auth';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { usePWAInstall } from '../hooks/usePWAInstall';
 
+import { ThemeColorPicker } from './ThemeColorPicker';
+
 type PlaybackEngineMode = 'hifi-eq' | 'yt-music';
 type SettingsTab = 'audio' | 'general' | 'apk';
 
@@ -39,6 +41,8 @@ interface SettingsModalProps {
   initialTab?: SettingsTab;
   isDark: boolean;
   onToggleDark: () => void;
+  accentColor?: string;
+  onAccentColorChange?: (hex: string) => void;
   engineMode: PlaybackEngineMode;
   onSwitchEngineMode: (mode: PlaybackEngineMode) => void;
   eqGains: [number, number, number, number, number];
@@ -63,6 +67,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   initialTab = 'audio',
   isDark,
   onToggleDark,
+  accentColor,
+  onAccentColorChange,
   engineMode,
   onSwitchEngineMode,
   eqGains,
@@ -409,6 +415,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   )}
                 </button>
               </div>
+
+              {/* Theme Accent Color Customizer (Warna Bebas / Sesuka Hati) */}
+              <ThemeColorPicker
+                currentAccent={accentColor || '#8b5cf6'}
+                onSelectAccent={onAccentColorChange || (() => {})}
+              />
 
               {/* Quick Studio Actions */}
               <div className="grid grid-cols-2 gap-3">
