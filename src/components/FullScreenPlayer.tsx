@@ -217,7 +217,10 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
             2. CENTER VISUAL STAGE: Persistent YT Video + Album Cover + Sheets
         ================================================================= */}
         <div className="my-auto py-3 flex flex-col items-center justify-center w-full">
-          <div className="w-full aspect-square rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl relative">
+          <div
+            id="mallsound-video-stage-target"
+            className="w-full aspect-square rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl relative"
+          >
             {/* Underlying persistent YouTube Full-Track Audio/Video Engine */}
             <div
               className={`absolute inset-0 ${

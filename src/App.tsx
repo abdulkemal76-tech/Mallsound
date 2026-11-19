@@ -42,6 +42,7 @@ import {
   lookupCatalogTracksByIds,
   fetchTrackLyrics,
   resolveYouTubeVideoId,
+  POPULAR_YT_MAP,
 } from './services/musicApi';
 
 // Component imports
@@ -184,10 +185,33 @@ export function App() {
 
   // Dual Playback Engine & YouTube (Default to 'yt-music' for full song playback)
   const [engineMode, setEngineMode] = useState<PlaybackEngineMode>('yt-music');
-  const [currentYtVideoId, setCurrentYtVideoId] = useState<string | null>(null);
-  const [currentYtCandidates, setCurrentYtCandidates] = useState<string[]>([]);
+  const [currentYtVideoId, setCurrentYtVideoId] = useState<string | null>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_saved_track');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.youtubeVideoId) return parsed.youtubeVideoId;
+        const cleanTitle = (parsed.title || '').toLowerCase().trim();
+        for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+          if (cleanTitle.includes(key) || key.includes(cleanTitle)) return id;
+        }
+      }
+    } catch {
+      // ignore
+    }
+    return BUILT_IN_TRACKS[0]?.youtubeVideoId || 'Ch3l_Q9PxpQ';
+  });
+  const [currentYtCandidates, setCurrentYtCandidates] = useState<string[]>(() => {
+    return ['Ch3l_Q9PxpQ', '7Jm2Il2U-c0'];
+  });
   const [ytSeekRequest, setYtSeekRequest] = useState<{ sec: number; nonce: number } | null>(null);
   const [stageMode, setStageMode] = useState<'cover' | 'video'>('cover');
+  const [videoStageRect, setVideoStageRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
 
   // Equalizer
   const [eqGains, setEqGains] = useState<[number, number, number, number, number]>([0, 0, 0, 0, 0]);
@@ -200,6 +224,49 @@ export function App() {
   useEffect(() => {
     applyThemeAccent(accentColor);
   }, [accentColor]);
+
+  // Synchronize exact pixel bounding rect for persistent YouTube video stage
+  useEffect(() => {
+    if (stageMode !== 'video') {
+      setVideoStageRect(null);
+      return;
+    }
+    const updateRect = () => {
+      const targetId = isFullScreenPlayerOpen
+        ? 'mallsound-video-stage-target'
+        : isDesktopNowPlayingExpanded
+        ? 'mallsound-desktop-stage-target'
+        : null;
+      if (!targetId) {
+        setVideoStageRect(null);
+        return;
+      }
+      const el = document.getElementById(targetId);
+      if (el) {
+        const r = el.getBoundingClientRect();
+        if (r.width > 0 && r.height > 0) {
+          setVideoStageRect({
+            top: Math.round(r.top),
+            left: Math.round(r.left),
+            width: Math.round(r.width),
+            height: Math.round(r.height),
+          });
+          return;
+        }
+      }
+      setVideoStageRect(null);
+    };
+
+    updateRect();
+    const interval = window.setInterval(updateRect, 200);
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect);
+    return () => {
+      window.clearInterval(interval);
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect);
+    };
+  }, [stageMode, isFullScreenPlayerOpen, isDesktopNowPlayingExpanded]);
 
   const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false);
   const [isDesktopNowPlayingExpanded, setIsDesktopNowPlayingExpanded] = useState(false);
@@ -396,21 +463,43 @@ export function App() {
 
   // Enrich track with synced lyrics (.lrc) + YouTube Music videoId
   const enrichTrackMetadata = async (track: Track) => {
-    if (track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:')) return;
+    if (track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:')) {
+      if (!track.youtubeVideoId) return;
+    }
+
+    let instantId = track.youtubeVideoId || null;
+    if (!instantId) {
+      const cleanTitle = (track.title || '').toLowerCase().trim();
+      for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+        if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
+          instantId = id;
+          break;
+        }
+      }
+    }
+    if (instantId) {
+      setCurrentYtVideoId(instantId);
+      setCurrentYtCandidates([instantId]);
+    }
+
     setIsLoadingLyrics(true);
     const [lyricsResult, ytData] = await Promise.all([
       fetchTrackLyrics(track.title, track.artist, track.durationSec),
-      resolveYouTubeVideoId(track.title, track.artist, track.id),
+      instantId
+        ? Promise.resolve({ videoId: instantId, candidates: [instantId] })
+        : resolveYouTubeVideoId(track.title, track.artist, track.id),
     ]);
     setIsLoadingLyrics(false);
-    setCurrentYtVideoId(ytData.videoId);
-    setCurrentYtCandidates(ytData.candidates);
+    if (ytData.videoId) {
+      setCurrentYtVideoId(ytData.videoId);
+      setCurrentYtCandidates(ytData.candidates);
+    }
     setCurrentTrack((prev) => {
       if (prev.id !== track.id) return prev;
       return {
         ...prev,
         lyrics: lyricsResult,
-        youtubeVideoId: ytData.videoId,
+        youtubeVideoId: ytData.videoId || prev.youtubeVideoId,
       };
     });
   };
@@ -670,6 +759,23 @@ export function App() {
     setCurrentTrack(track);
     setCurrentTimeSec(0);
     setDurationSec(track.durationSec);
+
+    // Synchronous immediate video ID resolution for seamless playback
+    let immediateYtId: string | null = track.youtubeVideoId || null;
+    if (!immediateYtId) {
+      const cleanTitle = (track.title || '').toLowerCase().trim();
+      for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+        if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
+          immediateYtId = id;
+          break;
+        }
+      }
+    }
+    if (immediateYtId) {
+      setCurrentYtVideoId(immediateYtId);
+      setCurrentYtCandidates([immediateYtId]);
+    }
+
     setIsPlaying(true);
 
     if (targetMode === 'hifi-eq') {
@@ -694,6 +800,23 @@ export function App() {
           studioAudioEngine.loadTrack(currentTrack, true);
         } else {
           studioAudioEngine.play();
+        }
+      } else {
+        // Ensure YouTube player has a valid non-null videoId
+        if (!currentYtVideoId) {
+          let fallbackId = currentTrack.youtubeVideoId || null;
+          if (!fallbackId) {
+            const cleanTitle = (currentTrack.title || '').toLowerCase().trim();
+            for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+              if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
+                fallbackId = id;
+                break;
+              }
+            }
+          }
+          if (!fallbackId) fallbackId = 'Ch3l_Q9PxpQ';
+          setCurrentYtVideoId(fallbackId);
+          setCurrentYtCandidates([fallbackId]);
         }
       }
       setIsPlaying(true);
@@ -1309,8 +1432,11 @@ export function App() {
         stageMode={stageMode}
         onSwitchStageMode={(mode) => {
           setStageMode(mode);
-          if (mode === 'video' && engineMode !== 'yt-music') {
-            handleSwitchEngineMode('yt-music');
+          if (mode === 'video') {
+            setIsDesktopNowPlayingExpanded(true);
+            if (engineMode !== 'yt-music') {
+              handleSwitchEngineMode('yt-music');
+            }
           }
         }}
         accentColor={accentColor}
@@ -1341,51 +1467,6 @@ export function App() {
       />
 
       {/* =====================================================================
-          SINGLETON GLOBAL YOUTUBE AUDIO/VIDEO ENGINE (Continuous Playback)
-          Single permanent instance at app root.
-          - NEVER unmounts, NEVER duplicates (100% immune to double audio).
-          - Plays continuously across ALL menus (Home, Search, Library/Folders, DJ, Profile).
-          - Holds active background playback on mobile and desktop without freezing.
-          - Smoothly displays video when user switches to Video Mode.
-      ===================================================================== */}
-      {engineMode === 'yt-music' && (
-        <div
-          id="mallsound-global-youtube-engine"
-          aria-hidden={!(stageMode === 'video' && (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded))}
-          className={`transition-all duration-300 overflow-hidden ${
-            // 1. Mobile FullScreenPlayer Video Mode (centered in stage)
-            isFullScreenPlayerOpen && stageMode === 'video'
-              ? 'fixed z-[60] left-1/2 -translate-x-1/2 top-[16%] w-[calc(100vw-3rem)] max-w-md aspect-square rounded-3xl shadow-2xl pointer-events-auto opacity-100 border border-white/10'
-              // 2. Desktop Now Playing Stage Video Mode
-              : isDesktopNowPlayingExpanded && stageMode === 'video'
-              ? 'hidden md:block fixed z-[40] top-[14%] left-12 w-[480px] max-w-[42vw] aspect-square rounded-3xl shadow-2xl pointer-events-auto opacity-100 border border-white/10'
-              // 3. Audio & Background across ALL menus (Home, Search, Library, DJ, Profile, and Cover Art mode)
-              : 'fixed bottom-24 right-4 w-[160px] h-[90px] z-[-1] opacity-[0.01] pointer-events-none rounded-lg'
-          }`}
-        >
-          <YouTubeMusicPlayer
-            videoId={currentYtVideoId}
-            candidateIds={currentYtCandidates}
-            isPlaying={isPlaying}
-            volume={volume}
-            isMuted={isMuted}
-            seekRequest={ytSeekRequest}
-            onTimeUpdate={(cur, dur) => {
-              setCurrentTimeSec(cur);
-              setDurationSec(dur);
-            }}
-            onEnded={() => handleNextTrack(true)}
-            onPlayingChange={(playing) => {
-              if (playing) {
-                setIsPlaying(true);
-              }
-            }}
-            onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
-          />
-        </div>
-      )}
-
-      {/* =====================================================================
           FULLSCREEN PLAYER MODAL (Holds YouTube Stage Slot for continuity)
       ===================================================================== */}
       <FullScreenPlayer
@@ -1398,8 +1479,11 @@ export function App() {
         stageMode={stageMode}
         onSwitchStageMode={(mode) => {
           setStageMode(mode);
-          if (mode === 'video' && engineMode !== 'yt-music') {
-            handleSwitchEngineMode('yt-music');
+          if (mode === 'video') {
+            setIsFullScreenPlayerOpen(true);
+            if (engineMode !== 'yt-music') {
+              handleSwitchEngineMode('yt-music');
+            }
           }
         }}
         onTogglePlay={handleTogglePlay}
@@ -1491,6 +1575,63 @@ export function App() {
         onClose={() => setIsAddTrackModalOpen(false)}
         onAddTrack={handleAddCustomTrack}
       />
+
+      {/* =====================================================================
+          SINGLETON GLOBAL YOUTUBE AUDIO/VIDEO ENGINE (Continuous Playback)
+          Single permanent instance at app root, rendered top-most in DOM.
+          - Stays continuously mounted across ALL screens (Home, Search, Library, DJ, Profile).
+          - Holds active background playback on mobile and desktop without freezing.
+          - When stageMode === 'video', matches the exact pixel bounds of the stage target!
+      ===================================================================== */}
+      {engineMode === 'yt-music' && (
+        <div
+          id="mallsound-global-youtube-engine"
+          aria-hidden={!(stageMode === 'video' && (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded))}
+          style={
+            videoStageRect && stageMode === 'video' && (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded)
+              ? {
+                  position: 'fixed',
+                  top: `${videoStageRect.top}px`,
+                  left: `${videoStageRect.left}px`,
+                  width: `${videoStageRect.width}px`,
+                  height: `${videoStageRect.height}px`,
+                  zIndex: 75,
+                  opacity: 1,
+                  pointerEvents: 'auto',
+                }
+              : {
+                  position: 'fixed',
+                  bottom: '96px',
+                  right: '16px',
+                  width: '160px',
+                  height: '90px',
+                  zIndex: -1,
+                  opacity: 0.01,
+                  pointerEvents: 'none',
+                }
+          }
+          className="transition-all duration-300 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
+        >
+          <YouTubeMusicPlayer
+            videoId={currentYtVideoId}
+            candidateIds={currentYtCandidates}
+            isPlaying={isPlaying}
+            volume={volume}
+            isMuted={isMuted}
+            seekRequest={ytSeekRequest}
+            onTimeUpdate={(cur, dur) => {
+              setCurrentTimeSec(cur);
+              setDurationSec(dur);
+            }}
+            onEnded={() => handleNextTrack(true)}
+            onPlayingChange={(playing) => {
+              if (playing) {
+                setIsPlaying(true);
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   );
 }

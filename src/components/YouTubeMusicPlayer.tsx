@@ -119,7 +119,10 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
       currentVideoIdRef.current = videoId;
 
       playerRef.current = new window.YT.Player(containerRef.current, {
+        width: '100%',
+        height: '100%',
         videoId,
+        host: 'https://www.youtube.com',
         playerVars: {
           autoplay: isPlayingPropRef.current ? 1 : 0,
           controls: 1,
@@ -127,10 +130,24 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           modestbranding: 1,
           playsinline: 1,
           enablejsapi: 1,
+          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
+          widget_referrer: typeof window !== 'undefined' ? window.location.origin : undefined,
         },
         events: {
           onReady: (e) => {
             readyRef.current = true;
+            try {
+              const iframe = (e.target as any).getIframe?.();
+              if (iframe) {
+                iframe.setAttribute('referrerpolicy', 'strict-origin-when-cross-origin');
+                iframe.setAttribute(
+                  'allow',
+                  'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share'
+                );
+              }
+            } catch {
+              // ignore
+            }
             e.target.setVolume(Math.round(volume * 100));
             if (isMuted) {
               e.target.mute();
@@ -138,7 +155,11 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               e.target.unMute();
             }
             if (isPlayingPropRef.current) {
-              e.target.playVideo();
+              try {
+                e.target.playVideo();
+              } catch {
+                // ignore
+              }
             }
           },
           onStateChange: (e) => {
@@ -151,37 +172,25 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               }
               onPlayingChange(true);
             } else if (e.data === 2) {
-              // Browser auto-pauses iframe video when screen locks, tab is hidden, or desktop window loses focus
-              if (isPlayingPropRef.current) {
-                // Do not mark as paused in UI, and attempt immediate resume
-                setTimeout(() => {
-                  try {
-                    if (isPlayingPropRef.current && playerRef.current) {
-                      playerRef.current.playVideo();
-                    }
-                  } catch {
-                    // ignore
-                  }
-                }, 100);
-                return;
-              }
               onPlayingChange(false);
             }
           },
           onError: (e) => {
-            // If video is non-embeddable (101, 150) or unavailable, automatically try next candidate!
+            console.warn('[YouTube Player] Error code:', e.data);
             const list = candidatesRef.current;
             const nextIdx = candidateIndexRef.current + 1;
             if (nextIdx < list.length) {
               candidateIndexRef.current = nextIdx;
               const nextVid = list[nextIdx];
               currentVideoIdRef.current = nextVid;
-              e.target.loadVideoById(nextVid);
-              if (isPlayingPropRef.current) {
-                e.target.playVideo();
+              try {
+                e.target.loadVideoById(nextVid);
+                if (isPlayingPropRef.current) {
+                  e.target.playVideo();
+                }
+              } catch {
+                // ignore
               }
-            } else {
-              onFallbackToPreview?.();
             }
           },
         },
@@ -293,7 +302,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   }, []);
 
   return (
-    <div className="w-full h-full bg-black relative overflow-hidden">
+    <div className="w-full h-full bg-black relative overflow-hidden [&_iframe]:w-full [&_iframe]:h-full [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:object-cover">
       <div ref={containerRef} className="w-full h-full" />
     </div>
   );

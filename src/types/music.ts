@@ -106,6 +106,33 @@ export const EQUALIZER_PRESETS: EqualizerPreset[] = [
 
 export const BUILT_IN_TRACKS: Track[] = [
   {
+    id: 'itunes_dan_sheila',
+    title: 'Dan...',
+    artist: 'Sheila On 7',
+    album: 'Sheila On 7',
+    genre: 'Pop Rock',
+    durationSec: 286,
+    coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bf/25/7f/bf257f89-8dcf-4be3-485c-11e0ff0d4850/886444855906.jpg/600x600bb.jpg',
+    audioUrl: '',
+    rawPreviewUrl: '',
+    youtubeVideoId: 'Ch3l_Q9PxpQ',
+    bitrateLabel: '256kbps AAC / YT Full',
+    releaseYear: 1999,
+    playsCount: 1548200,
+    lyrics: [
+      { timeSec: 14, text: 'Dan bila esok datang kembali' },
+      { timeSec: 21, text: 'Seperti sedia kala di mana kau bisa bercanda' },
+      { timeSec: 30, text: 'Dan perlahan kau pun lupakan aku' },
+      { timeSec: 38, text: "Mimpi burukmu di mana t'lah kutancapkan duri tajam" },
+      { timeSec: 46, text: 'Kaupun menangis, menangis kuluka' },
+      { timeSec: 54, text: 'Bedanya bila ku dihasilkan' },
+      { timeSec: 62, text: 'Dan caci maki berkawan kita' },
+      { timeSec: 78, text: 'Lupakanlah saja diriku' },
+      { timeSec: 86, text: 'Bila itu bisa membuatmu kembali bersinar' },
+      { timeSec: 96, text: 'Bersiul tenang seperti lumba-lumba' },
+    ],
+  },
+  {
     id: 'trk-senja-pelabuhan',
     title: 'Garis Cahaya di Pelabuhan Lama',
     artist: 'Lentera Kolektif',

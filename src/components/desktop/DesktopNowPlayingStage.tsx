@@ -128,7 +128,10 @@ export const DesktopNowPlayingStage: React.FC<DesktopNowPlayingStageProps> = ({
       <div className="relative z-10 flex-1 grid grid-cols-12 gap-8 px-10 py-6 max-w-7xl mx-auto w-full min-h-0">
         {/* Left / Center Column: Large Artwork or Video Player */}
         <div className="col-span-7 flex flex-col items-center justify-center min-h-0">
-          <div className="w-full max-w-[500px] aspect-square rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl relative group">
+          <div
+            id="mallsound-desktop-stage-target"
+            className="w-full max-w-[500px] aspect-square rounded-3xl overflow-hidden bg-neutral-900 border border-white/10 shadow-2xl relative group"
+          >
             {/* YouTube Video Slot */}
             <div
               className={`absolute inset-0 ${
