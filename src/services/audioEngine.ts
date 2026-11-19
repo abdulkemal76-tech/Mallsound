@@ -121,14 +121,8 @@ export class StudioAudioEngine {
             }
             return;
           }
-          // Automatic fallback to procedural studio synth if external stream is unreachable
-          this.currentTrack = {
-            ...this.currentTrack,
-            audioUrl: 'synth://custom-fallback',
-          };
-          if (this.isPlayingState) {
-            this.startSynthLoop();
-          }
+          // External stream unreachable - stop quietly without synth noise
+          this.isPlayingState = false;
         });
       }
 
@@ -150,13 +144,10 @@ export class StudioAudioEngine {
     this.isPlayingState = true;
 
     if (this.currentTrack.audioUrl.startsWith('synth://')) {
-      this.startSynthLoop();
+      return;
     } else if (this.htmlAudio) {
       this.htmlAudio.playbackRate = this.playbackRate;
-      this.htmlAudio.play().catch(() => {
-        // Fallback to procedural studio synth if browser blocks or URL fails
-        this.startSynthLoop();
-      });
+      this.htmlAudio.play().catch(() => {});
     }
   }
 
@@ -269,80 +260,11 @@ export class StudioAudioEngine {
 
   private startSynthLoop() {
     this.stopInternalTimers();
-    if (!this.currentTrack || !this.isPlayingState) return;
-
-    const synth = this.currentTrack.synthConfig || this.getDefaultSynthConfig();
-    const effectiveBpm = synth.bpm * this.playbackRate;
-    const sixteenthMs = (60 / effectiveBpm / 4) * 1000;
-
-    this.lastTickPerf = performance.now();
-
-    // Trigger first step immediately
-    this.triggerSequencerStep(synth);
-
-    this.stepTimerId = window.setInterval(() => {
-      if (!this.isPlayingState) return;
-      this.triggerSequencerStep(synth);
-    }, sixteenthMs);
-
-    this.clockTimerId = window.setInterval(() => {
-      if (!this.isPlayingState || !this.currentTrack) return;
-      const now = performance.now();
-      const deltaSec = ((now - this.lastTickPerf) / 1000) * this.playbackRate;
-      this.lastTickPerf = now;
-
-      this.currentTimeSec += deltaSec;
-      if (this.currentTimeSec >= this.currentTrack.durationSec) {
-        this.currentTimeSec = 0;
-        this.isPlayingState = false;
-        this.stopInternalTimers();
-        this.onTrackEndCallback?.();
-        return;
-      }
-      this.onTimeUpdateCallback?.(this.currentTimeSec, this.currentTrack.durationSec);
-    }, 100);
+    // Synthesizer completely neutralized
   }
 
-  private triggerSequencerStep(synth: SynthComposition) {
-    if (!this.ctx) return;
-    const now = this.ctx.currentTime;
-    const step16 = this.stepIndex % 16;
-    const barIndex = Math.floor(this.stepIndex / 16) % synth.chordProgression.length;
-    const stepDurationSec = 60 / (synth.bpm * this.playbackRate) / 4;
-
-    // 1. Warm Polyphonic Pad Chords on beat 0 and beat 8
-    if (step16 === 0 || step16 === 8) {
-      const chord = synth.chordProgression[barIndex];
-      this.playPadChord(
-        chord.map((offset) => synth.rootNote + offset),
-        now,
-        stepDurationSec * 7.5,
-        synth.waveType,
-        synth.padFilterCutoff
-      );
-    }
-
-    // 2. Deep Sub-Bass Line
-    const bassOffset = synth.bassPattern[step16];
-    if (bassOffset !== null && bassOffset !== undefined) {
-      this.playBassNote(synth.rootNote + bassOffset, now, stepDurationSec * 2.2);
-    }
-
-    // 3. Lead Arpeggio / Melody Note
-    const melodyOffset = synth.melodyPattern[step16];
-    if (melodyOffset !== null && melodyOffset !== undefined) {
-      this.playMelodyNote(
-        synth.rootNote + melodyOffset,
-        now,
-        stepDurationSec * 1.8,
-        synth.waveType
-      );
-    }
-
-    // 4. Studio Drum Groove (Kick, Warm Snare, Hi-Hat)
-    this.triggerDrumStep(step16, now, synth.drumStyle);
-
-    this.stepIndex++;
+  private triggerSequencerStep(_synth: SynthComposition) {
+    // Synthesizer completely neutralized
   }
 
   private playPadChord(

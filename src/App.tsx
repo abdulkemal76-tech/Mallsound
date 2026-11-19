@@ -148,7 +148,12 @@ export function App() {
   const [currentTrack, setCurrentTrack] = useState<Track>(() => {
     try {
       const saved = localStorage.getItem('mallsound_saved_track');
-      if (saved) return JSON.parse(saved);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed && !parsed.id?.startsWith('trk-') && !parsed.audioUrl?.startsWith('synth://')) {
+          return parsed;
+        }
+      }
     } catch {
       // ignore
     }
@@ -169,7 +174,9 @@ export function App() {
       const saved = localStorage.getItem('mallsound_saved_track');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.durationSec) return parsed.durationSec;
+        if (parsed && !parsed.id?.startsWith('trk-') && !parsed.audioUrl?.startsWith('synth://')) {
+          if (parsed.durationSec) return parsed.durationSec;
+        }
       }
     } catch {
       // ignore
@@ -190,10 +197,12 @@ export function App() {
       const saved = localStorage.getItem('mallsound_saved_track');
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (parsed.youtubeVideoId) return parsed.youtubeVideoId;
-        const cleanTitle = (parsed.title || '').toLowerCase().trim();
-        for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
-          if (cleanTitle.includes(key) || key.includes(cleanTitle)) return id;
+        if (parsed && !parsed.id?.startsWith('trk-') && !parsed.audioUrl?.startsWith('synth://')) {
+          if (parsed.youtubeVideoId) return parsed.youtubeVideoId;
+          const cleanTitle = (parsed.title || '').toLowerCase().trim();
+          for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+            if (cleanTitle.includes(key) || key.includes(cleanTitle)) return id;
+          }
         }
       }
     } catch {
@@ -462,7 +471,7 @@ export function App() {
 
   // Enrich track with synced lyrics (.lrc) + YouTube Music videoId
   const enrichTrackMetadata = async (track: Track) => {
-    if (track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:')) {
+    if (track.audioUrl.startsWith('blob:')) {
       if (!track.youtubeVideoId) return;
     }
 
@@ -728,9 +737,8 @@ export function App() {
       return updated;
     });
 
-    const isLocalOrSynth =
-      track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:');
-    const targetMode: PlaybackEngineMode = isLocalOrSynth
+    const isLocalBlob = track.audioUrl.startsWith('blob:');
+    const targetMode: PlaybackEngineMode = isLocalBlob
       ? 'hifi-eq'
       : forceMode || 'yt-music';
 

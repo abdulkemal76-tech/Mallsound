@@ -275,7 +275,7 @@ export const AddCustomTrackModal: React.FC<AddCustomTrackModalProps> = ({
   const [artist, setArtist] = useState('');
   const [album, setAlbum] = useState('Rilisan Mandiri 2026');
   const [genre, setGenre] = useState<GenreType>('Indie Senja');
-  const [audioUrl, setAudioUrl] = useState('synth://custom-studio');
+  const [audioUrl, setAudioUrl] = useState('');
   const [durationSec, setDurationSec] = useState(160);
   const [lyricsText, setLyricsText] = useState(
     'Bait pertama mengalir di ruang dengar\nHarmoni mandiri dari studio kita\nBiarkan ritme ini terus berputar'
@@ -332,7 +332,7 @@ export const AddCustomTrackModal: React.FC<AddCustomTrackModalProps> = ({
         artist: cleanArtist,
         album: cleanAlbum,
         genre,
-        audioUrl: audioUrl.trim().slice(0, 500) || 'synth://custom-studio',
+        audioUrl: audioUrl.trim().slice(0, 500),
         durationSec: Math.max(10, Math.min(3600, Number(durationSec) || 160)),
         lyricsText: cleanLyrics,
         coverUrl: coverByGenre,
@@ -389,7 +389,7 @@ export const AddCustomTrackModal: React.FC<AddCustomTrackModalProps> = ({
             onClick={() => {
               setMode('cloud-stream');
               if (audioUrl.startsWith('blob:')) {
-                setAudioUrl('synth://custom-studio');
+                setAudioUrl('');
               }
             }}
             className={`flex-1 py-2 px-3 text-xs font-medium rounded-md transition-colors cursor-pointer whitespace-nowrap ${
@@ -398,7 +398,7 @@ export const AddCustomTrackModal: React.FC<AddCustomTrackModalProps> = ({
                 : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100'
             }`}
           >
-            URL Stream / Studio Synth Awan
+            URL Stream HTTPS
           </button>
         </div>
 
@@ -428,7 +428,7 @@ export const AddCustomTrackModal: React.FC<AddCustomTrackModalProps> = ({
           ) : (
             <div>
               <label className="block text-xs font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                URL Stream Audio HTTPS atau URI Synth Studio
+                URL Stream Audio HTTPS
               </label>
               <div className="flex items-center gap-2">
                 <Music className="w-4 h-4 text-slate-400 shrink-0" />
@@ -437,7 +437,7 @@ export const AddCustomTrackModal: React.FC<AddCustomTrackModalProps> = ({
                   maxLength={500}
                   value={audioUrl}
                   onChange={(e) => setAudioUrl(e.target.value)}
-                  placeholder="https://contoh.com/lagu.mp3 atau synth://custom-studio"
+                  placeholder="https://contoh.com/lagu.mp3"
                   className="w-full px-3 py-2 text-xs font-mono bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-lg text-slate-900 dark:text-slate-100 focus:outline-none focus:border-amber-500"
                 />
               </div>
