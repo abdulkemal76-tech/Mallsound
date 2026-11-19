@@ -23,7 +23,7 @@ import {
   Loader2,
   Check,
 } from 'lucide-react';
-import { EQUALIZER_PRESETS, Playlist, Track } from '../types/music';
+import { EQUALIZER_PRESETS, Playlist, RepeatMode, Track } from '../types/music';
 import { SpectrumVisualizer } from './SpectrumVisualizer';
 
 interface FullScreenPlayerProps {
@@ -43,6 +43,7 @@ interface FullScreenPlayerProps {
   isShuffle: boolean;
   onToggleShuffle: () => void;
   isRepeat: boolean;
+  repeatMode?: RepeatMode;
   onToggleRepeat: () => void;
   isLiked: boolean;
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
@@ -97,6 +98,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
   isShuffle,
   onToggleShuffle,
   isRepeat,
+  repeatMode,
   onToggleRepeat,
   isLiked,
   onToggleLike,
@@ -581,15 +583,22 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
               5. LARGE TRANSPORT CONTROLS (Shuffle | Prev | Giant White Play | Next | Repeat)
           ================================================================= */}
           <div className="flex items-center justify-between px-2 py-1">
+            {/* Shuffle Button */}
             <button
               type="button"
               onClick={onToggleShuffle}
-              className={`p-2.5 rounded-full transition-colors cursor-pointer ${
-                isShuffle ? 'text-white bg-white/15' : 'text-white/70 hover:text-white'
+              className={`relative p-3 rounded-2xl transition-all duration-200 cursor-pointer ${
+                isShuffle
+                  ? 'text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 shadow-lg shadow-emerald-500/30 scale-105'
+                  : 'text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-transparent'
               }`}
+              title={isShuffle ? 'Mode Acak: AKTIF' : 'Mode Acak: NONAKTIF'}
               aria-label="Acak lagu"
             >
               <Shuffle className="w-6 h-6" />
+              {isShuffle && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              )}
             </button>
 
             <button
@@ -623,15 +632,35 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
               <SkipForward className="w-8 h-8 fill-white" />
             </button>
 
+            {/* Repeat Button */}
             <button
               type="button"
               onClick={onToggleRepeat}
-              className={`p-2.5 rounded-full transition-colors cursor-pointer ${
-                isRepeat ? 'text-white bg-white/15' : 'text-white/70 hover:text-white'
+              className={`relative p-3 rounded-2xl transition-all duration-200 cursor-pointer ${
+                repeatMode === 'one'
+                  ? 'text-pink-400 bg-pink-500/20 border border-pink-500/40 shadow-lg shadow-pink-500/30 scale-105'
+                  : (isRepeat || repeatMode === 'all')
+                  ? 'text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 shadow-lg shadow-emerald-500/30 scale-105'
+                  : 'text-white/60 hover:text-white bg-white/5 hover:bg-white/10 border border-transparent'
               }`}
+              title={
+                repeatMode === 'one'
+                  ? 'Ulangi 1 Lagu: AKTIF'
+                  : isRepeat
+                  ? 'Ulangi Semua: AKTIF'
+                  : 'Ulangi: NONAKTIF'
+              }
               aria-label="Ulangi lagu"
             >
               <Repeat className="w-6 h-6" />
+              {repeatMode === 'one' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-pink-500 text-white text-[10px] font-black flex items-center justify-center shadow">
+                  1
+                </span>
+              )}
+              {repeatMode === 'all' && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+              )}
             </button>
           </div>
 

@@ -237,6 +237,9 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     if (!seekRequest || !playerRef.current || !readyRef.current) return;
     try {
       playerRef.current.seekTo(seekRequest.sec, true);
+      if (isPlayingPropRef.current) {
+        playerRef.current.playVideo();
+      }
     } catch {
       // ignore
     }

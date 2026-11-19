@@ -44,6 +44,8 @@ export interface Track {
   ownerName?: string;
 }
 
+export type RepeatMode = 'off' | 'all' | 'one';
+
 export type PlaylistCoverTheme = 'amber' | 'emerald' | 'indigo' | 'rose' | 'slate';
 
 export interface Playlist {

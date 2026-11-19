@@ -34,6 +34,7 @@ import {
   LyricLine,
   Playlist,
   PlaylistCoverTheme,
+  RepeatMode,
   Track,
 } from './types/music';
 import { studioAudioEngine } from './services/audioEngine';
@@ -260,8 +261,23 @@ export function App() {
   });
   const [volume, setVolume] = useState(0.85);
   const [isMuted, setIsMuted] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
+  const [isShuffle, setIsShuffle] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_is_shuffle');
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return false;
+  });
+  const [repeatMode, setRepeatMode] = useState<RepeatMode>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_repeat_mode');
+      if (saved === 'all' || saved === 'one') return saved;
+      const legacy = localStorage.getItem('mallsound_is_repeat');
+      if (legacy && JSON.parse(legacy)) return 'one';
+    } catch {}
+    return 'off';
+  });
+  const isRepeat = repeatMode !== 'off';
   const [playbackRate, setPlaybackRate] = useState<number>(() => {
     try {
       const savedRate = localStorage.getItem('mallsound_playback_rate');
@@ -981,43 +997,132 @@ export function App() {
     return allKnownTracks;
   }, [allPlaylists, activePlaylistId, allKnownTracks]);
 
+  const handleToggleShuffle = () => {
+    const nextShuffle = !isShuffle;
+    setIsShuffle(nextShuffle);
+    try {
+      localStorage.setItem('mallsound_is_shuffle', JSON.stringify(nextShuffle));
+    } catch {}
+
+    if (nextShuffle) {
+      if (playbackQueue.length > 1) {
+        setPlaybackQueue((prev) => {
+          const shuffled = [...prev].sort(() => Math.random() - 0.5);
+          try {
+            localStorage.setItem('mallsound_playback_queue', JSON.stringify(shuffled));
+          } catch {}
+          return shuffled;
+        });
+      }
+      showToast('🔀 Mode Acak (Shuffle): AKTIF');
+    } else {
+      showToast('➡️ Mode Acak: NONAKTIF (Putar Urut)');
+    }
+  };
+
+  const handleToggleRepeat = () => {
+    let nextMode: RepeatMode = 'off';
+    if (repeatMode === 'off') {
+      nextMode = 'all';
+      showToast('🔁 Ulangi Semua: Loop Playlist Aktif');
+    } else if (repeatMode === 'all') {
+      nextMode = 'one';
+      showToast(`🔂 Ulangi 1 Lagu: "${currentTrack.title}" diputar ulang terus`);
+    } else {
+      nextMode = 'off';
+      showToast('➡️ Putar Ulang: NONAKTIF');
+    }
+    setRepeatMode(nextMode);
+    try {
+      localStorage.setItem('mallsound_repeat_mode', nextMode);
+    } catch {}
+  };
+
   const handleNextTrack = (fromEnded = false) => {
-    if (fromEnded && isRepeat) {
+    // 1. REPEAT ONE check: If track finished naturally and repeat is 'one', replay current track from 0:00!
+    if (fromEnded && repeatMode === 'one') {
       if (engineMode === 'hifi-eq') {
         studioAudioEngine.seek(0);
         studioAudioEngine.play();
       } else {
         setYtSeekRequest({ sec: 0, nonce: Date.now() });
       }
+      setCurrentTimeSec(0);
       setIsPlaying(true);
       return;
     }
 
-    // 1. Playback Queue priority (YouTube Music style queue)
+    // 2. Playback Queue priority (YouTube Music style queue)
     if (playbackQueue.length > 0) {
-      const nextTrack = playbackQueue[0];
-      setPlaybackQueue((prev) => {
-        const updated = prev.slice(1);
-        try {
-          localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
-        } catch {}
-        return updated;
-      });
+      let nextTrack: Track;
+      if (isShuffle && playbackQueue.length > 1) {
+        const randomIdx = Math.floor(Math.random() * playbackQueue.length);
+        nextTrack = playbackQueue[randomIdx];
+        setPlaybackQueue((prev) => {
+          const updated = prev.filter((_, i) => i !== randomIdx);
+          try {
+            localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      } else {
+        nextTrack = playbackQueue[0];
+        setPlaybackQueue((prev) => {
+          const updated = prev.slice(1);
+          try {
+            localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
+          } catch {}
+          return updated;
+        });
+      }
       handleSelectTrack(nextTrack, undefined, isFullScreenPlayerOpen);
       return;
     }
 
-    const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
+    // 3. Fallback queue resolution (DJ tracks if on DJ page, playlist tracks if playlist, else catalog)
+    let queue = displayedTracks;
+    if (activeTab === 'dj' && DJ_INDO_TRACKS.length > 0) {
+      queue = DJ_INDO_TRACKS;
+    } else if (activePlaylistId) {
+      const activePlaylist = allPlaylists.find((p) => p.id === activePlaylistId);
+      if (activePlaylist && activePlaylist.trackIds.length > 0) {
+        queue = allKnownTracks.filter((t) => activePlaylist.trackIds.includes(t.id));
+      }
+    }
+    if (!queue || queue.length === 0) {
+      queue = allKnownTracks;
+    }
     if (queue.length === 0) return;
 
+    // 4. Shuffle selection across queue
     if (isShuffle && queue.length > 1) {
       const candidates = queue.filter((t) => t.id !== currentTrack.id);
-      const randomTrack = candidates[Math.floor(Math.random() * candidates.length)];
+      const randomTrack = candidates[Math.floor(Math.random() * candidates.length)] || queue[0];
       handleSelectTrack(randomTrack, undefined, isFullScreenPlayerOpen);
       return;
     }
+
+    // 5. Sequential playback
     const idx = queue.findIndex((t) => t.id === currentTrack.id);
-    const nextIdx = (idx + 1) % queue.length;
+    if (idx === -1) {
+      handleSelectTrack(queue[0], undefined, isFullScreenPlayerOpen);
+      return;
+    }
+
+    const nextIdx = idx + 1;
+    if (nextIdx >= queue.length) {
+      if (repeatMode === 'all' || repeatMode === 'one') {
+        handleSelectTrack(queue[0], undefined, isFullScreenPlayerOpen);
+        return;
+      }
+      if (fromEnded) {
+        setIsPlaying(false);
+        return;
+      }
+      handleSelectTrack(queue[0], undefined, isFullScreenPlayerOpen);
+      return;
+    }
+
     handleSelectTrack(queue[nextIdx], undefined, isFullScreenPlayerOpen);
   };
 
@@ -1031,8 +1136,28 @@ export function App() {
       setCurrentTimeSec(0);
       return;
     }
-    const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
+
+    let queue = displayedTracks;
+    if (activeTab === 'dj' && DJ_INDO_TRACKS.length > 0) {
+      queue = DJ_INDO_TRACKS;
+    } else if (activePlaylistId) {
+      const activePlaylist = allPlaylists.find((p) => p.id === activePlaylistId);
+      if (activePlaylist && activePlaylist.trackIds.length > 0) {
+        queue = allKnownTracks.filter((t) => activePlaylist.trackIds.includes(t.id));
+      }
+    }
+    if (!queue || queue.length === 0) {
+      queue = allKnownTracks;
+    }
     if (queue.length === 0) return;
+
+    if (isShuffle && queue.length > 1) {
+      const candidates = queue.filter((t) => t.id !== currentTrack.id);
+      const randomTrack = candidates[Math.floor(Math.random() * candidates.length)] || queue[0];
+      handleSelectTrack(randomTrack, undefined, isFullScreenPlayerOpen);
+      return;
+    }
+
     const idx = queue.findIndex((t) => t.id === currentTrack.id);
     const prevIdx = (idx - 1 + queue.length) % queue.length;
     handleSelectTrack(queue[prevIdx], undefined, isFullScreenPlayerOpen);
@@ -1558,9 +1683,10 @@ export function App() {
             onToggleLike={handleToggleLike}
             onOpenActions={(trk) => setActionModalTrack(trk)}
             isShuffle={isShuffle}
-            onToggleShuffle={() => setIsShuffle(!isShuffle)}
+            onToggleShuffle={handleToggleShuffle}
             isRepeat={isRepeat}
-            onToggleRepeat={() => setIsRepeat(!isRepeat)}
+            repeatMode={repeatMode}
+            onToggleRepeat={handleToggleRepeat}
           />
         )}
 
@@ -1773,9 +1899,10 @@ export function App() {
         onVolumeChange={handleVolumeChange}
         onToggleMute={handleToggleMute}
         isRepeat={isRepeat}
-        onToggleRepeat={() => setIsRepeat(!isRepeat)}
+        repeatMode={repeatMode}
+        onToggleRepeat={handleToggleRepeat}
         isShuffle={isShuffle}
-        onToggleShuffle={() => setIsShuffle(!isShuffle)}
+        onToggleShuffle={handleToggleShuffle}
         isLiked={isTrackLiked(currentTrack.id)}
         onToggleLike={handleToggleLike}
         isNowPlayingExpanded={isDesktopNowPlayingExpanded}
@@ -1849,9 +1976,10 @@ export function App() {
           }
         }}
         isShuffle={isShuffle}
-        onToggleShuffle={() => setIsShuffle(!isShuffle)}
+        onToggleShuffle={handleToggleShuffle}
         isRepeat={isRepeat}
-        onToggleRepeat={() => setIsRepeat(!isRepeat)}
+        repeatMode={repeatMode}
+        onToggleRepeat={handleToggleRepeat}
         isLiked={isTrackLiked(currentTrack.id)}
         onToggleLike={handleToggleLike}
         volume={volume}

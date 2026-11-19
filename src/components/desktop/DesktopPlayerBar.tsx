@@ -17,7 +17,7 @@ import {
   ThumbsDown,
   Sparkles,
 } from 'lucide-react';
-import { Track } from '../../types/music';
+import { RepeatMode, Track } from '../../types/music';
 
 export interface DesktopPlayerBarProps {
   currentTrack: Track;
@@ -33,6 +33,7 @@ export interface DesktopPlayerBarProps {
   onVolumeChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onToggleMute: () => void;
   isRepeat: boolean;
+  repeatMode?: RepeatMode;
   onToggleRepeat: () => void;
   isShuffle: boolean;
   onToggleShuffle: () => void;
@@ -67,6 +68,7 @@ export const DesktopPlayerBar: React.FC<DesktopPlayerBarProps> = ({
   onVolumeChange,
   onToggleMute,
   isRepeat,
+  repeatMode,
   onToggleRepeat,
   isShuffle,
   onToggleShuffle,
@@ -269,30 +271,49 @@ export const DesktopPlayerBar: React.FC<DesktopPlayerBarProps> = ({
           <button
             type="button"
             onClick={onToggleRepeat}
-            className={`p-2 rounded-full transition-colors cursor-pointer ${
-              isRepeat
-                ? 'text-white bg-white/10'
-                : 'text-white/50 hover:text-white hover:bg-white/5'
+            className={`relative p-2 rounded-full transition-all cursor-pointer ${
+              repeatMode === 'one'
+                ? 'text-pink-400 bg-pink-500/20 border border-pink-500/40 shadow-sm'
+                : (isRepeat || repeatMode === 'all')
+                ? 'text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 shadow-sm'
+                : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
             style={isRepeat ? { color: accentColor } : undefined}
-            title={isRepeat ? 'Ulangi: Aktif' : 'Ulangi: Mati'}
+            title={
+              repeatMode === 'one'
+                ? 'Ulangi 1 Lagu: AKTIF'
+                : isRepeat
+                ? 'Ulangi Semua: AKTIF'
+                : 'Ulangi: NONAKTIF'
+            }
           >
             <Repeat className="w-4 h-4" />
+            {repeatMode === 'one' && (
+              <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-pink-500 text-white text-[9px] font-black flex items-center justify-center shadow">
+                1
+              </span>
+            )}
+            {repeatMode === 'all' && (
+              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
+            )}
           </button>
 
           {/* Shuffle */}
           <button
             type="button"
             onClick={onToggleShuffle}
-            className={`p-2 rounded-full transition-colors cursor-pointer ${
+            className={`relative p-2 rounded-full transition-all cursor-pointer ${
               isShuffle
-                ? 'text-white bg-white/10'
-                : 'text-white/50 hover:text-white hover:bg-white/5'
+                ? 'text-emerald-400 bg-emerald-500/20 border border-emerald-500/40 shadow-sm'
+                : 'text-white/50 hover:text-white hover:bg-white/5 border border-transparent'
             }`}
             style={isShuffle ? { color: accentColor } : undefined}
-            title={isShuffle ? 'Acak: Aktif' : 'Acak: Mati'}
+            title={isShuffle ? 'Mode Acak: AKTIF' : 'Mode Acak: NONAKTIF'}
           >
             <Shuffle className="w-4 h-4" />
+            {isShuffle && (
+              <span className="absolute bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-emerald-400" />
+            )}
           </button>
 
           {/* Video / Audio Switch */}

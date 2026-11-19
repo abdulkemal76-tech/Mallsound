@@ -23,7 +23,7 @@ import {
   Check,
   MoreVertical,
 } from 'lucide-react';
-import { Track } from '../types/music';
+import { RepeatMode, Track } from '../types/music';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 
 export type DiscoLightMode = 'disco' | 'strobe' | 'laser' | 'ambient' | 'off';
@@ -59,6 +59,7 @@ export interface DJPageProps {
   isShuffle?: boolean;
   onToggleShuffle?: () => void;
   isRepeat?: boolean;
+  repeatMode?: RepeatMode;
   onToggleRepeat?: () => void;
 }
 
@@ -802,6 +803,7 @@ export const DJPage: React.FC<DJPageProps> = ({
   isShuffle: propIsShuffle,
   onToggleShuffle: propOnToggleShuffle,
   isRepeat: propIsRepeat,
+  repeatMode: propRepeatMode,
   onToggleRepeat: propOnToggleRepeat,
 }) => {
   // Auto-Save storage key & state initialization
@@ -873,6 +875,7 @@ export const DJPage: React.FC<DJPageProps> = ({
 
   const isShuffle = propIsShuffle !== undefined ? propIsShuffle : localShuffle;
   const isRepeat = propIsRepeat !== undefined ? propIsRepeat : localRepeat;
+  const repeatMode = propRepeatMode !== undefined ? propRepeatMode : (isRepeat ? 'all' : 'off');
 
   const handleToggleShuffle = () => {
     if (propOnToggleShuffle) {
@@ -1112,17 +1115,21 @@ export const DJPage: React.FC<DJPageProps> = ({
 
           {/* Transport Controls */}
           <div className="flex items-center justify-center gap-3 sm:gap-6 pt-1">
+            {/* Shuffle Button */}
             <button
               type="button"
               onClick={handleToggleShuffle}
-              className={`p-3 rounded-2xl transition-all cursor-pointer ${
+              className={`relative p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${
                 isShuffle
-                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/50'
+                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/40 border border-violet-400/50 scale-105'
                   : 'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white border border-white/10'
               }`}
-              title="Acak"
+              title={isShuffle ? 'Mode Acak: AKTIF' : 'Mode Acak: NONAKTIF'}
             >
               <Shuffle className="w-5 h-5" />
+              {isShuffle && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+              )}
             </button>
 
             <button
@@ -1156,17 +1163,34 @@ export const DJPage: React.FC<DJPageProps> = ({
               <SkipForward className="w-6 h-6 fill-current" />
             </button>
 
+            {/* Repeat Button */}
             <button
               type="button"
               onClick={handleToggleRepeat}
-              className={`p-3 rounded-2xl transition-all cursor-pointer ${
-                isRepeat
-                  ? 'bg-violet-500/20 text-violet-300 border border-violet-500/50'
+              className={`relative p-3.5 rounded-2xl transition-all duration-200 cursor-pointer ${
+                repeatMode === 'one'
+                  ? 'bg-gradient-to-r from-pink-600 to-rose-600 text-white shadow-lg shadow-pink-500/40 border border-pink-400/50 scale-105'
+                  : (isRepeat || repeatMode === 'all')
+                  ? 'bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white shadow-lg shadow-violet-500/40 border border-violet-400/50 scale-105'
                   : 'bg-white/10 hover:bg-white/20 text-white/70 hover:text-white border border-white/10'
               }`}
-              title="Ulangi"
+              title={
+                repeatMode === 'one'
+                  ? 'Ulangi 1 Lagu: AKTIF'
+                  : isRepeat
+                  ? 'Ulangi Semua: AKTIF'
+                  : 'Ulangi: NONAKTIF'
+              }
             >
               <Repeat className="w-5 h-5" />
+              {repeatMode === 'one' && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-white text-rose-600 text-[10px] font-black flex items-center justify-center shadow">
+                  1
+                </span>
+              )}
+              {repeatMode === 'all' && (
+                <span className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full bg-white shadow-sm" />
+              )}
             </button>
           </div>
         </section>
