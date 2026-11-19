@@ -87,59 +87,603 @@ function formatTime(seconds: number): string {
 }
 
 /**
- * CyberDJMotionStage:
- * Replaces the old vinyl platter with an epic, interactive 3D motion-controlled
- * Cyberpunk DJ arena featuring:
- * 1. Interactive 3D Gyro / Touch / Mouse Tilt Parallax Motion Control
- * 2. Beat-synchronized bouncing DJ silhouette
- * 3. Dual rotating neon jog wheels (Left & Right decks)
- * 4. Animated dancing vertical neon equalizer bars over the mixer
- * 5. Undulating neon background cyber waveforms & twinkling cosmic stars
- * 6. Sweeping moving-head spotlights & criss-crossing cyber lasers
- * 7. Blinding rapid-fire strobe blitz flashes on beat drops
- * 8. Subwoofer bass horeg console vibration
+ * NeonDJCanvasStage:
+ * High-performance HTML5 Canvas animation engine rendered natively in React.
+ * Featuring:
+ * 1. 110 twinkling cosmic background stars & cross glints
+ * 2. 5 volumetric moving spotlights with dynamic sweeping angles & colors
+ * 3. Left & right neon pillars with wide atmospheric club wash
+ * 4. 5 undulating cyber audio waveforms moving to the beat
+ * 5. 32-bar energetic vertical neon equalizer with round caps
+ * 6. Detailed animated DJ silhouette with headphones (head-bobbing, hand-scratching)
+ * 7. Reflective DJ booth with dual spinning turntables, strobe ticks, crossfader, and 4x2 RGB pads
+ * 8. Beat-reactive Mega Bass Horeg (+12dB) screen shake & shockwaves
+ * 9. Strobe Blitz flash hits on beat drops
+ * 10. Interactive 3D tilt motion control on touch / mouse drag
  */
-const CyberDJMotionStage: React.FC<{
-  coverUrl: string;
+const NeonDJCanvasStage: React.FC<{
   isPlaying: boolean;
   playbackRate: number;
-  title: string;
   lightMode: DiscoLightMode;
   lightSpeed: DiscoSpeed;
   isManualBlitz: boolean;
   isBurstingBlitz: boolean;
   isHoregBass: boolean;
+  coverUrl?: string;
+  title?: string;
 }> = ({
-  coverUrl,
   isPlaying,
   playbackRate,
-  title,
   lightMode,
   lightSpeed,
   isManualBlitz,
   isBurstingBlitz,
   isHoregBass,
 }) => {
-  const [imageError, setImageError] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
   const [isInteracting, setIsInteracting] = useState(false);
-  const containerRef = useRef<HTMLDivElement | null>(null);
 
-  // Speed multipliers
-  const speedMult = lightSpeed === 'hyper' ? 2.5 : lightSpeed === 'turbo' ? 1.6 : 1.0;
-  const jogDuration = (2.0 / Math.max(0.25, playbackRate)) / speedMult;
-  const pulseDuration = (0.55 / Math.max(0.5, playbackRate)) / speedMult;
+  // Live props stored in refs for zero-lag rendering in animation loop
+  const isPlayingRef = useRef(isPlaying);
+  const playbackRateRef = useRef(playbackRate);
+  const lightModeRef = useRef(lightMode);
+  const lightSpeedRef = useRef(lightSpeed);
+  const isHoregBassRef = useRef(isHoregBass);
+  const isBlitzRef = useRef(isManualBlitz || isBurstingBlitz);
 
-  // Spotlight speeds
-  const spotLeftDur = (1.8 / speedMult).toFixed(2);
-  const spotRightDur = (2.1 / speedMult).toFixed(2);
-  const laserDur1 = (1.2 / speedMult).toFixed(2);
-  const laserDur2 = (1.4 / speedMult).toFixed(2);
+  useEffect(() => {
+    isPlayingRef.current = isPlaying;
+    playbackRateRef.current = playbackRate;
+    lightModeRef.current = lightMode;
+    lightSpeedRef.current = lightSpeed;
+    isHoregBassRef.current = isHoregBass;
+    isBlitzRef.current = isManualBlitz || isBurstingBlitz;
+  }, [isPlaying, playbackRate, lightMode, lightSpeed, isManualBlitz, isBurstingBlitz, isHoregBass]);
 
-  const showSpotlights = (lightMode === 'disco' || lightMode === 'ambient') && isPlaying;
-  const showLasers = (lightMode === 'laser' || lightMode === 'disco') && isPlaying;
-  const showStrobe = lightMode === 'strobe' && isPlaying;
-  const isStrobeActive = showStrobe || isManualBlitz || isBurstingBlitz;
+  // Canvas render engine
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let animFrameId: number;
+    let width = 0;
+    let height = 0;
+    let dpr = 1;
+
+    // 110 background stars
+    const stars = Array.from({ length: 110 }, (_, i) => ({
+      x: ((i * 73) % 1000) / 1000,
+      y: ((i * 137) % 650) / 1000,
+      size: i % 3 === 0 ? 2.2 : 1.2,
+      phase: i * 0.7,
+      isCross: i % 11 === 0,
+    }));
+
+    // Equalizer data
+    const EQ_COUNT = 32;
+    const eqHeights = new Float32Array(EQ_COUNT);
+
+    const resize = () => {
+      if (!containerRef.current || !canvas) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      width = Math.floor(rect.width);
+      height = Math.floor(rect.height);
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Helpers
+    function drawSparkle(x: number, y: number, r: number, alpha: number, color: string) {
+      if (!ctx) return;
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = color;
+      ctx.shadowColor = color;
+      ctx.shadowBlur = 10;
+      ctx.beginPath();
+      ctx.moveTo(x, y - r * 2.4);
+      ctx.quadraticCurveTo(x, y, x + r * 2.4, y);
+      ctx.quadraticCurveTo(x, y, x, y + r * 2.4);
+      ctx.quadraticCurveTo(x, y, x, y - r * 2.4);
+      ctx.quadraticCurveTo(x, y, x - r * 2.4, y);
+      ctx.fill();
+      ctx.restore();
+    }
+
+    function drawDiscoBeams(beatPhase: number, timeSec: number, mode: DiscoLightMode) {
+      if (!ctx || mode === 'off') return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const beamConfigs = [
+        { originX: width * 0.14, originY: -20, baseAngle: 0.42, swing: 0.35, speed: 1.0, color: 'rgba(236, 72, 153, 0.32)', width: 0.16 },
+        { originX: width * 0.86, originY: -20, baseAngle: -0.42, swing: 0.35, speed: 1.0, color: 'rgba(34, 211, 238, 0.3)', width: 0.16 },
+        { originX: width * 0.32, originY: -20, baseAngle: 0.18, swing: 0.45, speed: 2.0, color: 'rgba(192, 38, 211, 0.28)', width: 0.13 },
+        { originX: width * 0.68, originY: -20, baseAngle: -0.18, swing: 0.45, speed: 2.0, color: 'rgba(168, 85, 247, 0.28)', width: 0.13 },
+        { originX: width * 0.50, originY: -30, baseAngle: 0.0, swing: 0.52, speed: 0.5, color: 'rgba(244, 114, 182, 0.25)', width: 0.22 },
+      ];
+
+      const pulse = 0.65 + 0.35 * Math.pow(Math.sin(beatPhase * Math.PI), 2);
+      const beamLength = Math.hypot(width, height) * 1.15;
+
+      beamConfigs.forEach((b, idx) => {
+        const angle = b.baseAngle + Math.sin(timeSec * b.speed * Math.PI + idx) * b.swing;
+        const leftAngle = angle - b.width;
+        const rightAngle = angle + b.width;
+
+        const grad = ctx.createLinearGradient(
+          b.originX,
+          b.originY,
+          b.originX + Math.sin(angle) * beamLength,
+          b.originY + Math.cos(angle) * beamLength
+        );
+        grad.addColorStop(0, b.color);
+        grad.addColorStop(0.65, b.color.replace(/0\.\d+\)/, (0.12 * pulse).toFixed(2) + ')'));
+        grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(b.originX, b.originY);
+        ctx.lineTo(b.originX + Math.sin(leftAngle) * beamLength, b.originY + Math.cos(leftAngle) * beamLength);
+        ctx.lineTo(b.originX + Math.sin(rightAngle) * beamLength, b.originY + Math.cos(rightAngle) * beamLength);
+        ctx.closePath();
+        ctx.fill();
+      });
+
+      ctx.restore();
+    }
+
+    function drawSideNeonPillars(pulse: number) {
+      if (!ctx) return;
+      const margin = Math.max(20, width * 0.06);
+      const pillarPositions = [margin, width - margin];
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      pillarPositions.forEach((px, idx) => {
+        const color = idx === 0 ? '#f0abfc' : '#67e8f9';
+        const glow = idx === 0 ? '#d946ef' : '#06b6d4';
+
+        const glowGrad = ctx.createLinearGradient(px - 50, 0, px + 50, 0);
+        glowGrad.addColorStop(0, 'rgba(0,0,0,0)');
+        glowGrad.addColorStop(0.5, idx === 0 ? `rgba(217, 70, 239, ${0.25 + pulse * 0.2})` : `rgba(6, 182, 212, ${0.22 + pulse * 0.2})`);
+        glowGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = glowGrad;
+        ctx.fillRect(px - 50, 0, 100, height * 0.78);
+
+        ctx.strokeStyle = color;
+        ctx.shadowColor = glow;
+        ctx.shadowBlur = 18 + pulse * 14;
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.moveTo(px, 0);
+        ctx.lineTo(px, height * 0.76);
+        ctx.stroke();
+      });
+
+      ctx.restore();
+    }
+
+    function drawCyberWaves(timeSec: number, deskY: number, pulse: number) {
+      if (!ctx) return;
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const waveLayers = 5;
+      for (let l = 0; l < waveLayers; l++) {
+        ctx.beginPath();
+        const baseY = deskY - height * 0.16 + l * 10;
+        const amp = (28 + l * 8) * (0.75 + pulse * 0.45);
+        const freq = 0.006 + l * 0.0012;
+        const speed = timeSec * Math.PI * (l % 2 === 0 ? 1 : -1) + l;
+
+        for (let x = 0; x <= width; x += 14) {
+          const normX = x / width;
+          const envelope = Math.sin(normX * Math.PI);
+          const y = baseY - Math.sin(x * freq + speed) * amp * envelope - Math.cos(x * freq * 1.8 - speed) * (amp * 0.4) * envelope;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.strokeStyle = l % 2 === 0
+          ? `rgba(232, 121, 249, ${0.24 + pulse * 0.16})`
+          : `rgba(34, 211, 238, ${0.2 + pulse * 0.16})`;
+        ctx.lineWidth = 1.6;
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
+
+    function drawEqualizer(deskY: number, timeSec: number, beatPhase: number, activePlaying: boolean, horeg: boolean) {
+      if (!ctx) return;
+      const totalWidth = Math.min(width * 0.8, 880);
+      const startX = (width - totalWidth) / 2;
+      const step = totalWidth / EQ_COUNT;
+      const barWidth = Math.max(3.5, step * 0.55);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'screen';
+
+      const horegBoost = horeg ? 1.45 : 1.0;
+
+      for (let i = 0; i < EQ_COUNT; i++) {
+        const centerDist = Math.abs(i - (EQ_COUNT - 1) / 2) / ((EQ_COUNT - 1) / 2);
+        const arch = 1 - Math.pow(centerDist, 1.6) * 0.55;
+
+        const wave1 = Math.sin(timeSec * Math.PI * 4 + i * 0.55);
+        const wave2 = Math.cos(timeSec * Math.PI * 2 - i * 0.85);
+        const kick = Math.pow(Math.sin(beatPhase * Math.PI), 3);
+
+        const targetH = activePlaying
+          ? (26 + Math.abs(wave1 * 0.5 + wave2 * 0.5) * 105 + kick * 65) * arch * (height / 720) * horegBoost
+          : 12 * arch;
+        eqHeights[i] += (targetH - eqHeights[i]) * 0.38;
+
+        const bx = startX + i * step + (step - barWidth) / 2;
+        const bh = Math.max(6, eqHeights[i]);
+        const by = deskY - bh - 4;
+
+        const barGrad = ctx.createLinearGradient(bx, by, bx, deskY);
+        barGrad.addColorStop(0, '#ffffff');
+        barGrad.addColorStop(0.25, i % 3 === 0 ? '#67e8f9' : '#f472b6');
+        barGrad.addColorStop(0.85, '#c026d3');
+        barGrad.addColorStop(1, 'rgba(192, 38, 211, 0)');
+
+        ctx.fillStyle = barGrad;
+        ctx.shadowColor = i % 3 === 0 ? '#06b6d4' : '#e879f9';
+        ctx.shadowBlur = 12;
+
+        const radius = barWidth / 2;
+        ctx.beginPath();
+        ctx.roundRect(bx, by, barWidth, bh, [radius, radius, 0, 0]);
+        ctx.fill();
+      }
+
+      ctx.restore();
+    }
+
+    function drawDJ(deskY: number, timeSec: number, beatPhase: number, activePlaying: boolean) {
+      if (!ctx) return;
+      const scale = Math.min(width / 1080, height / 640, 1.15);
+      const cx = width * 0.5;
+
+      // Head-bobbing & body bounce
+      const bobY = activePlaying ? Math.sin(beatPhase * Math.PI) * 9.5 * scale : 2;
+      const swayX = activePlaying ? Math.sin(timeSec * Math.PI) * 7.5 * scale : 0;
+      const headTilt = activePlaying ? Math.sin(timeSec * Math.PI) * 0.07 : 0;
+
+      ctx.save();
+      ctx.translate(cx + swayX, deskY + bobY);
+      ctx.scale(scale, scale);
+
+      // Back aura
+      const backGlow = ctx.createRadialGradient(0, -145, 15, 0, -145, 230);
+      backGlow.addColorStop(0, 'rgba(232, 121, 249, 0.42)');
+      backGlow.addColorStop(0.55, 'rgba(147, 51, 234, 0.18)');
+      backGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = backGlow;
+      ctx.beginPath();
+      ctx.arc(0, -145, 230, 0, Math.PI * 2);
+      ctx.fill();
+
+      // DJ Body & Shoulders
+      ctx.fillStyle = '#070112';
+      ctx.strokeStyle = '#e879f9';
+      ctx.lineWidth = 2.6;
+      ctx.shadowColor = '#d946ef';
+      ctx.shadowBlur = 14;
+
+      ctx.beginPath();
+      ctx.moveTo(-145, 10);
+      ctx.quadraticCurveTo(-132, -92, -62, -108);
+      ctx.lineTo(62, -108);
+      ctx.quadraticCurveTo(132, -92, 145, 10);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Head & Headphones
+      ctx.save();
+      ctx.translate(0, -158);
+      ctx.rotate(headTilt);
+
+      // Headphone Arch
+      ctx.strokeStyle = '#f0abfc';
+      ctx.lineWidth = 6;
+      ctx.beginPath();
+      ctx.arc(0, -4, 52, Math.PI * 1.05, Math.PI * 1.95);
+      ctx.stroke();
+
+      // Head Shape
+      ctx.fillStyle = '#060010';
+      ctx.strokeStyle = '#f472b6';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 4, 40, 50, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      // Earcups (Cyan & Magenta)
+      [-45, 45].forEach((hx, i) => {
+        ctx.fillStyle = '#120329';
+        ctx.strokeStyle = i === 0 ? '#38bdf8' : '#f472b6';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.roundRect(hx - 9, -16, 18, 40, 8);
+        ctx.fill();
+        ctx.stroke();
+      });
+      ctx.restore();
+
+      // Left Arm & Hand (Scratching Left Turntable)
+      const leftHandX = -68 + (activePlaying ? Math.sin(timeSec * Math.PI * 2) * 36 : 0);
+      const leftHandY = -12 + (activePlaying ? Math.cos(timeSec * Math.PI * 4) * 8 : 0);
+
+      ctx.strokeStyle = '#e879f9';
+      ctx.fillStyle = '#070112';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(-112, -88);
+      ctx.quadraticCurveTo(-130, -35, leftHandX - 10, leftHandY);
+      ctx.lineTo(leftHandX + 14, leftHandY + 4);
+      ctx.quadraticCurveTo(-86, -42, -75, -86);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      // Right Arm & Hand (Mixer Fader Control)
+      const rightHandX = 68 + (activePlaying ? Math.cos(timeSec * Math.PI * 2) * 34 : 0);
+      const rightHandY = -14 + (activePlaying ? Math.sin(timeSec * Math.PI * 4) * 9 : 0);
+
+      ctx.beginPath();
+      ctx.moveTo(112, -88);
+      ctx.quadraticCurveTo(130, -35, rightHandX + 10, rightHandY);
+      ctx.lineTo(rightHandX - 14, rightHandY + 4);
+      ctx.quadraticCurveTo(86, -42, 75, -86);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.restore();
+    }
+
+    function drawDJBooth(deskY: number, timeSec: number, beatPhase: number, activePlaying: boolean) {
+      if (!ctx) return;
+      const boothHeight = height - deskY;
+      const pulse = Math.pow(Math.sin(beatPhase * Math.PI), 2);
+
+      // Desk Gradient Surface
+      const deskGrad = ctx.createLinearGradient(0, deskY, 0, height);
+      deskGrad.addColorStop(0, '#130329');
+      deskGrad.addColorStop(0.25, '#090117');
+      deskGrad.addColorStop(1, '#030008');
+      ctx.fillStyle = deskGrad;
+      ctx.fillRect(0, deskY, width, boothHeight);
+
+      // Neon Horizontal Edge Line
+      ctx.save();
+      ctx.strokeStyle = '#f0abfc';
+      ctx.shadowColor = '#d946ef';
+      ctx.shadowBlur = 16;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, deskY);
+      ctx.lineTo(width, deskY);
+      ctx.stroke();
+      ctx.restore();
+
+      const consoleW = Math.min(width * 0.88, 920);
+      const consoleH = Math.min(boothHeight * 0.78, 155);
+      const cx = width * 0.5;
+
+      const deckOffset = consoleW * 0.31;
+      const deckW = consoleW * 0.33;
+
+      // Draw 2 Turntables
+      [-1, 1].forEach((dir) => {
+        const dx = cx + dir * deckOffset;
+
+        ctx.save();
+        ctx.fillStyle = '#0d021f';
+        ctx.strokeStyle = dir === -1 ? '#e879f9' : '#38bdf8';
+        ctx.shadowColor = dir === -1 ? '#d946ef' : '#06b6d4';
+        ctx.shadowBlur = 12;
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(dx - deckW / 2, deskY + 8, deckW, consoleH * 0.85, 12);
+        ctx.fill();
+        ctx.stroke();
+
+        const platterRx = deckW * 0.37;
+        const platterRy = consoleH * 0.27;
+        const platterY = deskY + consoleH * 0.48;
+
+        ctx.strokeStyle = '#f0abfc';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        ctx.ellipse(dx, platterY, platterRx, platterRy, 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Spinning strobe marks
+        const spinAngle = activePlaying ? timeSec * Math.PI * 3.5 * dir : 0;
+        ctx.strokeStyle = dir === -1 ? '#38bdf8' : '#f472b6';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.ellipse(dx, platterY, platterRx * 0.65, platterRy * 0.65, 0, spinAngle, spinAngle + 1.4);
+        ctx.stroke();
+
+        // Spindle center
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.ellipse(dx, platterY, 5, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+      });
+
+      // Center Mixer
+      const mixerW = consoleW * 0.28;
+      ctx.save();
+      ctx.fillStyle = '#110326';
+      ctx.strokeStyle = '#38bdf8';
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 15;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(cx - mixerW / 2, deskY + 6, mixerW, consoleH * 0.9, 10);
+      ctx.fill();
+      ctx.stroke();
+
+      // Blinking RGB Pads
+      const cols = 4;
+      const rows = 2;
+      const padW = (mixerW * 0.72) / cols;
+      const padH = (consoleH * 0.24) / rows;
+      const padStartX = cx - (mixerW * 0.72) / 2;
+      const padStartY = deskY + consoleH * 0.52;
+
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const active = activePlaying && ((r * cols + c + Math.floor(timeSec * 5)) % 3) === 0;
+          ctx.fillStyle = active
+            ? c % 2 === 0
+              ? '#f472b6'
+              : '#22d3ee'
+            : 'rgba(192, 38, 211, 0.25)';
+          ctx.beginPath();
+          ctx.roundRect(padStartX + c * padW + 2, padStartY + r * padH + 2, padW - 4, padH - 4, 3);
+          ctx.fill();
+        }
+      }
+
+      // Moving crossfader
+      const faderX = cx + (activePlaying ? Math.sin(timeSec * Math.PI * 2) * (mixerW * 0.24) : 0);
+      const faderY = deskY + consoleH * 0.82;
+      ctx.strokeStyle = 'rgba(255,255,255,0.3)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(cx - mixerW * 0.28, faderY);
+      ctx.lineTo(cx + mixerW * 0.28, faderY);
+      ctx.stroke();
+
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(faderX - 6, faderY - 5, 12, 10);
+      ctx.restore();
+
+      // Floor Glow
+      const floorGlow = ctx.createRadialGradient(
+        cx,
+        deskY + consoleH + 15,
+        10,
+        cx,
+        deskY + consoleH + 15,
+        consoleW * 0.45
+      );
+      floorGlow.addColorStop(0, `rgba(56, 189, 248, ${0.24 + pulse * 0.2})`);
+      floorGlow.addColorStop(0.5, `rgba(217, 70, 239, ${0.16 + pulse * 0.16})`);
+      floorGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = floorGlow;
+      ctx.fillRect(0, deskY + consoleH - 10, width, boothHeight);
+    }
+
+    // Main 60 FPS Render Loop
+    let lastTimeMs = performance.now();
+    let accumulatedTime = 0;
+
+    const render = (nowMs: number) => {
+      const deltaSec = Math.min((nowMs - lastTimeMs) * 0.001, 0.1);
+      lastTimeMs = nowMs;
+
+      const activePlaying = isPlayingRef.current;
+      const rate = playbackRateRef.current || 1.0;
+      const spdMode = lightSpeedRef.current;
+      const spdMult = spdMode === 'hyper' ? 2.2 : spdMode === 'turbo' ? 1.5 : 1.0;
+
+      if (activePlaying) {
+        accumulatedTime += deltaSec * rate * spdMult;
+      } else {
+        // Slow ambient idle
+        accumulatedTime += deltaSec * 0.25;
+      }
+
+      const LOOP_DURATION = 2.0;
+      const loopSec = accumulatedTime % LOOP_DURATION;
+      const beatPhase = (loopSec * 2) % 1;
+      const pulse = Math.pow(Math.sin(beatPhase * Math.PI), 2);
+      const deskY = height * 0.72;
+
+      // 1. Sky Background
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, height);
+      bgGrad.addColorStop(0, '#04000a');
+      bgGrad.addColorStop(0.55, '#120229');
+      bgGrad.addColorStop(1, '#1e043d');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      // 2. Stars & Galaxy Glints
+      stars.forEach((s) => {
+        const sx = s.x * width;
+        const sy = s.y * height;
+        const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(loopSec * Math.PI + s.phase));
+        if (s.isCross) {
+          drawSparkle(sx, sy, s.size * 2.2, twinkle, '#f0abfc');
+        } else {
+          ctx.fillStyle = `rgba(245, 208, 254, ${twinkle})`;
+          ctx.beginPath();
+          ctx.arc(sx, sy, s.size, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      });
+
+      // 3. Neon Side Pillars
+      drawSideNeonPillars(pulse);
+
+      // 4. Volumetric Disco Spotlights
+      drawDiscoBeams(beatPhase, loopSec, lightModeRef.current);
+
+      // 5. Neon Undulating Cyber Waves
+      drawCyberWaves(loopSec, deskY, pulse);
+
+      // 6. 32-Bar Neon Equalizer
+      drawEqualizer(deskY, loopSec, beatPhase, activePlaying, isHoregBassRef.current);
+
+      // 7. DJ Character
+      drawDJ(deskY, loopSec, beatPhase, activePlaying);
+
+      // 8. DJ Booth & Turntables
+      drawDJBooth(deskY, loopSec, beatPhase, activePlaying);
+
+      // 9. Strobe Blitz Overlays
+      if (isBlitzRef.current) {
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+        ctx.fillRect(0, 0, width, height);
+      } else if (activePlaying && pulse > 0.88) {
+        ctx.fillStyle = `rgba(232, 121, 249, ${(pulse - 0.88) * 0.45})`;
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      animFrameId = requestAnimationFrame(render);
+    };
+
+    animFrameId = requestAnimationFrame(render);
+
+    return () => {
+      cancelAnimationFrame(animFrameId);
+      window.removeEventListener('resize', resize);
+    };
+  }, []);
 
   // 3D Motion Control (Tracks cursor or touch on the stage)
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -147,7 +691,6 @@ const CyberDJMotionStage: React.FC<{
     const rect = containerRef.current.getBoundingClientRect();
     const x = (e.clientX - rect.left) / rect.width - 0.5; // -0.5 to 0.5
     const y = (e.clientY - rect.top) / rect.height - 0.5; // -0.5 to 0.5
-    // Max tilt: ±16 degrees
     setTilt({
       x: Math.max(-16, Math.min(16, x * 32)),
       y: Math.max(-16, Math.min(16, -y * 32)),
@@ -171,7 +714,7 @@ const CyberDJMotionStage: React.FC<{
       >
         <div
           ref={containerRef}
-          className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden border-2 border-fuchsia-500/40 shadow-[0_25px_70px_rgba(168,85,247,0.35)] bg-black transition-transform ease-out"
+          className="relative w-full aspect-[16/9] min-h-[300px] max-h-[500px] rounded-3xl overflow-hidden border-2 border-fuchsia-500/40 shadow-[0_25px_70px_rgba(168,85,247,0.45)] bg-black transition-transform ease-out"
           style={{
             transform: isInteracting
               ? `rotateX(${tilt.y}deg) rotateY(${tilt.x}deg) scale3d(1.02, 1.02, 1.02)`
@@ -183,249 +726,21 @@ const CyberDJMotionStage: React.FC<{
             transitionDuration: isInteracting ? '90ms' : '600ms',
           }}
         >
-          {/* =============================================================
-              1. BASE ARTWORK: Futuristic Cyber DJ Stage
-          ============================================================= */}
-          <div
-            className="absolute inset-0 w-full h-full"
+          {/* Native HTML5 Canvas DJ Loop */}
+          <canvas
+            ref={canvasRef}
+            className="w-full h-full block"
             style={{
               animation: isPlaying && isHoregBass ? 'dj-horeg-stage-shake 0.1s infinite alternate' : 'none',
             }}
-          >
-            <img
-              src="/assets/images/cyber_dj_stage.jpg"
-              alt="Cyberpunk DJ Motion Stage"
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover select-none pointer-events-none scale-[1.03]"
-            />
-          </div>
+          />
 
-          {/* Fallback if image not loaded */}
-          {imageError && (
-            <div className="absolute inset-0 bg-gradient-to-b from-purple-950 via-neutral-950 to-black flex items-center justify-center">
-              <Disc3 className="w-20 h-20 text-violet-400 animate-spin" />
-            </div>
-          )}
-
-          {/* =============================================================
-              2. BEAT-REACTIVE DJ SILHOUETTE BOUNCE OVERLAY
-          ============================================================= */}
-          {isPlaying && (
-            <div
-              className="absolute inset-0 pointer-events-none mix-blend-screen opacity-50"
-              style={{
-                animation: `dj-character-bounce ${pulseDuration}s ease-in-out infinite alternate`,
-                background:
-                  'radial-gradient(ellipse 35% 45% at 50% 38%, rgba(217, 70, 239, 0.45) 0%, transparent 80%)',
-              }}
-            />
-          )}
-
-          {/* =============================================================
-              3. DUAL ROTATING NEON JOG WHEELS (TURNTABLES A & B)
-          ============================================================= */}
-          {/* Deck A (Left Jog Wheel) */}
-          <div
-            className="absolute pointer-events-none flex items-center justify-center"
-            style={{
-              left: '14.5%',
-              bottom: '8%',
-              width: '21.5%',
-              aspectRatio: '1.9 / 1',
-              transform: 'perspective(400px) rotateX(46deg)',
-            }}
-          >
-            {/* Spinning Neon Ring */}
-            <div
-              className={`w-full h-full rounded-full border-2 transition-all flex items-center justify-center overflow-hidden ${
-                isPlaying
-                  ? 'border-fuchsia-400 shadow-[0_0_20px_rgba(236,72,153,0.9),inset_0_0_15px_rgba(236,72,153,0.7)]'
-                  : 'border-fuchsia-500/40 opacity-60'
-              }`}
-              style={{
-                background: isPlaying
-                  ? 'conic-gradient(from 0deg, rgba(236,72,153,0.7) 0deg, transparent 90deg, rgba(6,182,212,0.8) 180deg, transparent 270deg, rgba(236,72,153,0.7) 360deg)'
-                  : 'transparent',
-                animation: isPlaying ? `dj-jog-spin-left ${jogDuration}s linear infinite` : 'none',
-              }}
-            >
-              {/* Strobe ticks around jog wheel */}
-              <div className="absolute inset-1 rounded-full border border-dashed border-white/40 pointer-events-none" />
-
-              {/* Center Holographic Disc Badge */}
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-neutral-950 border border-white/50 flex items-center justify-center shadow-md">
-                <Disc3 className="w-5 h-5 text-fuchsia-400 animate-spin" />
-              </div>
-            </div>
-          </div>
-
-          {/* Deck B (Right Jog Wheel) */}
-          <div
-            className="absolute pointer-events-none flex items-center justify-center"
-            style={{
-              right: '14.5%',
-              bottom: '8%',
-              width: '21.5%',
-              aspectRatio: '1.9 / 1',
-              transform: 'perspective(400px) rotateX(46deg)',
-            }}
-          >
-            {/* Spinning Neon Ring */}
-            <div
-              className={`w-full h-full rounded-full border-2 transition-all flex items-center justify-center overflow-hidden ${
-                isPlaying
-                  ? 'border-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.9),inset_0_0_15px_rgba(6,182,212,0.7)]'
-                  : 'border-cyan-500/40 opacity-60'
-              }`}
-              style={{
-                background: isPlaying
-                  ? 'conic-gradient(from 180deg, rgba(6,182,212,0.7) 0deg, transparent 90deg, rgba(236,72,153,0.8) 180deg, transparent 270deg, rgba(6,182,212,0.7) 360deg)'
-                  : 'transparent',
-                animation: isPlaying ? `dj-jog-spin-right ${jogDuration}s linear infinite` : 'none',
-              }}
-            >
-              {/* Strobe ticks */}
-              <div className="absolute inset-1 rounded-full border border-dashed border-white/40 pointer-events-none" />
-
-              {/* Center Holographic Disc Badge */}
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-neutral-950 border border-white/50 flex items-center justify-center shadow-md">
-                <Disc3 className="w-5 h-5 text-cyan-400 animate-spin" />
-              </div>
-            </div>
-          </div>
-
-          {/* =============================================================
-              4. DANCING CENTER NEON SPECTRUM EQUALIZER BARS
-          ============================================================= */}
-          <div
-            className="absolute pointer-events-none flex items-end justify-center gap-1 sm:gap-1.5"
-            style={{
-              left: '40.5%',
-              bottom: '18%',
-              width: '19%',
-              height: '36%',
-            }}
-          >
-            {Array.from({ length: 14 }).map((_, i) => {
-              // Staggered bounce height and delay
-              const heights = [35, 75, 55, 95, 60, 100, 85, 90, 70, 95, 65, 80, 50, 65];
-              const targetHeight = isPlaying ? heights[i % heights.length] : 15;
-              const animDur = (0.35 + (i % 5) * 0.08).toFixed(2);
-
-              return (
-                <div
-                  key={i}
-                  className="w-1 sm:w-1.5 rounded-full transition-all duration-150"
-                  style={{
-                    height: `${targetHeight}%`,
-                    background:
-                      i % 3 === 0
-                        ? 'linear-gradient(180deg, #ffffff 0%, #ec4899 60%, #a855f7 100%)'
-                        : i % 2 === 0
-                        ? 'linear-gradient(180deg, #ffffff 0%, #06b6d4 60%, #3b82f6 100%)'
-                        : 'linear-gradient(180deg, #ffffff 0%, #f59e0b 60%, #ec4899 100%)',
-                    boxShadow: isPlaying
-                      ? '0 0 10px rgba(236,72,153,0.9), 0 0 4px #fff'
-                      : 'none',
-                    animation: isPlaying
-                      ? `dj-eq-jump ${animDur}s ease-in-out infinite alternate`
-                      : 'none',
-                  }}
-                />
-              );
-            })}
-          </div>
-
-          {/* =============================================================
-              5. FLOATING COSMIC STARS & SPARKS
-          ============================================================= */}
-          <div className="absolute inset-0 pointer-events-none overflow-hidden">
-            <Sparkles
-              className="absolute top-[18%] left-[16%] w-4 h-4 text-cyan-300 animate-pulse pointer-events-none"
-              style={{ animationDuration: '1.2s' }}
-            />
-            <Sparkles
-              className="absolute top-[28%] left-[28%] w-3 h-3 text-pink-300 animate-ping pointer-events-none"
-              style={{ animationDuration: '2.1s' }}
-            />
-            <Sparkles
-              className="absolute top-[14%] right-[22%] w-5 h-5 text-amber-300 animate-pulse pointer-events-none"
-              style={{ animationDuration: '1.6s' }}
-            />
-            <Sparkles
-              className="absolute top-[24%] right-[32%] w-3.5 h-3.5 text-fuchsia-300 animate-ping pointer-events-none"
-              style={{ animationDuration: '1.8s' }}
-            />
-          </div>
-
-          {/* =============================================================
-              6. MOVING-HEAD SPOTLIGHTS & CYBER LASERS
-          ============================================================= */}
-          {showSpotlights && (
-            <div className="absolute inset-0 pointer-events-none z-10 overflow-hidden mix-blend-screen">
-              {/* Spotlight Left (Cyan) */}
-              <div
-                className="absolute -top-10 left-1/4 w-40 sm:w-56 h-[380px] origin-top blur-md opacity-70"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(6,182,212,0.9) 0%, rgba(147,51,234,0.3) 60%, transparent 100%)',
-                  clipPath: 'polygon(45% 0%, 55% 0%, 100% 100%, 0% 100%)',
-                  animation: `dj-spotlight-left ${spotLeftDur}s ease-in-out infinite alternate`,
-                }}
-              />
-              {/* Spotlight Right (Magenta) */}
-              <div
-                className="absolute -top-10 right-1/4 w-40 sm:w-56 h-[380px] origin-top blur-md opacity-70"
-                style={{
-                  background: 'linear-gradient(180deg, rgba(236,72,153,0.9) 0%, rgba(245,158,11,0.3) 60%, transparent 100%)',
-                  clipPath: 'polygon(45% 0%, 55% 0%, 100% 100%, 0% 100%)',
-                  animation: `dj-spotlight-right ${spotRightDur}s ease-in-out infinite alternate`,
-                }}
-              />
-            </div>
-          )}
-
-          {showLasers && (
-            <div className="absolute inset-0 pointer-events-none z-15 overflow-hidden">
-              <div
-                className="absolute h-[2px] w-full bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_15px_#10b981]"
-                style={{
-                  top: '42%',
-                  animation: `dj-laser-sweep ${laserDur1}s ease-in-out infinite alternate`,
-                }}
-              />
-              <div
-                className="absolute h-[2px] w-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent shadow-[0_0_15px_#06b6d4]"
-                style={{
-                  top: '64%',
-                  animation: `dj-laser-sweep-reverse ${laserDur2}s ease-in-out infinite alternate`,
-                }}
-              />
-            </div>
-          )}
-
-          {/* =============================================================
-              7. STROBE BLITZ FLASH OVERLAY (Rave Hits)
-          ============================================================= */}
-          {isStrobeActive && (
-            <div
-              className="absolute inset-0 z-30 pointer-events-none mix-blend-screen"
-              style={{
-                animation: 'dj-hyper-blitz 0.055s steps(2, start) infinite',
-                backgroundColor: isManualBlitz || isBurstingBlitz
-                  ? 'rgba(255, 255, 255, 0.75)'
-                  : 'rgba(255, 255, 255, 0.35)',
-              }}
-            />
-          )}
-
-          {/* =============================================================
-              8. BASS HOREG EXPANDING SUBWOOFER SHOCKWAVE RING
-          ============================================================= */}
+          {/* Subwoofer Bass Horeg Shockwave Frame */}
           {isPlaying && isHoregBass && (
             <div
               className="absolute inset-0 rounded-3xl pointer-events-none border-2 border-fuchsia-400/90 shadow-[0_0_40px_rgba(236,72,153,0.9)]"
               style={{
-                animation: `dj-bass-kick-1 ${pulseDuration}s cubic-bezier(0.1, 0.9, 0.2, 1) infinite`,
+                animation: 'dj-bass-kick-1 0.45s cubic-bezier(0.1, 0.9, 0.2, 1) infinite',
               }}
             />
           )}
@@ -583,52 +898,11 @@ export const DJPage: React.FC<DJPageProps> = ({
     <div className="min-h-screen bg-neutral-950 text-white font-sans selection:bg-violet-500 selection:text-white pb-28">
       {/* Embedded CSS Keyframes for High-Speed Rave, 3D Tilt & Cyber Stage */}
       <style>{`
-        @keyframes dj-jog-spin-left {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(360deg); }
-        }
-        @keyframes dj-jog-spin-right {
-          from { transform: rotate(0deg); }
-          to { transform: rotate(-360deg); }
-        }
-        @keyframes dj-character-bounce {
-          0% { transform: translateY(0) scale(1); }
-          50% { transform: translateY(-3px) scale(1.01); }
-          100% { transform: translateY(2px) scale(0.995); }
-        }
         @keyframes dj-stage-float {
           0% { transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0); }
           33% { transform: perspective(1000px) rotateX(2deg) rotateY(-2.5deg) translateY(-3px); }
           66% { transform: perspective(1000px) rotateX(-2deg) rotateY(2.5deg) translateY(2px); }
           100% { transform: perspective(1000px) rotateX(0deg) rotateY(0deg) translateY(0); }
-        }
-        @keyframes dj-eq-jump {
-          0% { transform: scaleY(0.4); opacity: 0.7; }
-          100% { transform: scaleY(1.0); opacity: 1.0; }
-        }
-        @keyframes dj-spotlight-left {
-          0% { transform: rotate(-26deg) scaleX(0.8); opacity: 0.55; }
-          50% { transform: rotate(8deg) scaleX(1.3); opacity: 0.95; }
-          100% { transform: rotate(30deg) scaleX(0.85); opacity: 0.6; }
-        }
-        @keyframes dj-spotlight-right {
-          0% { transform: rotate(28deg) scaleX(0.8); opacity: 0.6; }
-          50% { transform: rotate(-10deg) scaleX(1.35); opacity: 0.95; }
-          100% { transform: rotate(-32deg) scaleX(0.9); opacity: 0.55; }
-        }
-        @keyframes dj-laser-sweep {
-          0% { transform: translateY(-40px) rotate(-6deg); opacity: 0.35; }
-          50% { transform: translateY(30px) rotate(5deg); opacity: 1; }
-          100% { transform: translateY(-15px) rotate(-3deg); opacity: 0.45; }
-        }
-        @keyframes dj-laser-sweep-reverse {
-          0% { transform: translateY(35px) rotate(4deg); opacity: 0.4; }
-          50% { transform: translateY(-35px) rotate(-5deg); opacity: 1; }
-          100% { transform: translateY(20px) rotate(3deg); opacity: 0.35; }
-        }
-        @keyframes dj-hyper-blitz {
-          0%, 100% { opacity: 0.02; }
-          50% { opacity: 0.98; }
         }
         @keyframes dj-bass-kick-1 {
           0% { transform: scale(1.0); opacity: 0.9; }
@@ -678,7 +952,7 @@ export const DJPage: React.FC<DJPageProps> = ({
               🎧 DJ Club & Motion Arena
             </h1>
             <p className="text-xs sm:text-sm text-white/70">
-              Panggung DJ cyberpunk 3D interaktif, lampu rave hiper-ngebut, dentuman sub-bass horeg, dan lagu full album.
+              Panggung DJ neon 3D interaktif, lampu rave hiper-ngebut, dentuman sub-bass horeg, dan lagu full album.
             </p>
           </div>
 
@@ -713,23 +987,23 @@ export const DJPage: React.FC<DJPageProps> = ({
         </header>
 
         {/* =================================================================
-            2. NOW PLAYING DECK & CYBER DJ MOTION ARENA (Replaces Old Turntable)
+            2. NOW PLAYING DECK & NEON DJ CANVAS STAGE (Full Native Canvas Engine)
         ================================================================= */}
         <section className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-5 sm:p-7 shadow-2xl relative overflow-hidden space-y-6">
           {/* Subtle Deck Lighting Line */}
           <div className="absolute top-0 left-0 right-0 h-[1.5px] bg-gradient-to-r from-transparent via-fuchsia-400 to-transparent" />
 
-          {/* Interactive Cyberpunk DJ Motion Stage */}
-          <CyberDJMotionStage
-            coverUrl={currentTrack.coverUrl}
+          {/* Canvas DJ Motion Stage */}
+          <NeonDJCanvasStage
             isPlaying={isPlaying}
             playbackRate={playbackRate}
-            title={currentTrack.title}
             lightMode={lightMode}
             lightSpeed={lightSpeed}
             isManualBlitz={isManualBlitz}
             isBurstingBlitz={isBurstingBlitz}
             isHoregBass={isHoregBass}
+            coverUrl={currentTrack.coverUrl}
+            title={currentTrack.title}
           />
 
           {/* Track Info & Like Action */}
