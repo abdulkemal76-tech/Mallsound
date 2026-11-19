@@ -10,6 +10,9 @@ import {
   Volume2,
   Sparkles,
   Palette,
+  Globe,
+  Info,
+  Download,
 } from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
@@ -364,7 +367,108 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         </div>
       </section>
 
-      {/* SECTION 4: About MallSound */}
+      {/* SECTION 4: Latar Belakang Tips */}
+      <section className="rounded-2xl border backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-4 bg-sky-500/10 border-sky-500/30">
+        <div className="flex items-center gap-2.5 pb-2 border-b border-sky-500/20">
+          <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
+            <Globe className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-white font-display">Putar Musik di Latar Belakang</h3>
+            <p className="text-xs text-sky-300/80">Cara agar MallSound tetap berbunyi saat layar tertutup</p>
+          </div>
+        </div>
+
+        {/* Info Box */}
+        <div className="flex gap-2.5 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20">
+          <Info className="w-4 h-4 text-sky-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-white/80 leading-relaxed">
+            Browser bawaan Android menghentikan audio saat kamu beralih ke aplikasi lain.
+            Gunakan browser yang mendukung <span className="font-semibold text-sky-300">pemutaran latar belakang</span> supaya musik terus mengalir meski layar mati.
+          </p>
+        </div>
+
+        {/* Browser Steps */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Cara Pakai:</p>
+          <ol className="list-none space-y-2">
+            {[
+              'Unduh salah satu browser di bawah ini',
+              'Buka mallz12.my.id melalui browser tersebut',
+              'Putar lagu, lalu minimalkan atau kunci layar — musik tetap jalan!',
+            ].map((step, i) => (
+              <li key={i} className="flex items-start gap-2.5 text-xs text-white/75">
+                <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-500/30 text-sky-300 font-bold text-[10px] flex items-center justify-center border border-sky-500/40">
+                  {i + 1}
+                </span>
+                <span className="pt-0.5">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        {/* Download Browser Buttons */}
+        <div className="space-y-2">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Browser yang Disarankan:</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            {[
+              {
+                name: 'Lemur Browser',
+                sub: 'Ringan & mendukung latar belakang',
+                url: 'https://play.google.com/store/apps/details?id=net.kodehaan.lembur',
+                color: 'from-sky-500 to-cyan-500',
+                shadow: 'shadow-cyan-500/25',
+              },
+              {
+                name: 'Brave Browser',
+                sub: 'Privat & bebas iklan',
+                url: 'https://play.google.com/store/apps/details?id=com.brave.browser',
+                color: 'from-orange-500 to-amber-500',
+                shadow: 'shadow-orange-500/25',
+              },
+              {
+                name: 'Kiwi Browser',
+                sub: 'Mendukung ekstensi Chrome',
+                url: 'https://play.google.com/store/apps/details?id=com.kiwibrowser.browser',
+                color: 'from-green-500 to-emerald-500',
+                shadow: 'shadow-green-500/25',
+              },
+            ].map((browser) => (
+              <a
+                key={browser.name}
+                href={browser.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-gradient-to-r ${browser.color} ${browser.shadow} shadow-md text-white hover:opacity-90 active:opacity-80 transition-all`}
+              >
+                <Download className="w-4 h-4 flex-shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold leading-tight truncate">{browser.name}</p>
+                  <p className="text-[10px] opacity-80 leading-tight truncate">{browser.sub}</p>
+                </div>
+                <ExternalLink className="w-3 h-3 ml-auto flex-shrink-0 opacity-70" />
+              </a>
+            ))}
+          </div>
+        </div>
+
+        {/* Open Shortcut */}
+        <div className="pt-1 border-t border-sky-500/20">
+          <a
+            href="https://mallz12.my.id"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 text-white text-xs font-semibold transition-all"
+          >
+            <Globe className="w-4 h-4 text-sky-400" />
+            Buka MallSound di Tab Baru
+            <ExternalLink className="w-3 h-3 opacity-60" />
+          </a>
+          <p className="text-[10px] text-white/40 mt-1.5">Salin link ini ke browser yang sudah kamu unduh.</p>
+        </div>
+      </section>
+
+      {/* SECTION 5: About MallSound */}
       <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-white/10">
           <div className="flex items-center gap-2.5">
