@@ -272,9 +272,7 @@ export const HomePage: React.FC<HomePageProps> = ({
             </h1>
             <div className="flex items-center gap-2 text-xs text-white/50 pt-0.5">
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_8px_#34d399]" />
-              <span className="font-medium text-emerald-300">Lossless Studio 24-bit</span>
-              <span>•</span>
-              <span>Lirik Sinkron Nyata</span>
+              <span className="font-semibold text-emerald-300">MallSound</span>
             </div>
           </div>
         </div>
