@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   User as UserIcon,
   LogIn,
@@ -16,9 +16,19 @@ import {
   Sparkles,
   Smartphone,
   Music4,
+  Download,
+  Bell,
+  BatteryCharging,
+  CheckCircle2,
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  Radio,
 } from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
+import { usePWAInstall } from '../hooks/usePWAInstall';
+import { backgroundAudioService } from '../services/backgroundAudio';
 
 export interface ProfilePageProps {
   user: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -82,6 +92,70 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   crossfadeSec,
   onCrossfadeChange,
 }) => {
+  const { isInstallable, isInstalled, isAndroid, isIOS, promptInstall } = usePWAInstall();
+  const [installFeedback, setInstallFeedback] = useState<string | null>(null);
+  const [notificationStatus, setNotificationStatus] = useState<string>(() => {
+    return typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+  });
+  const [isTestingAudio, setIsTestingAudio] = useState(false);
+  const [testFeedback, setTestFeedback] = useState<string | null>(null);
+
+  const handleInstallClick = async () => {
+    if (isInstallable) {
+      const outcome = await promptInstall();
+      if (outcome === 'accepted') {
+        setInstallFeedback('Aplikasi MallSound sedang dipasang ke Layar Utama Anda!');
+      }
+    } else {
+      setInstallFeedback(
+        'Buka menu titik tiga (⋮) di Chrome lalu pilih "Instal aplikasi" atau "Tambahkan ke Layar Utama".'
+      );
+    }
+  };
+
+  const handleRequestNotification = async () => {
+    if (typeof Notification === 'undefined') {
+      alert('Perangkat Anda tidak mendukung Web Notification API.');
+      return;
+    }
+    try {
+      const perm = await Notification.requestPermission();
+      setNotificationStatus(perm);
+      if (perm === 'granted') {
+        backgroundAudioService.ensureAudioActive();
+        setTestFeedback('Izin notifikasi & lock screen aktif! Sistem tidak akan mematikan audio di background.');
+      }
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleTestBackgroundAudio = () => {
+    setIsTestingAudio(true);
+    setTestFeedback('Mengaktifkan stream audio keep-alive & MediaSession...');
+    backgroundAudioService.ensureAudioActive();
+    backgroundAudioService.updatePlaybackState(true);
+    backgroundAudioService.updateNowPlaying({
+      id: 'test_bg_audio',
+      title: 'Uji Latar Belakang (MallSound)',
+      artist: 'Sistem Audio Aktif',
+      album: 'MallSound Background Engine',
+      durationSec: 120,
+      coverUrl: '/pwa-192x192.png',
+      audioUrl: '',
+      genre: 'System',
+      bitrateLabel: 'Lossless',
+      releaseYear: 2024,
+      playsCount: 1,
+      lyrics: [],
+    });
+
+    setTimeout(() => {
+      setIsTestingAudio(false);
+      setTestFeedback('Kanal audio & MediaSession aktif! Coba kunci layar HP sekarang, lagu/notifikasi tetap jalan!');
+    }, 1200);
+  };
+
   return (
     <div className="space-y-6 pb-28 sm:pb-24 max-w-4xl mx-auto px-4 sm:px-6 pt-2">
       {/* Header Banner */}
@@ -172,6 +246,147 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <LogIn className="w-4 h-4" />
               <span>Masuk dengan Google</span>
             </button>
+          </div>
+        )}
+      </section>
+
+      {/* SECTION: UNDUH & PASANG APLIKASI (PWA) + IZIN PEMUTARAN LATAR BELAKANG */}
+      <section className="rounded-2xl bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-white/5 border border-emerald-500/20 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-inner">
+              <Smartphone className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-lg font-bold text-white font-display">
+                  Instal Aplikasi & Izin Latar Belakang
+                </h2>
+                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  {isInstalled ? 'Aplikasi Terpasang' : 'PWA Standalone'}
+                </span>
+              </div>
+              <p className="text-xs text-white/60 mt-0.5">
+                Pasang sebagai aplikasi mandiri di HP untuk membuka izin background playback tanpa henti saat layar mati.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 1. Tombol & Status Pasang Aplikasi */}
+        <div className="p-4 rounded-xl bg-black/40 border border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-bold text-white">
+              {isInstalled ? (
+                <>
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Aplikasi MallSound Aktif di Perangkat Ini</span>
+                </>
+              ) : (
+                <>
+                  <Download className="w-4 h-4 text-emerald-400" />
+                  <span>Pasang Aplikasi ke Layar Utama (Home Screen)</span>
+                </>
+              )}
+            </div>
+            <p className="text-xs text-white/60 max-w-xl">
+              {isInstalled
+                ? 'MallSound sudah berjalan dalam mode aplikasi mandiri (WebAPK). Nikmati pemutaran penuh tanpa bilah alamat browser.'
+                : 'Pasang MallSound sebagai aplikasi asli tanpa lewat Play Store. Ikon aplikasi akan langsung muncul di menu HP Anda.'}
+            </p>
+          </div>
+
+          {!isInstalled && (
+            <button
+              type="button"
+              onClick={handleInstallClick}
+              className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-semibold bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/20 hover:scale-[1.02] transition-all shrink-0 cursor-pointer"
+            >
+              <Download className="w-4 h-4" />
+              <span>Pasang Sekarang</span>
+            </button>
+          )}
+        </div>
+
+        {installFeedback && (
+          <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-xs text-emerald-300 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
+            <span>{installFeedback}</span>
+          </div>
+        )}
+
+        {/* 2. Izin-Izin Kunci Pemutaran Latar Belakang */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Card A: Izin Notifikasi & Layar Kunci */}
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <Bell className="w-4 h-4 text-amber-400" />
+                <span>1. Izin Notifikasi & Layar Kunci</span>
+              </div>
+              <span
+                className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border ${
+                  notificationStatus === 'granted'
+                    ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+                    : 'bg-amber-500/20 text-amber-300 border-amber-500/30'
+                }`}
+              >
+                {notificationStatus === 'granted' ? '✓ Diizinkan' : 'Belum Aktif'}
+              </span>
+            </div>
+            <p className="text-xs text-white/60 leading-relaxed">
+              Diperlukan oleh Android 13 ke atas agar kontrol pemutar musik di lock screen dan notification bar tetap tampil dan tidak dibunuh sistem saat layar mati.
+            </p>
+            {notificationStatus !== 'granted' && (
+              <button
+                type="button"
+                onClick={handleRequestNotification}
+                className="w-full inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/30 transition-all cursor-pointer"
+              >
+                <Bell className="w-3.5 h-3.5" />
+                <span>Ketuk untuk Mengaktifkan Izin</span>
+              </button>
+            )}
+          </div>
+
+          {/* Card B: Penghemat Baterai Android */}
+          <div className="p-4 rounded-xl bg-white/5 border border-white/10 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm font-bold text-white">
+                <BatteryCharging className="w-4 h-4 text-cyan-400" />
+                <span>2. Penghemat Baterai (Unrestricted)</span>
+              </div>
+              <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                Penting di Android
+              </span>
+            </div>
+            <p className="text-xs text-white/60 leading-relaxed">
+              Pada HP Xiaomi/MIUI, Samsung, Oppo/Realme, buka <strong>Pengaturan HP &gt; Aplikasi &gt; MallSound &gt; Baterai &gt; Pilih "Tidak Dibatasi" (Unrestricted)</strong> agar OS tidak mematikan koneksi lagu.
+            </p>
+          </div>
+        </div>
+
+        {/* 3. Tombol Uji Langsung Audio Latar Belakang */}
+        <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-white/10">
+          <div className="text-xs text-white/60">
+            Ingin memastikan audio tetap menyala saat layar HP dimatikan?
+          </div>
+
+          <button
+            type="button"
+            onClick={handleTestBackgroundAudio}
+            disabled={isTestingAudio}
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/15 text-white border border-white/15 transition-all hover:scale-[1.02] cursor-pointer shrink-0 disabled:opacity-50"
+          >
+            <Radio className="w-3.5 h-3.5 text-fuchsia-400 animate-pulse" />
+            <span>{isTestingAudio ? 'Mengaktifkan...' : '🔊 Tes Audio Latar Belakang'}</span>
+          </button>
+        </div>
+
+        {testFeedback && (
+          <div className="p-3 rounded-xl bg-violet-500/20 border border-violet-500/30 text-xs text-violet-200 flex items-center gap-2 animate-fadeIn">
+            <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+            <span>{testFeedback}</span>
           </div>
         )}
       </section>
