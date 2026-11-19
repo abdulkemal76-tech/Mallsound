@@ -95,9 +95,9 @@ function getGreeting(): { text: string; icon: string } {
 // Quick mood chips for 1-tap filtering
 const MOOD_FILTERS = [
   { id: 'semua', label: 'Semua Hits', query: '' },
-  { id: 'dj', label: '🔥 DJ & Horeg', query: 'DJ Breakbeat Indonesia' },
+  { id: 'global', label: '🌐 Top Global', query: 'Top Global Hits' },
   { id: 'hits', label: '✨ Top Hits 2026', query: 'Top Hits Indonesia' },
-  { id: 'senja', label: '☕ Senja & Indie', query: 'Indie Indonesia Senja' },
+  { id: 'shoegaze', label: '🎸 Shoegaze', query: 'Shoegaze' },
   { id: 'tiktok', label: '⚡ Viral TikTok', query: 'Viral TikTok Indonesia' },
   { id: 'galau', label: '🌧️ Galau Brutal', query: 'Lagu Galau Indonesia' },
   { id: 'rock', label: '🎸 Band 2000-an', query: 'Pop Rock 2000 Indonesia' },
@@ -117,12 +117,12 @@ interface QuickPickItem {
 
 const QUICK_PICKS: QuickPickItem[] = [
   {
-    id: 'qp-dj-viral',
-    title: 'DJ Horeg & Pargoy',
-    subtitle: 'Jedag Jedug Full Bass',
-    coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=300&h=300&fit=crop',
-    gradient: 'from-violet-600/40 via-purple-900/30 to-black',
-    djTrack: DJ_INDO_TRACKS[0],
+    id: 'qp-top-global',
+    title: 'Top Global Music',
+    subtitle: 'Billboard & Hits Dunia',
+    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=300&h=300&fit=crop',
+    gradient: 'from-blue-600/40 via-indigo-900/30 to-black',
+    actionQuery: 'Top Global Hits',
   },
   {
     id: 'qp-top-hits',
@@ -133,12 +133,12 @@ const QUICK_PICKS: QuickPickItem[] = [
     actionQuery: 'Top Hits Indonesia',
   },
   {
-    id: 'qp-indie-senja',
-    title: 'Indie Senja & Kopi',
-    subtitle: 'Syahdu & Santai Sore',
-    coverUrl: 'https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=300&h=300&fit=crop',
-    gradient: 'from-amber-600/40 via-orange-900/30 to-black',
-    actionQuery: 'Indie Indonesia Senja',
+    id: 'qp-shoegaze',
+    title: 'Shoegaze',
+    subtitle: 'Fuzz, Reverb & Dream Pop',
+    coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
+    gradient: 'from-fuchsia-600/40 via-purple-900/30 to-black',
+    actionQuery: 'Shoegaze',
   },
   {
     id: 'qp-tiktok-fyp',
@@ -179,6 +179,7 @@ const RECOMMENDATION_QUERIES = [
   'Tenxi',
   'Dongker',
   'Rex Orange County',
+  'Shoegaze',
 ];
 
 export const HomePage: React.FC<HomePageProps> = ({
