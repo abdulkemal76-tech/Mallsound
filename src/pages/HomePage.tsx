@@ -21,6 +21,7 @@ import {
   ChevronLeft,
   Volume2,
   Music,
+  RefreshCw,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { TRENDING_SECTIONS, TrendingSection } from '../data/trending';
@@ -192,7 +193,9 @@ export const HomePage: React.FC<HomePageProps> = ({
 }) => {
   const [recommendedTracks, setRecommendedTracks] = useState<Track[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
-  const [activeRecommendationQuery, setActiveRecommendationQuery] = useState('Sheila On 7');
+  const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
+  const [activeRecommendationQuery, setActiveRecommendationQuery] = useState('Top Hits Indonesia');
+  const [recommendationSubtitle, setRecommendationSubtitle] = useState('Berdasarkan selera musikmu & lagu teratas');
   const [activeMood, setActiveMood] = useState('semua');
 
   // Hero Spotlight Slider State
@@ -214,35 +217,127 @@ export const HomePage: React.FC<HomePageProps> = ({
     };
   }, [isHovered]);
 
-  // Fetch initial recommended tracks on mount
-  useEffect(() => {
-    let isCancelled = false;
+  // Load diverse, history-aware recommendations (Never just one artist!)
+  const loadDiverseRecommendations = async () => {
+    setIsLoadingRecommendations(true);
+    setIsRefreshingRecs(true);
 
-    async function loadRecommendations() {
-      setIsLoadingRecommendations(true);
-      const randomQuery =
-        RECOMMENDATION_QUERIES[Math.floor(Math.random() * RECOMMENDATION_QUERIES.length)];
-      setActiveRecommendationQuery(randomQuery);
-
+    try {
+      // 1. Check user listening history from localStorage
+      let topArtists: string[] = [];
       try {
-        const { tracks } = await searchCatalogWithMeta(randomQuery, 6);
-        if (!isCancelled) {
-          setRecommendedTracks(tracks.slice(0, 6));
+        const saved = localStorage.getItem('mallsound_recently_played');
+        if (saved) {
+          const historyTracks: Track[] = JSON.parse(saved);
+          if (Array.isArray(historyTracks) && historyTracks.length > 0) {
+            const counts = new Map<string, number>();
+            for (const t of historyTracks) {
+              if (!t.artist) continue;
+              const primary = t.artist.split(/[&,x\/+]/)[0].trim();
+              if (primary && primary.length > 1) {
+                counts.set(primary, (counts.get(primary) || 0) + 1);
+              }
+            }
+            topArtists = Array.from(counts.entries())
+              .sort((a, b) => b[1] - a[1])
+              .map(([a]) => a);
+          }
         }
       } catch (err) {
-        console.error('Gagal memuat rekomendasi musik:', err);
-      } finally {
-        if (!isCancelled) {
-          setIsLoadingRecommendations(false);
+        console.warn('Failed to parse listening history:', err);
+      }
+
+      // 2. Build multi-query streams
+      const queryList: string[] = [];
+      if (topArtists.length >= 2) {
+        queryList.push(topArtists[0]);
+        queryList.push(topArtists[1]);
+        queryList.push('Top Hits Indonesia');
+        const candidatePool = RECOMMENDATION_QUERIES.filter((q) => !topArtists.includes(q));
+        const extra = candidatePool[Math.floor(Math.random() * candidatePool.length)] || 'Indie Indonesia Senja';
+        queryList.push(extra);
+        setRecommendationSubtitle(`Dirancang dari favoritmu (${topArtists[0]}, ${topArtists[1]}) & hits segar`);
+      } else if (topArtists.length === 1) {
+        queryList.push(topArtists[0]);
+        queryList.push('Top Hits Indonesia');
+        queryList.push('Indie Indonesia Senja');
+        const extra = RECOMMENDATION_QUERIES.filter((q) => q !== topArtists[0])[Math.floor(Math.random() * 4)] || 'Pop Rock 2000 Indonesia';
+        queryList.push(extra);
+        setRecommendationSubtitle(`Dipilih untukmu berdasarkan ${topArtists[0]} & tren terkini`);
+      } else {
+        queryList.push('Top Hits Indonesia');
+        const shuffled = [...RECOMMENDATION_QUERIES].sort(() => Math.random() - 0.5);
+        queryList.push(shuffled[0]);
+        queryList.push(shuffled[1]);
+        setRecommendationSubtitle('Koleksi spesial beragam artis pilihan penikmat musik');
+      }
+
+      setActiveRecommendationQuery(queryList[0] || 'Top Hits Indonesia');
+
+      // 3. Fetch each query stream in parallel
+      const streamResults = await Promise.all(
+        queryList.map((q) =>
+          searchCatalogWithMeta(q, 6).catch(() => ({ tracks: [] as Track[] }))
+        )
+      );
+
+      // 4. Round-Robin Interleave + STRICT ARTIST DIVERSITY (Max 1 song per primary artist!)
+      const seenPrimaryArtists = new Set<string>();
+      const seenTrackIds = new Set<string>();
+      const diverseList: Track[] = [];
+
+      const maxLen = Math.max(...streamResults.map((r) => r.tracks.length), 0);
+      for (let round = 0; round < maxLen; round++) {
+        for (const res of streamResults) {
+          const t = res.tracks[round];
+          if (!t) continue;
+          if (seenTrackIds.has(t.id)) continue;
+
+          // Normalize primary artist so collaborations don't duplicate (e.g. Tenxi & Jemsii vs dia & Tenxi)
+          const primary = (t.artist || '')
+            .toLowerCase()
+            .split(/[&,x\/+]/)[0]
+            .trim();
+
+          if (primary && !seenPrimaryArtists.has(primary)) {
+            seenPrimaryArtists.add(primary);
+            seenTrackIds.add(t.id);
+            diverseList.push(t);
+          }
+
+          if (diverseList.length >= 6) break;
+        }
+        if (diverseList.length >= 6) break;
+      }
+
+      // Fallback relaxation if less than 6 found
+      if (diverseList.length < 6) {
+        for (const res of streamResults) {
+          for (const t of res.tracks) {
+            if (!seenTrackIds.has(t.id)) {
+              seenTrackIds.add(t.id);
+              diverseList.push(t);
+            }
+            if (diverseList.length >= 6) break;
+          }
+          if (diverseList.length >= 6) break;
         }
       }
+
+      if (diverseList.length > 0) {
+        setRecommendedTracks(diverseList.slice(0, 6));
+      }
+    } catch (err) {
+      console.error('Gagal memuat rekomendasi musik beragam:', err);
+    } finally {
+      setIsLoadingRecommendations(false);
+      setIsRefreshingRecs(false);
     }
+  };
 
-    loadRecommendations();
-
-    return () => {
-      isCancelled = true;
-    };
+  // Initial load
+  useEffect(() => {
+    loadDiverseRecommendations();
   }, []);
 
   // Separate Indonesian artists and global artists
@@ -759,20 +854,38 @@ export const HomePage: React.FC<HomePageProps> = ({
           6. ✨ REKOMENDASI UNTUKMU
       ===================================================================== */}
       <section className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-2xl">✨</span>
-            <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
-              Rekomendasi Untukmu
-            </h2>
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">✨</span>
+              <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
+                Rekomendasi Untukmu
+              </h2>
+            </div>
+            <p className="text-xs text-white/50 truncate pt-0.5">
+              {recommendationSubtitle}
+            </p>
           </div>
-          <button
-            onClick={() => onNavigateToSearch(activeRecommendationQuery)}
-            className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
-          >
-            Lihat Semua
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => loadDiverseRecommendations()}
+              disabled={isRefreshingRecs}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-white/70 hover:text-white transition-all cursor-pointer disabled:opacity-50"
+              title="Acak rekomendasi baru"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshingRecs ? 'animate-spin text-violet-400' : ''}`} />
+              <span className="hidden sm:inline">Acak</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToSearch(activeRecommendationQuery)}
+              className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              Lihat Semua
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
         </div>
 
         {/* Track Grid or Skeletons */}
