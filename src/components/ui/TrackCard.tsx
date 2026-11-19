@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Play, Pause, Heart, Disc3 } from 'lucide-react';
+import { Play, Pause, Heart, Disc3, MoreVertical } from 'lucide-react';
 import { Track } from '../../types/music';
 
 export interface TrackCardProps {
@@ -8,6 +8,7 @@ export interface TrackCardProps {
   isPlaying: boolean;
   onClick: () => void;
   onToggleLike?: (track: Track, e: React.MouseEvent) => void;
+  onOpenActions?: (track: Track, e: React.MouseEvent) => void;
   isLiked?: boolean;
   showArtist?: boolean; // default true
   size?: 'sm' | 'md' | 'lg'; // default 'md'
@@ -19,6 +20,7 @@ export const TrackCard: React.FC<TrackCardProps> = ({
   isPlaying,
   onClick,
   onToggleLike,
+  onOpenActions,
   isLiked = false,
   showArtist = true,
   size = 'md',
@@ -148,23 +150,40 @@ export const TrackCard: React.FC<TrackCardProps> = ({
       </div>
 
       {/* Track Details */}
-      <div className="w-full min-w-0">
-        <h4
-          title={track.title}
-          className={`font-display truncate tracking-tight transition-colors ${sizeConfig.title} ${
-            isCurrentTrack ? 'text-violet-400 font-bold' : 'text-white group-hover:text-violet-200'
-          }`}
-        >
-          {track.title}
-        </h4>
-
-        {showArtist && (
-          <p
-            title={track.artist}
-            className={`text-white/60 truncate font-sans mt-0.5 transition-colors group-hover:text-white/80 ${sizeConfig.artist}`}
+      <div className="w-full min-w-0 flex items-start justify-between gap-1 mt-1">
+        <div className="min-w-0 flex-1">
+          <h4
+            title={track.title}
+            className={`font-display truncate tracking-tight transition-colors ${sizeConfig.title} ${
+              isCurrentTrack ? 'text-violet-400 font-bold' : 'text-white group-hover:text-violet-200'
+            }`}
           >
-            {track.artist}
-          </p>
+            {track.title}
+          </h4>
+
+          {showArtist && (
+            <p
+              title={track.artist}
+              className={`text-white/60 truncate font-sans mt-0.5 transition-colors group-hover:text-white/80 ${sizeConfig.artist}`}
+            >
+              {track.artist}
+            </p>
+          )}
+        </div>
+
+        {onOpenActions && (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenActions(track, e);
+            }}
+            className="p-1 -mr-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 transition-colors shrink-0 cursor-pointer"
+            title="Menu lagu"
+            aria-label={`Menu pilihan untuk lagu ${track.title}`}
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
         )}
       </div>
     </div>

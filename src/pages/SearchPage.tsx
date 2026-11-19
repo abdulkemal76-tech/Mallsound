@@ -16,6 +16,7 @@ import {
   Loader2,
   AlertCircle,
   Volume2,
+  MoreVertical,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { MOOD_CARDS, GENRE_CARDS, GenreMoodCard } from '../data/genres';
@@ -28,6 +29,7 @@ export interface SearchPageProps {
   isPlaying: boolean;
   isTrackLiked: (trackId: string) => boolean;
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
+  onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
   initialQuery?: string;
 }
 
@@ -79,6 +81,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
   isPlaying,
   isTrackLiked,
   onToggleLike,
+  onOpenActions,
   initialQuery = '',
 }) => {
   const [query, setQuery] = useState(initialQuery);
@@ -433,12 +436,13 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           {!isLoading && searchResults.length > 0 && (
             <div className="space-y-1.5">
               {/* Header row on tablet/desktop */}
-              <div className="hidden sm:grid grid-cols-[40px_1fr_160px_80px_48px] px-4 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider">
+              <div className="hidden sm:grid grid-cols-[40px_1fr_160px_80px_40px_40px] px-4 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider">
                 <span>#</span>
                 <span>Judul Lagu</span>
                 <span>Album</span>
                 <span className="text-right">Durasi</span>
                 <span className="text-center">Suka</span>
+                <span className="text-center">Aksi</span>
               </div>
 
               {/* Track rows */}
@@ -451,7 +455,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                   <div
                     key={track.id}
                     onClick={() => onSelectTrack(track)}
-                    className={`group flex sm:grid sm:grid-cols-[40px_1fr_160px_80px_48px] items-center gap-3 sm:gap-4 px-3 sm:px-4 py-2.5 rounded-2xl backdrop-blur-md transition-all duration-200 cursor-pointer ${
+                    className={`group flex sm:grid sm:grid-cols-[40px_1fr_160px_80px_40px_40px] items-center gap-2 sm:gap-4 px-3 sm:px-4 py-2.5 rounded-2xl backdrop-blur-md transition-all duration-200 cursor-pointer ${
                       isCurrent
                         ? 'bg-violet-950/40 border border-violet-500/40 shadow-md'
                         : 'bg-white/[0.03] hover:bg-white/[0.08] border border-white/5 hover:border-white/10'
@@ -538,6 +542,24 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                         <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
                       </button>
                     </div>
+
+                    {/* 3-Dots Action Menu */}
+                    <div className="flex items-center justify-center shrink-0">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenActions?.(track, e);
+                        }}
+                        className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 active:scale-95 transition-all"
+                        title="Opsi lagu lainnya"
+                      >
+                        <MoreVertical className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
                   </div>
                 );
               })}

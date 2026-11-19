@@ -5,6 +5,7 @@ import {
   SkipForward,
   Heart,
   Disc,
+  Sparkles,
 } from 'lucide-react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import {
@@ -52,6 +53,7 @@ import { AddCustomTrackModal, CreatePlaylistModal } from './components/Modals';
 import { SettingsModal } from './components/SettingsModal';
 import { OfflineIndicator } from './components/AppDownloadHub';
 import { PlaylistImportModal } from './components/PlaylistImportModal';
+import { TrackActionModal } from './components/TrackActionModal';
 import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
 import { DJ_INDO_TRACKS } from './data/djIndoTracks';
 
@@ -127,6 +129,55 @@ export function App() {
       return [];
     }
   });
+
+  // Local Playlists (Functional offline & without requiring Google Auth)
+  const [localPlaylists, setLocalPlaylists] = useState<Playlist[]>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_local_playlists');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Merged Playlists (local + cloud)
+  const allPlaylists = useMemo(() => {
+    const list: Playlist[] = [...localPlaylists];
+    cloudPlaylists.forEach((cp) => {
+      const existingIdx = list.findIndex((lp) => lp.id === cp.id);
+      if (existingIdx >= 0) {
+        list[existingIdx] = cp;
+      } else {
+        list.push(cp);
+      }
+    });
+    return list;
+  }, [localPlaylists, cloudPlaylists]);
+
+  // Playback Queue (YouTube Music style queue)
+  const [playbackQueue, setPlaybackQueue] = useState<Track[]>(() => {
+    try {
+      const saved = localStorage.getItem('mallsound_playback_queue');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Action Sheet Modal Track
+  const [actionModalTrack, setActionModalTrack] = useState<Track | null>(null);
+
+  // Floating Toast Notification
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const toastTimeoutRef = useRef<number | null>(null);
+
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    if (toastTimeoutRef.current) window.clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = window.setTimeout(() => {
+      setToastMessage(null);
+    }, 2800);
+  };
 
   const [recentlyPlayed, setRecentlyPlayed] = useState<Track[]>(() => {
     try {
@@ -907,12 +958,12 @@ export function App() {
   };
 
   const displayedTracks = useMemo(() => {
-    const activePlaylist = cloudPlaylists.find((p) => p.id === activePlaylistId) || null;
+    const activePlaylist = allPlaylists.find((p) => p.id === activePlaylistId) || null;
     if (activePlaylist) {
       return allKnownTracks.filter((t) => activePlaylist.trackIds.includes(t.id));
     }
     return allKnownTracks;
-  }, [cloudPlaylists, activePlaylistId, allKnownTracks]);
+  }, [allPlaylists, activePlaylistId, allKnownTracks]);
 
   const handleNextTrack = (fromEnded = false) => {
     if (fromEnded && isRepeat) {
@@ -925,6 +976,21 @@ export function App() {
       setIsPlaying(true);
       return;
     }
+
+    // 1. Playback Queue priority (YouTube Music style queue)
+    if (playbackQueue.length > 0) {
+      const nextTrack = playbackQueue[0];
+      setPlaybackQueue((prev) => {
+        const updated = prev.slice(1);
+        try {
+          localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
+        } catch {}
+        return updated;
+      });
+      handleSelectTrack(nextTrack, undefined, isFullScreenPlayerOpen);
+      return;
+    }
+
     const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
     if (queue.length === 0) return;
 
@@ -1049,61 +1115,172 @@ export function App() {
     trackIds: string[];
     isPublic: boolean;
   }) => {
-    if (!user) {
-      await handleGoogleSignIn();
-      return;
-    }
+    const cleanTitle = data.title.trim().slice(0, 80) || 'Playlist Baru';
     const playlistId = `pl_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-    const path = `playlists/${playlistId}`;
-    try {
-      await setDoc(doc(db, 'playlists', playlistId), {
-        title: data.title.trim().slice(0, 80),
-        description: data.description.trim().slice(0, 300),
-        coverTheme: data.coverTheme,
-        trackIds: data.trackIds.slice(0, 50),
-        ownerId: user.uid,
-        ownerName: (user.displayName || user.email || 'Kurator MallSound').slice(0, 80),
-        isPublic: data.isPublic,
-        createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp(),
-      });
-      setActivePlaylistId(playlistId);
-    } catch (err) {
-      handleFirestoreError(err, OperationType.CREATE, path);
+    const newPlaylist: Playlist = {
+      id: playlistId,
+      title: cleanTitle,
+      description: data.description.trim().slice(0, 300),
+      coverTheme: data.coverTheme || 'amber',
+      trackIds: data.trackIds || [],
+      ownerId: user ? user.uid : 'offline_user',
+      ownerName: user ? (user.displayName || user.email || 'Pengguna') : 'Saya',
+      isPublic: data.isPublic,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+
+    // 1. Save locally immediately
+    setLocalPlaylists((prev) => {
+      const updated = [newPlaylist, ...prev];
+      try {
+        localStorage.setItem('mallsound_local_playlists', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    setActivePlaylistId(playlistId);
+    showToast(`✓ Playlist "${newPlaylist.title}" berhasil dibuat!`);
+
+    // 2. If user is logged in, sync to Firestore
+    if (user) {
+      const path = `playlists/${playlistId}`;
+      try {
+        await setDoc(doc(db, 'playlists', playlistId), {
+          title: newPlaylist.title,
+          description: newPlaylist.description,
+          coverTheme: newPlaylist.coverTheme,
+          trackIds: newPlaylist.trackIds.slice(0, 50),
+          ownerId: user.uid,
+          ownerName: newPlaylist.ownerName,
+          isPublic: newPlaylist.isPublic,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+      } catch (err) {
+        handleFirestoreError(err, OperationType.CREATE, path);
+      }
     }
+  };
+
+  const handleCreatePlaylistWithTrack = (title: string, coverTheme: PlaylistCoverTheme, track: Track) => {
+    setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
+    handleCreatePlaylist({
+      title,
+      description: '',
+      coverTheme,
+      trackIds: [track.id],
+      isPublic: false,
+    });
   };
 
   const handleDeletePlaylist = async (playlistId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!user) return;
-    const path = `playlists/${playlistId}`;
-    try {
-      await deleteDoc(doc(db, 'playlists', playlistId));
-      if (activePlaylistId === playlistId) {
-        setActivePlaylistId(null);
+    // 1. Remove from local playlists
+    setLocalPlaylists((prev) => {
+      const updated = prev.filter((p) => p.id !== playlistId);
+      try {
+        localStorage.setItem('mallsound_local_playlists', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    if (activePlaylistId === playlistId) {
+      setActivePlaylistId(null);
+    }
+    showToast('Playlist dihapus');
+
+    // 2. If logged in, delete from Firestore
+    if (user) {
+      const path = `playlists/${playlistId}`;
+      try {
+        await deleteDoc(doc(db, 'playlists', playlistId));
+      } catch (err) {
+        handleFirestoreError(err, OperationType.DELETE, path);
       }
-    } catch (err) {
-      handleFirestoreError(err, OperationType.DELETE, path);
     }
   };
 
   const handleAddTrackToPlaylist = async (playlist: Playlist, track: Track) => {
-    if (!user) return;
-    if (playlist.trackIds.includes(track.id)) return;
+    handleAddTrackToPlaylistById(playlist.id, track);
+  };
+
+  const handleAddTrackToPlaylistById = async (playlistId: string, track: Track) => {
     setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
-    const path = `playlists/${playlist.id}`;
-    try {
-      await setDoc(
-        doc(db, 'playlists', playlist.id),
-        {
-          trackIds: [...playlist.trackIds, track.id].slice(0, 50),
-          updatedAt: serverTimestamp(),
-        },
-        { merge: true }
-      );
-    } catch (err) {
-      handleFirestoreError(err, OperationType.UPDATE, path);
+
+    setLocalPlaylists((prev) => {
+      const updated = prev.map((pl) => {
+        if (pl.id === playlistId) {
+          const currentTracks = Array.isArray(pl.trackIds) ? pl.trackIds : [];
+          const exists = currentTracks.includes(track.id);
+          const nextTracks = exists
+            ? currentTracks.filter((id) => id !== track.id)
+            : [...currentTracks, track.id];
+          return { ...pl, trackIds: nextTracks };
+        }
+        return pl;
+      });
+      try {
+        localStorage.setItem('mallsound_local_playlists', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+
+    if (user) {
+      const targetPl = allPlaylists.find((p) => p.id === playlistId);
+      if (targetPl) {
+        const currentTracks = Array.isArray(targetPl.trackIds) ? targetPl.trackIds : [];
+        const exists = currentTracks.includes(track.id);
+        const nextTracks = exists
+          ? currentTracks.filter((id) => id !== track.id)
+          : [...currentTracks, track.id];
+        try {
+          await setDoc(
+            doc(db, 'playlists', playlistId),
+            {
+              trackIds: nextTracks.slice(0, 50),
+              updatedAt: serverTimestamp(),
+            },
+            { merge: true }
+          );
+        } catch (err) {
+          handleFirestoreError(err, OperationType.UPDATE, `playlists/${playlistId}`);
+        }
+      }
     }
+  };
+
+  const handlePlayNext = (track: Track) => {
+    setPlaybackQueue((prev) => {
+      const filtered = prev.filter((t) => t.id !== track.id);
+      const updated = [track, ...filtered];
+      try {
+        localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    showToast(`✓ "${track.title}" akan diputar setelah ini`);
+  };
+
+  const handleAddToQueue = (track: Track) => {
+    setPlaybackQueue((prev) => {
+      const filtered = prev.filter((t) => t.id !== track.id);
+      const updated = [...filtered, track];
+      try {
+        localStorage.setItem('mallsound_playback_queue', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    showToast(`✓ "${track.title}" ditambahkan ke antrean`);
+  };
+
+  const handleStartRadio = (track: Track) => {
+    handleSelectTrack(track);
+    const others = allKnownTracks.filter((t) => t.id !== track.id);
+    const shuffled = [...others].sort(() => Math.random() - 0.5).slice(0, 15);
+    setPlaybackQueue(shuffled);
+    try {
+      localStorage.setItem('mallsound_playback_queue', JSON.stringify(shuffled));
+    } catch {}
+    showToast(`📻 Radio untuk "${track.title}" dimulai!`);
   };
 
   const handleAddCustomTrack = (track: Track) => {
@@ -1227,7 +1404,7 @@ export function App() {
           setIsDesktopNowPlayingExpanded(false);
           setActiveTab(tab);
         }}
-        playlists={cloudPlaylists}
+        playlists={allPlaylists}
         onSelectPlaylist={(plId) => {
           setIsDesktopNowPlayingExpanded(false);
           setActivePlaylistId(plId);
@@ -1266,6 +1443,7 @@ export function App() {
             isPlaying={isPlaying}
             isTrackLiked={isTrackLiked}
             onToggleLike={handleToggleLike}
+            onOpenActions={(trk) => setActionModalTrack(trk)}
             onNavigateToSearch={(queryTerm) => {
               if (queryTerm) setSearchQueryFromExternal(queryTerm);
               setActiveTab('search');
@@ -1280,6 +1458,7 @@ export function App() {
             isPlaying={isPlaying}
             isTrackLiked={isTrackLiked}
             onToggleLike={handleToggleLike}
+            onOpenActions={(trk) => setActionModalTrack(trk)}
             initialQuery={searchQueryFromExternal}
           />
         )}
@@ -1310,10 +1489,11 @@ export function App() {
             eqGains={eqGains}
             onEqBandChange={handleEqBandChange}
             onApplyEqGains={handleApplyFullEqGains}
-            queueTracks={displayedTracks.length > 0 ? displayedTracks : allKnownTracks}
+            queueTracks={playbackQueue.length > 0 ? playbackQueue : (displayedTracks.length > 0 ? displayedTracks : allKnownTracks)}
             onSelectTrack={(trk) => handleSelectTrack(trk, undefined, false)}
             isTrackLiked={isTrackLiked}
             onToggleLike={handleToggleLike}
+            onOpenActions={(trk) => setActionModalTrack(trk)}
             isShuffle={isShuffle}
             onToggleShuffle={() => setIsShuffle(!isShuffle)}
             isRepeat={isRepeat}
@@ -1323,7 +1503,7 @@ export function App() {
 
         {activeTab === 'library' && (
           <LibraryPage
-            playlists={cloudPlaylists}
+            playlists={allPlaylists}
             onSelectPlaylist={(plId) => {
               setActivePlaylistId(plId);
             }}
@@ -1340,6 +1520,7 @@ export function App() {
             isPlaying={isPlaying}
             isTrackLiked={isTrackLiked}
             onToggleLike={handleToggleLike}
+            onOpenActions={(trk) => setActionModalTrack(trk)}
             onOpenAddCustomTrack={() => setIsAddTrackModalOpen(true)}
             customTracks={cloudCustomTracks}
           />
@@ -1607,9 +1788,9 @@ export function App() {
         onToggleMute={handleToggleMute}
         activeLyricIndex={activeLyricIndex}
         isLoadingLyrics={isLoadingLyrics}
-        queueTracks={displayedTracks}
+        queueTracks={playbackQueue.length > 0 ? playbackQueue : displayedTracks}
         onSelectTrack={(trk) => handleSelectTrack(trk, undefined, true)}
-        playlists={cloudPlaylists}
+        playlists={allPlaylists}
         onAddTrackToPlaylist={handleAddTrackToPlaylist}
         onOpenCreatePlaylist={() => setIsPlaylistModalOpen(true)}
         eqGains={eqGains}
@@ -1745,6 +1926,38 @@ export function App() {
         </div>
       );
     })()}
+
+      {/* =====================================================================
+          YOUTUBE MUSIC STYLE TRACK ACTION MODAL (Bottom Sheet)
+      ===================================================================== */}
+      <TrackActionModal
+        isOpen={Boolean(actionModalTrack)}
+        onClose={() => setActionModalTrack(null)}
+        track={actionModalTrack}
+        isLiked={actionModalTrack ? isTrackLiked(actionModalTrack.id) : false}
+        onToggleLike={(trk) => handleToggleLike(trk)}
+        onPlayNext={handlePlayNext}
+        onAddToQueue={handleAddToQueue}
+        onStartRadio={handleStartRadio}
+        playlists={allPlaylists}
+        onAddTrackToPlaylist={handleAddTrackToPlaylistById}
+        onCreatePlaylistWithTrack={handleCreatePlaylistWithTrack}
+        onShowToast={showToast}
+      />
+
+      {/* =====================================================================
+          FLOATING TOAST NOTIFICATION
+      ===================================================================== */}
+      {toastMessage && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="fixed bottom-24 sm:bottom-28 left-1/2 -translate-x-1/2 z-50 bg-neutral-900/95 text-white text-xs sm:text-sm font-semibold px-4 py-2.5 rounded-full border border-white/20 shadow-2xl backdrop-blur-md flex items-center gap-2 pointer-events-none animate-fade-in"
+        >
+          <Sparkles className="w-4 h-4 text-violet-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
     </div>
   );
 }

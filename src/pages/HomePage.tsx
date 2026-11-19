@@ -10,6 +10,7 @@ import {
   Music2,
   Headphones,
   Sliders,
+  MoreVertical,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { TRENDING_SECTIONS, TrendingSection } from '../data/trending';
@@ -24,6 +25,7 @@ export interface HomePageProps {
   isTrackLiked: (trackId: string) => boolean;
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
   onNavigateToSearch: (query?: string) => void;
+  onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
 }
 
 // Fallback image component with graceful degradation
@@ -87,6 +89,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   isTrackLiked,
   onToggleLike,
   onNavigateToSearch,
+  onOpenActions,
 }) => {
   const [recommendedTracks, setRecommendedTracks] = useState<Track[]>([]);
   const [isLoadingRecommendations, setIsLoadingRecommendations] = useState(true);
@@ -339,19 +342,32 @@ export const HomePage: React.FC<HomePageProps> = ({
                       </div>
                     </div>
 
-                    {/* Meta: Title & Artist */}
-                    <div className="mt-3">
-                      <h4
-                        className={`font-semibold text-sm truncate leading-snug ${
-                          isCurrent ? 'text-violet-400' : 'text-white group-hover:text-violet-300'
-                        }`}
-                        title={track.title}
+                    {/* Meta: Title & Artist with 3 dots */}
+                    <div className="mt-3 flex items-start justify-between gap-1.5">
+                      <div className="min-w-0 flex-1">
+                        <h4
+                          className={`font-semibold text-sm truncate leading-snug ${
+                            isCurrent ? 'text-violet-400' : 'text-white group-hover:text-violet-300'
+                          }`}
+                          title={track.title}
+                        >
+                          {track.title}
+                        </h4>
+                        <p className="text-xs text-white/60 truncate mt-0.5" title={track.artist}>
+                          {track.artist}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenActions?.(track, e);
+                        }}
+                        className="p-1 rounded-full text-white/40 hover:text-white hover:bg-white/10 shrink-0 transition-colors"
+                        title="Menu opsi lagu"
                       >
-                        {track.title}
-                      </h4>
-                      <p className="text-xs text-white/60 truncate mt-0.5" title={track.artist}>
-                        {track.artist}
-                      </p>
+                        <MoreVertical className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   </div>
 

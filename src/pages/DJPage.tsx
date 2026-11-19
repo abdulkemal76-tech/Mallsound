@@ -21,6 +21,7 @@ import {
   Sun,
   Activity,
   Check,
+  MoreVertical,
 } from 'lucide-react';
 import { Track } from '../types/music';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
@@ -53,6 +54,7 @@ export interface DJPageProps {
   onSelectTrack: (track: Track) => void;
   isTrackLiked: (trackId: string) => boolean;
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
+  onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
   // Optional extra playback toggles
   isShuffle?: boolean;
   onToggleShuffle?: () => void;
@@ -796,6 +798,7 @@ export const DJPage: React.FC<DJPageProps> = ({
   onSelectTrack,
   isTrackLiked,
   onToggleLike,
+  onOpenActions,
   isShuffle: propIsShuffle,
   onToggleShuffle: propOnToggleShuffle,
   isRepeat: propIsRepeat,
@@ -1613,7 +1616,7 @@ export const DJPage: React.FC<DJPageProps> = ({
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 shrink-0 ml-2">
+                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
                       <button
                         type="button"
                         onClick={(e) => {
@@ -1628,6 +1631,18 @@ export const DJPage: React.FC<DJPageProps> = ({
                         aria-label={trackLiked ? 'Batal suka' : 'Suka'}
                       >
                         <Heart className={`w-4 h-4 ${trackLiked ? 'fill-current' : ''}`} />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenActions?.(track, e);
+                        }}
+                        className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                        title="Menu aksi lagu"
+                      >
+                        <MoreVertical className="w-4 h-4" />
                       </button>
 
                       <button
@@ -1717,7 +1732,7 @@ export const DJPage: React.FC<DJPageProps> = ({
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3 shrink-0 ml-3">
+                        <div className="flex items-center gap-2 shrink-0 ml-3">
                           <span className="text-xs font-mono text-white/60 tabular-nums">
                             {formatTime(track.durationSec)}
                           </span>
@@ -1737,6 +1752,17 @@ export const DJPage: React.FC<DJPageProps> = ({
                             <Heart
                               className={`w-4 h-4 ${trackLiked ? 'fill-current' : ''}`}
                             />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onOpenActions?.(track, e);
+                            }}
+                            className="p-1.5 rounded-lg text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                            title="Menu aksi lagu"
+                          >
+                            <MoreVertical className="w-4 h-4" />
                           </button>
                         </div>
                       </div>

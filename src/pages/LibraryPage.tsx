@@ -20,6 +20,7 @@ import {
   ArrowLeft,
   Shuffle,
   Music2,
+  MoreVertical,
 } from 'lucide-react';
 import { Track, Playlist, PlaylistCoverTheme } from '../types/music';
 
@@ -44,6 +45,7 @@ export interface LibraryPageProps {
   isPlaying: boolean;
   isTrackLiked: (trackId: string) => boolean;
   onToggleLike: (track: Track, e?: React.MouseEvent) => void;
+  onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
   // Custom tracks
   onOpenAddCustomTrack: () => void;
   customTracks?: Track[];
@@ -152,6 +154,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   isPlaying,
   isTrackLiked,
   onToggleLike,
+  onOpenActions,
   onOpenAddCustomTrack,
   customTracks,
   accentColor = '#8b5cf6',
@@ -279,6 +282,18 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             ) : (
               <Play className="w-3.5 h-3.5 fill-white ml-0.5" />
             )}
+          </button>
+
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenActions?.(track, e);
+            }}
+            className="p-1.5 rounded-xl text-white/40 hover:text-white hover:bg-white/10 transition-colors"
+            title="Menu opsi lagu"
+          >
+            <MoreVertical className="w-4 h-4" />
           </button>
         </div>
       </div>
