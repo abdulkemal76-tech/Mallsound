@@ -740,6 +740,7 @@ export function App() {
           return next;
         });
       }
+    });
   }, [favoriteIds, localFavorites, allPlaylists, resolvedSavedTracks]);
 
   // Pre-fetch YouTube video ID for the upcoming track in queue to ensure instantaneous background switching
