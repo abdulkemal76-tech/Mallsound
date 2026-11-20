@@ -2333,7 +2333,7 @@ export function App() {
           <YouTubeMusicPlayer
             videoId={activePlayer === 'A' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'A' ? currentYtCandidates : standbyCandidates}
-            isPlaying={isPlaying}
+            isPlaying={activePlayer === 'A' ? isPlaying : true}
             volume={activePlayer === 'A' ? volume : 0}
             isMuted={activePlayer === 'A' ? isMuted : true}
             seekRequest={activePlayer === 'A' ? ytSeekRequest : standbySeekRequest}
@@ -2386,7 +2386,7 @@ export function App() {
           <YouTubeMusicPlayer
             videoId={activePlayer === 'B' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'B' ? currentYtCandidates : standbyCandidates}
-            isPlaying={isPlaying}
+            isPlaying={activePlayer === 'B' ? isPlaying : true}
             volume={activePlayer === 'B' ? volume : 0}
             isMuted={activePlayer === 'B' ? isMuted : true}
             seekRequest={activePlayer === 'B' ? ytSeekRequest : standbySeekRequest}
