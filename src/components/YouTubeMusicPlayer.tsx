@@ -1,5 +1,12 @@
 import React, { useEffect, useRef } from 'react';
 
+// Persistent play watchdog: keep retrying playVideo() (muted while the tab
+// is hidden) for up to 120 s after a track load. Background tabs throttle
+// timers, so the old 6 s retry window could expire before a single retry
+// ran — and the later unmuted retries were blocked by autoplay policy,
+// leaving the new track stuck on CUED/PAUSED until the user reopened the tab.
+const WATCHDOG_MAX_MS = 120000;
+
 declare global {
   interface Window {
     YT?: {
@@ -262,7 +269,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                 return;
               }
 
-              if (isPlayingPropRef.current && Date.now() - lastLoadedAtRef.current < 6000) {
+              if (isPlayingPropRef.current && Date.now() - lastLoadedAtRef.current < WATCHDOG_MAX_MS) {
                 if (document.hidden) {
                   try { e.target.mute(); } catch {}
                 }
@@ -270,7 +277,11 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                   e.target.playVideo();
                 } catch {}
               }
-              onPlayingChangeRef.current(false);
+              // Never report a background auto-pause as a user pause:
+              // the app must keep expecting playback so watchdogs keep retrying.
+              if (!document.hidden) {
+                onPlayingChangeRef.current(false);
+              }
             }
           },
           onError: (e) => {
@@ -390,8 +401,10 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
 
         // 1. RECENTLY LOADED AUTO-START (Essential for background playback on mobile):
         // When a new video is loaded in background, mobile browsers pause or cue it (st: 5, -1, 2).
-        // Force playVideo() during the first 6 seconds until playback actually starts (st === 1).
-        if (timeSinceLoad < 6000 && st !== 1) {
+        // Force playVideo() (muted while hidden) until playback actually starts (st === 1),
+        // for up to WATCHDOG_MAX_MS — background tabs throttle timers, so a 6 s window
+        // could expire before a single retry ran.
+        if (timeSinceLoad < WATCHDOG_MAX_MS && st !== 1) {
           if (document.hidden) {
             try { playerRef.current.mute(); } catch {}
           }
@@ -416,6 +429,11 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
         // 3. MID-TRACK PAUSE REVIVAL: If unexpectedly paused/cued while document is hidden and NOT at track end
         const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
         if (isBackground && (st === 2 || st === 5 || st === -1) && (dur <= 0 || cur < dur - 2.5)) {
+          // Unmuted playVideo() is blocked by autoplay policy in background tabs —
+          // always mute first while hidden; the PLAYING handler unmutes after start.
+          if (document.hidden) {
+            try { playerRef.current.mute(); } catch {}
+          }
           playerRef.current.playVideo();
         }
       } catch {
