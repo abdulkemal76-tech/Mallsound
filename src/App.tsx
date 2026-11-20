@@ -611,55 +611,10 @@ export function App() {
           });
         dbg(`adapter: Audius track started "${track.title}" - ${track.artist}`);
       },
-      // Remote track (.mp3 backend): App state is updated immediately
-      // (optimistic); the manager resolves the URL and starts the shared
-      // <audio> element right after. On failure onTrackUnavailable below
-      // shows the toast and stops.
-      startRemoteTrack: (track) => {
-        setRemoteActive(true);
-        setAudiusActive(false);
-        setStageMode('cover');
-        setCurrentTrack(track);
-        setCurrentTimeSec(0);
-        setDurationSec(track.durationSec);
-        setIsPlaying(true);
-        setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
-        backgroundAudioService.ensureAudioActive();
-        // Lyrics only — no YouTube resolve for a remote track.
-        setIsLoadingLyrics(true);
-        fetchTrackLyrics(track.title, track.artist, track.durationSec)
-          .then((lyricsResult) => {
-            setIsLoadingLyrics(false);
-            setCurrentTrack((prev) => {
-              if (prev.id !== track.id) return prev;
-              return { ...prev, lyrics: lyricsResult };
-            });
-          })
-          .catch(() => {
-            setIsLoadingLyrics(false);
-          });
-        dbg(`adapter: Remote track started "${track.title}" - ${track.artist}`);
-      },
-      onTrackUnavailable: (track) => {
-        showToast('Lagu tidak tersedia di server');
-        setIsPlaying(false);
-        // remoteActive stays true: the current track IS a remote track, so
-        // a later play press retries the resolve instead of falling back
-        // to the YouTube stage.
-        dbg(`adapter: remote track unavailable "${track.title}" — toast shown, stopped`);
-      },
       restartCurrent: () => {
         if (audiusActive) {
           audiusPlayerRef.current?.seek(0);
           void audiusPlayerRef.current?.play();
-        } else if (remoteActive) {
-          // Failed remote track: retry the resolve; otherwise restart.
-          if (playerManagerRef.current?.remoteFailed) {
-            playerManagerRef.current?.playTrack(currentTrack);
-          } else {
-            remotePlayerRef.current?.seek(0);
-            void remotePlayerRef.current?.play();
-          }
         } else if (engineMode === 'hifi-eq') {
           studioAudioEngine.seek(0);
           studioAudioEngine.play();
@@ -684,8 +639,6 @@ export function App() {
     const apiProxy: PlayerManagerApi = {
       selectTrack: (t) => managerApiRef.current?.selectTrack(t),
       startAudiusTrack: (t) => managerApiRef.current?.startAudiusTrack(t),
-      startRemoteTrack: (t) => managerApiRef.current?.startRemoteTrack(t),
-      onTrackUnavailable: (t) => managerApiRef.current?.onTrackUnavailable(t),
       restartCurrent: () => managerApiRef.current?.restartCurrent(),
       getCurrentTimeSec: () => managerApiRef.current?.getCurrentTimeSec() ?? 0,
       getShuffle: () => managerApiRef.current?.getShuffle() ?? false,
@@ -1223,11 +1176,11 @@ export function App() {
       return;
     }
 
-    // Adapter routing (v52): non-local tracks go through the PlayerManager.
-    // Audius -> AudiusPlayer (<audio>); everything else -> RemoteAudioPlayer
-    // (.mp3 from the user's backend). The YouTube path below stays as a
-    // fallback if the manager is not constructed yet.
-    if (targetMode !== 'hifi-eq' && playerManagerRef.current) {
+    // Adapter routing (v55 rollback): only Audius tracks go through the
+    // PlayerManager (AudiusPlayer <audio>). Every other track falls through
+    // to the YouTube flow below (YouTubeMusicPlayer IFrame, foreground).
+    // The RemoteAudioPlayer route is disabled — it is not called anymore.
+    if (targetMode !== 'hifi-eq' && track.audiusTrackId && playerManagerRef.current) {
       playerManagerRef.current.playTrack(track);
       return;
     }
@@ -1320,8 +1273,6 @@ export function App() {
     if (isPlaying) {
       if (audiusActive) {
         audiusPlayerRef.current?.pause();
-      } else if (remoteActive) {
-        remotePlayerRef.current?.pause();
       } else if (engineMode === 'hifi-eq') {
         studioAudioEngine.pause();
       }
@@ -1329,13 +1280,6 @@ export function App() {
     } else {
       if (audiusActive) {
         void audiusPlayerRef.current?.play();
-      } else if (remoteActive) {
-        // Failed remote track: retry the resolve; otherwise resume.
-        if (playerManagerRef.current?.remoteFailed) {
-          playerManagerRef.current?.playTrack(currentTrack);
-        } else {
-          void remotePlayerRef.current?.play();
-        }
       } else if (engineMode === 'hifi-eq') {
         if (currentTimeSec === 0) {
           studioAudioEngine.loadTrack(currentTrack, true);
@@ -1649,14 +1593,12 @@ export function App() {
     handleSelectTrack(queue[prevIdx], undefined, isFullScreenPlayerOpen);
   };
 
-  // Unified seek (v52): Audius / Remote <audio> seek directly; hifi-eq
+  // Unified seek (v55 rollback): Audius <audio> seeks directly; hifi-eq
   // uses the studio engine; YouTube uses the seek request prop.
   const handleSeek = (sec: number) => {
     setCurrentTimeSec(sec);
     if (audiusActive) {
       audiusPlayerRef.current?.seek(sec);
-    } else if (remoteActive) {
-      remotePlayerRef.current?.seek(sec);
     } else if (engineMode === 'hifi-eq') {
       studioAudioEngine.seek(sec);
     } else {

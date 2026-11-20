@@ -1,35 +1,31 @@
-// PlayerManager (v52) — picks the playback backend per track and owns
-// the queue advance + the background defer rule.
+// PlayerManager (v55 rollback) — picks the playback backend per track and
+// owns the queue advance + the background defer rule.
 //
-// Source selection (v52, remote routing):
+// Source selection (v55 rollback — RemoteAudioPlayer route DISABLED):
 //   - a track with audiusTrackId -> AudiusPlayer (<audio>, Audius API).
-//   - every other track -> RemoteAudioPlayer (<audio>, .mp3 from the
-//     user's own backend via resolveTrackUrl — NOT YouTubePlayer).
-//   YouTubePlayer stays in the layer (wrapped, not deleted) and the
-//   YouTube stage/components stay for the UI, but songs no longer route
-//   through it.
+//   - every other track -> YouTubePlayer (the existing YouTubeMusicPlayer
+//     IFrame flow, foreground). The RemoteAudioPlayer route is disabled:
+//     no song routes to it and remoteAudioApi.ts is never imported or
+//     called (the file stays on disk, unused). The RemoteAudioPlayer
+//     instance is kept only so existing App refs keep compiling; it is
+//     never given a track.
 //
 // SINGLE <audio> INSTANCE: this manager creates ONE <audio> element and
-// passes it to AudiusPlayer AND RemoteAudioPlayer via their constructors.
+// passes it to AudiusPlayer (RemoteAudioPlayer shares it but is idle).
 // On track change only the `src` is swapped — a new Audio() is never
-// created and the element is never destroyed — so the browser treats it
-// as a continuation of the same media session, not a new autoplay. Only
-// the active player forwards events from the shared element (setActive).
+// created and the element is never destroyed.
 //
 // The defer rule — kept as a guard:
 //   when a track ends or Next is pressed, if the tab is hidden AND the
 //   player for the NEXT track cannot start while hidden
 //   (supportsBackground === false), do NOT start it now. Park it and
-//   start it when the tab becomes visible again. With the current routing
-//   both players support background, so defer is a fallback, not the
-//   normal path.
+//   start it when the tab becomes visible again. YouTube cannot start
+//   while hidden (proven v45-v51), so a YouTube next track defers;
+//   Audius (<audio>) starts immediately.
 //
-// Error handling (remote backend): if resolveTrackUrl fails (HTTP 404,
-// success === false, network error, empty streamUrl) the manager shows
-// the "Lagu tidak tersedia di server" toast and STOPS — it does NOT
-// chain-advance to the next track. The same applies to an audio-element
-// error on a remote track. (Audius errors still skip to the next track,
-// as before.)
+// Error handling: an Audius / YouTube error skips to the next track
+// (stopping after 3 consecutive errors). There is no remote-backend
+// toast anymore — nothing routes to the remote backend.
 //
 // The manager does NOT own React state. App injects its callbacks through
 // PlayerManagerApi (read live via a ref so closures never go stale), and
@@ -43,9 +39,8 @@ import { toPlayerTrack } from './MusicPlayer';
 import { YouTubePlayer, type YouTubePlayerHooks } from './YouTubePlayer';
 import { AudiusPlayer, type AudiusPlayerOptions } from './AudiusPlayer';
 import { RemoteAudioPlayer, type RemoteAudioPlayerOptions } from './RemoteAudioPlayer';
-import { resolveTrackUrl, type RemoteStreamResult } from './remoteAudioApi';
 
-export type PlayerSource = 'audius' | 'remote';
+export type PlayerSource = 'audius' | 'youtube';
 
 export type RepeatModeValue = 'off' | 'all' | 'one';
 
@@ -54,12 +49,6 @@ export interface PlayerManagerApi {
   selectTrack: (track: Track) => void;
   /** App starts an Audius track: update App state, then the manager loads + plays it. */
   startAudiusTrack: (track: Track) => void;
-  /** App starts a remote track: update App state (currentTrack, isPlaying,
-   *  remoteActive), then the manager resolves the URL and loads + plays it. */
-  startRemoteTrack: (track: Track) => void;
-  /** Remote track unavailable (resolve failed / audio error): show the
-   *  "Lagu tidak tersedia di server" toast and stop (no chain advance). */
-  onTrackUnavailable: (track: Track) => void;
   /** Restart the current track from 0 (repeat-one / prev within 4 s). */
   restartCurrent: () => void;
   /** Current playback position in seconds (prev restart check). */
@@ -85,11 +74,12 @@ export class PlayerManager {
   readonly audius: AudiusPlayer;
   readonly remote: RemoteAudioPlayer;
 
-  /** App callbacks (startRemoteTrack / onTrackUnavailable / queue state).
+  /** App callbacks (selectTrack / startAudiusTrack / queue state).
    *  Stored from config.api — every method below reads through this. */
   private api: PlayerManagerApi;
 
-  /** The single shared <audio> element for Audius + Remote. */
+  /** The single shared <audio> element for Audius (Remote shares it but
+   *  is idle — its route is disabled in v55). */
   private sharedAudio: HTMLAudioElement;
   /** Which adapter currently owns the shared element / YT stage. */
   private activePlayer: 'audius' | 'remote' | 'youtube' | null = null;
@@ -99,9 +89,6 @@ export class PlayerManager {
   private pendingTrack: Track | null = null;
   private consecutiveErrors = 0;
   private currentTrack: Track | null = null;
-  /** True when the current remote track failed to resolve/load. App uses
-   *  this to decide play (resume) vs playTrack (retry) on a play press. */
-  remoteFailed = false;
 
   constructor(config: PlayerManagerConfig) {
     // App callbacks (config.api) — stored once; every method reads via this.api.
@@ -125,11 +112,11 @@ export class PlayerManager {
 
   sourceOf(track: Track | PlayerTrack): PlayerSource {
     if (track.audiusTrackId) return 'audius';
-    return 'remote';
+    return 'youtube';
   }
 
   playerFor(track: Track | PlayerTrack): MusicPlayer {
-    return this.sourceOf(track) === 'audius' ? this.audius : this.remote;
+    return this.sourceOf(track) === 'audius' ? this.audius : this.youTube;
   }
 
   /** App syncs the effective sequence here (current track + what follows it). */
@@ -166,11 +153,12 @@ export class PlayerManager {
       this.audius.load(toPlayerTrack(track));
       void this.audius.play();
     } else {
-      // Remote (.mp3 from the user's backend). Resolved async; App state
-      // is updated immediately (optimistic) and the audio starts once the
-      // URL arrives. On failure the toast shows and playback stops.
-      this.setActivePlayer('remote');
-      void this.startRemote(track);
+      // YouTube (v55 rollback): run App's existing YouTube selection flow
+      // (handleSelectTrack — flip / pre-roll / watchdog) via selectTrack.
+      // handleSelectTrack no longer delegates YouTube tracks back to the
+      // manager, so there is no recursion.
+      this.setActivePlayer('youtube');
+      this.api.selectTrack(track);
     }
     this.consecutiveErrors = 0;
   }
@@ -191,7 +179,7 @@ export class PlayerManager {
     const track = this.currentTrack || this.api.getCurrentTrack();
     if (!track) return;
     if (this.sourceOf(track) === 'audius') void this.audius.play();
-    else void this.remote.play();
+    else this.youTube.play();
   }
 
   pause(): void {
@@ -239,42 +227,6 @@ export class PlayerManager {
     // Only the active player forwards events from the shared <audio>.
     this.audius.setActive(player === 'audius');
     this.remote.setActive(player === 'remote');
-  }
-
-  /**
-   * Remote track start: resolve the .mp3 URL from the user's backend,
-   * then load it into the shared <audio> element and play. App state was
-   * already updated (optimistic) by api.startRemoteTrack.
-   */
-  private async startRemote(track: Track): Promise<void> {
-    this.remoteFailed = false;
-    this.api.startRemoteTrack(track);
-    // Stop any Audius audio still on the shared element before swapping src.
-    this.audius.pause();
-    let resolved: RemoteStreamResult | null = null;
-    try {
-      resolved = await resolveTrackUrl(track);
-    } catch (err) {
-      // resolveTrackUrl throws RemoteAudioUnavailableError on 404 /
-      // success false / network error / empty streamUrl.
-      dbg(`adapter: resolveTrackUrl threw for "${track.title}": ${String(err)}`);
-      resolved = null;
-    }
-    if (!resolved || !resolved.streamUrl) {
-      this.remoteFailed = true;
-      dbg(`adapter: remote track unavailable "${track.title}"`);
-      this.api.onTrackUnavailable(track);
-      return;
-    }
-    const metadata = {
-      title: resolved.title || track.title,
-      artist: resolved.artist || track.artist,
-      album: track.album,
-      coverUrl: resolved.artwork || track.coverUrl,
-    };
-    // Only swap the src of the SAME shared element — never a new Audio().
-    this.remote.load(resolved.streamUrl, metadata);
-    await this.remote.play();
   }
 
   private pickNextTrack(): Track | null {
@@ -331,16 +283,6 @@ export class PlayerManager {
   private handlePlayerError(source: string): void {
     this.consecutiveErrors += 1;
     dbg(`adapter: player error (${source}), consecutive=${this.consecutiveErrors}`);
-    if (source === 'remote') {
-      // Remote backend / stream failure: toast and STOP — never chain
-      // advance (the next track would fail the same way while the
-      // backend is down, spamming toasts).
-      this.remoteFailed = true;
-      const track = this.currentTrack || this.api.getCurrentTrack();
-      if (track) this.api.onTrackUnavailable(track);
-      this.consecutiveErrors = 0;
-      return;
-    }
     if (this.consecutiveErrors >= 3) {
       dbg('adapter: too many consecutive player errors, stopping auto-advance');
       this.consecutiveErrors = 0;
