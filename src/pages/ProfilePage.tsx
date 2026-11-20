@@ -245,7 +245,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     style={{
                       writingMode: 'vertical-lr',
                       direction: 'rtl',
-                      appearance: 'slider-vertical',
                       WebkitAppearance: 'slider-vertical',
                     }}
                     className="w-4 h-full accent-fuchsia-500 cursor-pointer"

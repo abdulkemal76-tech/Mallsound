@@ -1990,7 +1990,32 @@ export function App() {
     showToast(`📻 Radio untuk "${track.title}" dimulai!`);
   };
 
-  const handleAddCustomTrack = (track: Track) => {
+  const handleAddCustomTrack = async (trackData: {
+    title: string;
+    artist: string;
+    album: string;
+    genre: GenreType;
+    audioUrl: string;
+    durationSec: number;
+    lyricsText: string;
+    coverUrl: string;
+    isLocalBlob?: boolean;
+  }) => {
+    const track: Track = {
+      id: `custom_${Date.now()}`,
+      title: trackData.title,
+      artist: trackData.artist,
+      album: trackData.album,
+      genre: trackData.genre,
+      durationSec: trackData.durationSec,
+      coverUrl: trackData.coverUrl,
+      audioUrl: trackData.audioUrl,
+      bitrateLabel: '24-bit / Cloud Master',
+      releaseYear: new Date().getFullYear(),
+      playsCount: 0,
+      lyrics: parseLyricsLines(trackData.lyricsText || '', trackData.durationSec),
+      isCustom: true,
+    };
     setLocalSessionTracks((prev) => [track, ...prev]);
     handleSelectTrack(track);
   };

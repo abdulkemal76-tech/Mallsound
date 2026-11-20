@@ -287,10 +287,14 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
         title: cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1),
         artist: 'MallSound Studio',
         album: playlist.title,
+        genre: 'Pop',
         coverUrl: '',
         audioUrl: '',
         durationSec: 210,
         bitrateLabel: '24-bit Hi-Fi',
+        releaseYear: 2024,
+        playsCount: 0,
+        lyrics: [],
       };
     });
   };

@@ -85,6 +85,10 @@ export class PlayerManager {
   readonly audius: AudiusPlayer;
   readonly remote: RemoteAudioPlayer;
 
+  /** App callbacks (startRemoteTrack / onTrackUnavailable / queue state).
+   *  Stored from config.api — every method below reads through this. */
+  private api: PlayerManagerApi;
+
   /** The single shared <audio> element for Audius + Remote. */
   private sharedAudio: HTMLAudioElement;
   /** Which adapter currently owns the shared element / YT stage. */
@@ -100,6 +104,8 @@ export class PlayerManager {
   remoteFailed = false;
 
   constructor(config: PlayerManagerConfig) {
+    // App callbacks (config.api) — stored once; every method reads via this.api.
+    this.api = config.api;
     // ONE <audio> element, shared by AudiusPlayer and RemoteAudioPlayer.
     this.sharedAudio = new Audio();
     this.sharedAudio.preload = 'auto';

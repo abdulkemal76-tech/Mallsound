@@ -513,7 +513,9 @@ app.get('/api/playlist/import', async (req, res) => {
         try {
           const results = await fetchItunesSearch(queryTerm, 1);
           if (results.length > 0) {
-            const trk = results[0];
+            const trk: ReturnType<typeof mapItunesItemToTrack> & {
+              youtubeVideoId?: string | null;
+            } = results[0];
             if (c.youtubeId) {
               trk.youtubeVideoId = c.youtubeId;
             }

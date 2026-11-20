@@ -15,6 +15,10 @@ declare global {
         element: HTMLElement | string,
         options: {
           videoId: string;
+          /** IFrame size / host — real IFrame API options used by the call below. */
+          width?: string | number;
+          height?: string | number;
+          host?: string;
           playerVars?: Record<string, number | string>;
           events?: {
             onReady?: (event: { target: YTPlayerInstance }) => void;
@@ -227,8 +231,8 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           modestbranding: 1,
           playsinline: 1,
           enablejsapi: 1,
-          origin: typeof window !== 'undefined' ? window.location.origin : undefined,
-          widget_referrer: typeof window !== 'undefined' ? window.location.origin : undefined,
+          origin: typeof window !== 'undefined' ? window.location.origin : '',
+          widget_referrer: typeof window !== 'undefined' ? window.location.origin : '',
         },
         events: {
           onReady: (e) => {
