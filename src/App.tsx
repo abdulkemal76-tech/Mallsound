@@ -189,6 +189,20 @@ export default function App() {
   const [activeEqPreset, setActiveEqPreset] = useState<string>('flat');
 
   const searchTimeoutRef = useRef<number | null>(null);
+  // Cache of resolved YouTube videoIds, so the next track can be
+  // started instantly instead of waiting for /api/music/yt after
+  // the previous track ends (the gap that left background playback
+  // stuck). Filled by enrichTrackMetadata() and by prefetching.
+  const ytVideoIdCacheRef = useRef<
+    Record<string, { videoId: string | null; candidates: string[] }>
+  >({});
+  // Fired when the tab becomes visible again while playing, so the
+  // YouTube player retries playVideo() even though isPlaying did
+  // not change.
+  const [ytResumeRequest, setYtResumeRequest] = useState<{
+    nonce: number;
+  } | null>(null);
+  const lastMediaPositionRef = useRef(-1);
 
   // Load Initial Indonesian Catalog on boot
   useEffect(() => {
@@ -217,12 +231,27 @@ export default function App() {
   // Enrich any track with real synced lyrics (.lrc) from LRCLIB + YouTube Music videoId & candidates
   const enrichTrackMetadata = async (track: Track) => {
     if (track.audioUrl.startsWith('synth://') || track.audioUrl.startsWith('blob:')) return;
+    const cached = ytVideoIdCacheRef.current[track.id];
+    if (cached) {
+      setCurrentYtVideoId(cached.videoId);
+      setCurrentYtCandidates(cached.candidates);
+      // Lyrics still need fetching; videoId is already known.
+      setIsLoadingLyrics(true);
+      const lyricsResult = await fetchTrackLyrics(track.title, track.artist, track.durationSec);
+      setIsLoadingLyrics(false);
+      setCurrentTrack((prev) => {
+        if (prev.id !== track.id) return prev;
+        return { ...prev, lyrics: lyricsResult, youtubeVideoId: cached.videoId ?? undefined };
+      });
+      return;
+    }
     setIsLoadingLyrics(true);
     const [lyricsResult, ytData] = await Promise.all([
       fetchTrackLyrics(track.title, track.artist, track.durationSec),
       resolveYouTubeVideoId(track.title, track.artist, track.id),
     ]);
     setIsLoadingLyrics(false);
+    ytVideoIdCacheRef.current[track.id] = ytData;
     setCurrentYtVideoId(ytData.videoId);
     setCurrentYtCandidates(ytData.candidates);
     setCurrentTrack((prev) => {
@@ -532,6 +561,13 @@ export default function App() {
       studioAudioEngine.loadTrack(track, true);
     } else {
       studioAudioEngine.pause();
+      // If the next track was prefetched, switch the YouTube player
+      // to it immediately instead of waiting for enrichTrackMetadata().
+      const cached = ytVideoIdCacheRef.current[track.id];
+      if (cached) {
+        setCurrentYtVideoId(cached.videoId);
+        setCurrentYtCandidates(cached.candidates);
+      }
     }
 
     enrichTrackMetadata(track);
@@ -620,6 +656,113 @@ export default function App() {
     const prevIdx = (idx - 1 + queue.length) % queue.length;
     handleSelectTrack(queue[prevIdx], undefined, isFullScreenPlayerOpen);
   };
+
+  // Pre-resolve the next track's YouTube videoId while the current
+  // track is still playing, so track change in background does not
+  // have to wait for a network fetch first.
+  useEffect(() => {
+    const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
+    if (queue.length === 0) return;
+    const idx = queue.findIndex((t) => t.id === currentTrack.id);
+    const next = queue[(idx + 1) % queue.length];
+    if (!next || next.id === currentTrack.id) return;
+    if (next.audioUrl.startsWith('synth://') || next.audioUrl.startsWith('blob:')) return;
+    if (ytVideoIdCacheRef.current[next.id]) return;
+    let cancelled = false;
+    resolveYouTubeVideoId(next.title, next.artist, next.id).then((ytData) => {
+      if (!cancelled) {
+        ytVideoIdCacheRef.current[next.id] = ytData;
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [currentTrack.id, displayedTracks, allKnownTracks]);
+
+  // Media Session API: this is what tells Chrome / Android that
+  // MallSound is playing media, keeps the lock-screen notification
+  // alive, and lets the user press Next/Prev from the notification
+  // or headset while the tab is in background.
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    try {
+      navigator.mediaSession.metadata = new MediaMetadata({
+        title: currentTrack.title,
+        artist: currentTrack.artist,
+        album: currentTrack.album,
+        artwork: currentTrack.coverUrl
+          ? [{ src: currentTrack.coverUrl, sizes: '512x512', type: 'image/jpeg' }]
+          : [],
+      });
+      navigator.mediaSession.playbackState = isPlaying ? 'playing' : 'paused';
+      navigator.mediaSession.setActionHandler('play', () => {
+        if (!isPlaying) handleTogglePlay();
+      });
+      navigator.mediaSession.setActionHandler('pause', () => {
+        if (isPlaying) handleTogglePlay();
+      });
+      navigator.mediaSession.setActionHandler('previoustrack', () => handlePrevTrack());
+      navigator.mediaSession.setActionHandler('nexttrack', () => handleNextTrack(false));
+      navigator.mediaSession.setActionHandler('seekto', (details) => {
+        if (typeof details.seekTime === 'number') {
+          setCurrentTimeSec(details.seekTime);
+          if (engineMode === 'hifi-eq') {
+            studioAudioEngine.seek(details.seekTime);
+          } else {
+            setYtSeekRequest({ sec: details.seekTime, nonce: Date.now() });
+          }
+        }
+      });
+    } catch {
+      // Media Session is best-effort; playback must not depend on it.
+    }
+    return () => {
+      try {
+        navigator.mediaSession.setActionHandler('play', null);
+        navigator.mediaSession.setActionHandler('pause', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('seekto', null);
+      } catch {
+        // ignore
+      }
+    };
+  }, [currentTrack, isPlaying, engineMode]);
+
+  // Keep Media Session position in sync (throttled to whole seconds).
+  useEffect(() => {
+    if (!('mediaSession' in navigator)) return;
+    const posSec = Math.floor(currentTimeSec);
+    if (posSec === lastMediaPositionRef.current) return;
+    lastMediaPositionRef.current = posSec;
+    try {
+      if (Number.isFinite(durationSec) && durationSec > 0) {
+        navigator.mediaSession.setPositionState({
+          duration: durationSec,
+          playbackRate,
+          position: Math.min(currentTimeSec, durationSec),
+        });
+      }
+    } catch {
+      // ignore
+    }
+  }, [currentTimeSec, durationSec, playbackRate]);
+
+  // When the tab returns from background while playing, resume the
+  // AudioContext (suspended by Chrome in background) and ask the
+  // YouTube player to play again — isPlaying never changed, so the
+  // normal sync effects would not re-run on their own.
+  useEffect(() => {
+    const onVisibilityChange = () => {
+      if (document.visibilityState !== 'visible' || !isPlaying) return;
+      studioAudioEngine.resume().catch(() => {});
+      if (engineMode === 'yt-music') {
+        setYtResumeRequest({ nonce: Date.now() });
+      }
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, [isPlaying, engineMode]);
 
   const handleSeekChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = Number(e.target.value);
@@ -1562,6 +1705,7 @@ export default function App() {
               volume={volume}
               isMuted={isMuted}
               seekRequest={ytSeekRequest}
+              resumeRequest={ytResumeRequest}
               onTimeUpdate={(cur, dur) => {
                 setCurrentTimeSec(cur);
                 setDurationSec(dur);
