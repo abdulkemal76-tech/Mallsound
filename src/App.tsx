@@ -851,6 +851,32 @@ export function App() {
       tryResolve(1);
     } else {
       dbg(`track id instant: "${track.title}" -> ${instantId}`);
+      // Enrich candidates in the background: if the instant video turns
+      // out dead / non-embeddable, the player falls back to the next
+      // candidate instead of erroring and skipping the song. The instant
+      // video still plays first — these are only backups.
+      resolveYouTubeVideoId(track.title, track.artist, track.id)
+        .then((ytData) => {
+          const extra = (ytData.candidates && ytData.candidates.length > 0
+            ? ytData.candidates
+            : ytData.videoId
+            ? [ytData.videoId]
+            : []
+          ).filter((id) => id && id !== instantId);
+          if (extra.length > 0) {
+            setCurrentYtCandidates((prev) => {
+              // Only enrich if we're still on this track (instantId is
+              // still the first candidate). Otherwise the user already
+              // moved on and these backups belong to the old track.
+              if (prev.length === 0 || prev[0] !== instantId) return prev;
+              return [instantId, ...extra.filter((id) => !prev.includes(id))];
+            });
+            dbg(`candidates enriched: "${track.title}" +${extra.length} backups`);
+          }
+        })
+        .catch(() => {
+          // Backups are best-effort; the instant video still plays.
+        });
     }
     }
 
@@ -869,6 +895,43 @@ export function App() {
       })
       .catch(() => {
         setIsLoadingLyrics(false);
+      });
+  };
+
+  // When every candidate video for the current track has failed, try ONE
+  // fresh search before giving up and skipping. The search often returns
+  // working videos the old list didn't have, so the song still plays
+  // instead of erroring. Only retries with candidates we haven't tried
+  // yet, so it can never loop forever.
+  const handleVideoUnavailable = () => {
+    const track = currentTrack;
+    const skipToNext = () => {
+      console.warn('[App] YouTube video unavailable, skipping to next track');
+      showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
+      if (playerManagerRef.current) playerManagerRef.current.next();
+      else handleNextTrack(true);
+    };
+    resolveYouTubeVideoId(track.title, track.artist, track.id)
+      .then((ytData) => {
+        const list =
+          ytData.candidates && ytData.candidates.length > 0
+            ? ytData.candidates
+            : ytData.videoId
+            ? [ytData.videoId]
+            : [];
+        const fresh = list.filter(
+          (id) => id && id !== currentYtVideoId && !currentYtCandidates.includes(id),
+        );
+        if (fresh.length > 0) {
+          dbg(`fallback re-resolve: retrying "${track.title}" with ${fresh[0]}`);
+          setCurrentYtCandidates((prev) => [...prev, ...fresh]);
+          setCurrentYtVideoId(fresh[0]);
+        } else {
+          skipToNext();
+        }
+      })
+      .catch(() => {
+        skipToNext();
       });
   };
 
@@ -2634,10 +2697,7 @@ export function App() {
             }}
             onFallbackToPreview={() => {
               if (activePlayer === 'A') {
-                console.warn('[App] YouTube video unavailable, skipping to next track');
-                showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
-                if (playerManagerRef.current) playerManagerRef.current.next();
-                else handleNextTrack(true);
+                handleVideoUnavailable();
               } else {
                 dbg('standby fallback: video unavailable');
               }
@@ -2694,10 +2754,7 @@ export function App() {
             }}
             onFallbackToPreview={() => {
               if (activePlayer === 'B') {
-                console.warn('[App] YouTube video unavailable, skipping to next track');
-                showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
-                if (playerManagerRef.current) playerManagerRef.current.next();
-                else handleNextTrack(true);
+                handleVideoUnavailable();
               } else {
                 dbg('standby fallback: video unavailable');
               }

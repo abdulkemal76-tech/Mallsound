@@ -284,7 +284,7 @@ export const BUILT_IN_TRACKS: Track[] = [
     coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music115/v4/bf/25/7f/bf257f89-8dcf-4be3-485c-11e0ff0d4850/886444855906.jpg/600x600bb.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
-    youtubeVideoId: 'q9C0IAPzNcI',
+    youtubeVideoId: '9LtjmpnQXLQ',
     bitrateLabel: '256kbps AAC / YT Full',
     releaseYear: 2000,
     playsCount: 3800000,
