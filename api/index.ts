@@ -243,6 +243,32 @@ app.get('/api/music/audio-proxy', async (req, res) => {
   }
 });
 
+// Search YouTube for a query and return up to 8 candidate videoIds.
+// Shared by /api/music/yt and /api/playlist/import (so imported songs
+// can get a videoId at import time instead of only at play time).
+async function searchYouTubeVideoIds(query: string): Promise<string[]> {
+  const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
+    `${query} official audio`
+  )}`;
+  const response = await fetch(searchUrl, {
+    headers: {
+      'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+    },
+  });
+  const html = await response.text();
+  const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
+  const uniqueIds: string[] = [];
+  for (const m of matches) {
+    if (m[1] && !uniqueIds.includes(m[1])) {
+      uniqueIds.push(m[1]);
+    }
+    if (uniqueIds.length >= 8) break;
+  }
+  return uniqueIds;
+}
+
 app.get('/api/music/yt', async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
@@ -251,25 +277,7 @@ app.get('/api/music/yt', async (req, res) => {
       return;
     }
 
-    const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-      `${q} official audio`
-    )}`;
-    const response = await fetch(searchUrl, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-      },
-    });
-    const html = await response.text();
-    const matches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})"/g)];
-    const uniqueIds: string[] = [];
-    for (const m of matches) {
-      if (m[1] && !uniqueIds.includes(m[1])) {
-        uniqueIds.push(m[1]);
-      }
-      if (uniqueIds.length >= 8) break;
-    }
+    const uniqueIds = await searchYouTubeVideoIds(q);
 
     res.json({
       videoId: uniqueIds[0] || null,
@@ -510,15 +518,26 @@ app.get('/api/playlist/import', async (req, res) => {
       const batch = candidates.slice(i, i + batchSize);
       const searchPromises = batch.map(async (c) => {
         const queryTerm = `${c.artist} ${c.title}`.trim();
+        // Resolve a YouTube videoId at import time when the import source
+        // didn't provide one (Spotify imports have no videoId). Without
+        // this the song has no videoId and only gets one at play time via
+        // the async resolve — if that is slow or fails, the song errors.
+        // Resolving here (in parallel with the iTunes lookup) means the
+        // song plays immediately when tapped. If the search fails, the
+        // song falls back to the play-time resolve as before.
+        const ytIdPromise = c.youtubeId
+          ? Promise.resolve<string | null>(c.youtubeId)
+          : searchYouTubeVideoIds(queryTerm)
+              .then((ids) => ids[0] || null)
+              .catch(() => null);
         try {
           const results = await fetchItunesSearch(queryTerm, 1);
+          const ytId = await ytIdPromise;
           if (results.length > 0) {
             const trk: ReturnType<typeof mapItunesItemToTrack> & {
               youtubeVideoId?: string | null;
             } = results[0];
-            if (c.youtubeId) {
-              trk.youtubeVideoId = c.youtubeId;
-            }
+            trk.youtubeVideoId = c.youtubeId || ytId;
             return trk;
           }
         } catch {
@@ -526,6 +545,7 @@ app.get('/api/playlist/import', async (req, res) => {
         }
 
         // Fallback track if not found on iTunes
+        const ytId = await ytIdPromise.catch(() => null);
         return {
           id: `imported_${c.youtubeId || Math.random().toString(36).substring(2, 9)}`,
           itunesId: 0,
@@ -538,7 +558,7 @@ app.get('/api/playlist/import', async (req, res) => {
           coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80',
           audioUrl: '',
           rawPreviewUrl: '',
-          youtubeVideoId: c.youtubeId || null,
+          youtubeVideoId: c.youtubeId || ytId || null,
           bitrateLabel: '256kbps YT Audio',
           releaseYear: new Date().getFullYear(),
           playsCount: 15000,
