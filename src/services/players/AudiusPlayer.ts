@@ -10,6 +10,15 @@
 // point of this adapter. (It plays Audius content only; the pop-Indonesia
 // catalog generally is NOT on Audius — see audiusApi.ts.)
 //
+// SINGLE <audio> INSTANCE: PlayerManager creates ONE <audio> element and
+// passes it here (opts.audio) and to RemoteAudioPlayer. On track change
+// only the `src` is swapped — a new Audio() is never created and the
+// element is never destroyed — so the browser treats it as a continuation
+// of the same media session, not a new autoplay. Because both players
+// share the element, each one only forwards events (ended / error /
+// timeupdate) while it is the ACTIVE player (see setActive(), driven by
+// PlayerManager on every switch).
+//
 // Media Session API is owned here while an Audius track is loaded:
 // metadata on load, action handlers (play/pause/previoustrack/nexttrack)
 // delegating to App's engine-aware handlers, playbackState synced on
@@ -28,6 +37,9 @@ export function audiusStreamUrl(audiusTrackId: string): string {
 }
 
 export interface AudiusPlayerOptions {
+  /** The single shared <audio> element, created by PlayerManager.
+   *  When omitted a private element is created (standalone use). */
+  audio?: HTMLAudioElement;
   /** App's engine-aware handlers (play/pause/next/prev), read live so
    *  lock-screen controls keep working for YouTube tracks too. */
   getPlay: () => void;
@@ -44,32 +56,49 @@ export class AudiusPlayer implements MusicPlayer {
   private errorCbs: Array<(err: unknown) => void> = [];
   private current: PlayerTrack | null = null;
   private handlersRegistered = false;
+  /** Only the active player forwards events from the shared element. */
+  private active = false;
+
+  private onEnded = (): void => {
+    if (!this.active) return;
+    dbg(`adapter: AudiusPlayer ended "${this.current?.title || '?'}"`);
+    // Neutral state until the manager starts the next track (which
+    // sets 'playing' again); a deferred YouTube next track must NOT
+    // leave the lock screen showing "playing" while silent.
+    this.setPlaybackState('paused');
+    this.endedCbs.forEach((cb) => cb());
+  };
+
+  private onError = (): void => {
+    if (!this.active) return;
+    const err = this.audio.error;
+    dbg(
+      `adapter: AudiusPlayer error "${this.current?.title || '?'}" code=${err?.code ?? '?'}`
+    );
+    this.errorCbs.forEach((cb) => cb(err));
+  };
+
+  private onTimeUpdate = (): void => {
+    if (!this.active) return;
+    const dur = this.audio.duration || this.current?.durationSec || 0;
+    this.opts.onTimeUpdate?.(this.audio.currentTime || 0, dur);
+  };
 
   constructor(private opts: AudiusPlayerOptions) {
-    this.audio = new Audio();
+    this.audio = opts.audio ?? new Audio();
     this.audio.preload = 'auto';
+    this.audio.addEventListener('ended', this.onEnded);
+    this.audio.addEventListener('error', this.onError);
+    this.audio.addEventListener('timeupdate', this.onTimeUpdate);
+  }
 
-    this.audio.addEventListener('ended', () => {
-      dbg(`adapter: AudiusPlayer ended "${this.current?.title || '?'}"`);
-      // Neutral state until the manager starts the next track (which
-      // sets 'playing' again); a deferred YouTube next track must NOT
-      // leave the lock screen showing "playing" while silent.
-      this.setPlaybackState('paused');
-      this.endedCbs.forEach((cb) => cb());
-    });
+  /** Only the active player forwards events from the shared <audio>. */
+  setActive(active: boolean): void {
+    this.active = active;
+  }
 
-    this.audio.addEventListener('error', () => {
-      const err = this.audio.error;
-      dbg(
-        `adapter: AudiusPlayer error "${this.current?.title || '?'}" code=${err?.code ?? '?'}`
-      );
-      this.errorCbs.forEach((cb) => cb(err));
-    });
-
-    this.audio.addEventListener('timeupdate', () => {
-      const dur = this.audio.duration || this.current?.durationSec || 0;
-      this.opts.onTimeUpdate?.(this.audio.currentTime || 0, dur);
-    });
+  isActive(): boolean {
+    return this.active;
   }
 
   load(track: PlayerTrack): void {
@@ -138,18 +167,12 @@ export class AudiusPlayer implements MusicPlayer {
     else if (event === 'error') this.errorCbs.push(cb as (err: unknown) => void);
   }
 
+  /** Detach listeners. Does NOT clear the shared element's src — the
+   *  PlayerManager owns the element. */
   destroy(): void {
-    try {
-      this.audio.pause();
-    } catch {
-      // ignore
-    }
-    this.audio.removeAttribute('src');
-    try {
-      this.audio.load();
-    } catch {
-      // ignore
-    }
+    this.audio.removeEventListener('ended', this.onEnded);
+    this.audio.removeEventListener('error', this.onError);
+    this.audio.removeEventListener('timeupdate', this.onTimeUpdate);
   }
 
   private ensureMediaSessionHandlers(): void {

@@ -55,7 +55,8 @@ import { dbg } from './services/debugLog';
 // adapters + PlayerManager (queue advance + background defer rule).
 import { YouTubePlayer } from './services/players/YouTubePlayer';
 import { AudiusPlayer } from './services/players/AudiusPlayer';
-import { PlayerManager, type PlayerManagerApi } from './services/players/PlayerManager';
+import { RemoteAudioPlayer } from './services/players/RemoteAudioPlayer';
+import { PlayerManager, type PlayerManagerApi, type PlayerManagerConfig } from './services/players/PlayerManager';
 import type { PlayerTrack } from './services/players/MusicPlayer';
 import { FullScreenPlayer } from './components/FullScreenPlayer';
 import { AddCustomTrackModal, CreatePlaylistModal } from './components/Modals';
@@ -357,6 +358,11 @@ export function App() {
   // element plays it and the YouTube stage is paused (its isPlaying prop
   // is gated by !audiusActive below) so two sources never sound together.
   const [audiusActive, setAudiusActive] = useState(false);
+  // Same for a remote (.mp3 backend) track: the shared <audio> element
+  // plays it and the YouTube stage is paused.
+  const [remoteActive, setRemoteActive] = useState(false);
+  // The YouTube stage is only "live" when neither adapter owns playback.
+  const ytActive = !audiusActive && !remoteActive;
   const [stageMode, setStageMode] = useState<'cover' | 'video'>('cover');
   const [videoStageRect, setVideoStageRect] = useState<{
     top: number;
@@ -549,6 +555,7 @@ export function App() {
   // ── Player adapter layer (v52) ──
   const youTubePlayerRef = useRef<YouTubePlayer | null>(null);
   const audiusPlayerRef = useRef<AudiusPlayer | null>(null);
+  const remotePlayerRef = useRef<RemoteAudioPlayer | null>(null);
   const playerManagerRef = useRef<PlayerManager | null>(null);
   // Latest App callbacks for the manager (avoids stale closures — the
   // manager is constructed once, the callbacks change every render).
@@ -581,6 +588,7 @@ export function App() {
         handleSelectTrack(track, undefined, isFullScreenPlayerOpen, undefined, false),
       startAudiusTrack: (track) => {
         setAudiusActive(true);
+        setRemoteActive(false);
         setStageMode('cover');
         setCurrentTrack(track);
         setCurrentTimeSec(0);
@@ -603,10 +611,55 @@ export function App() {
           });
         dbg(`adapter: Audius track started "${track.title}" - ${track.artist}`);
       },
+      // Remote track (.mp3 backend): App state is updated immediately
+      // (optimistic); the manager resolves the URL and starts the shared
+      // <audio> element right after. On failure onTrackUnavailable below
+      // shows the toast and stops.
+      startRemoteTrack: (track) => {
+        setRemoteActive(true);
+        setAudiusActive(false);
+        setStageMode('cover');
+        setCurrentTrack(track);
+        setCurrentTimeSec(0);
+        setDurationSec(track.durationSec);
+        setIsPlaying(true);
+        setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
+        backgroundAudioService.ensureAudioActive();
+        // Lyrics only — no YouTube resolve for a remote track.
+        setIsLoadingLyrics(true);
+        fetchTrackLyrics(track.title, track.artist, track.durationSec)
+          .then((lyricsResult) => {
+            setIsLoadingLyrics(false);
+            setCurrentTrack((prev) => {
+              if (prev.id !== track.id) return prev;
+              return { ...prev, lyrics: lyricsResult };
+            });
+          })
+          .catch(() => {
+            setIsLoadingLyrics(false);
+          });
+        dbg(`adapter: Remote track started "${track.title}" - ${track.artist}`);
+      },
+      onTrackUnavailable: (track) => {
+        showToast('Lagu tidak tersedia di server');
+        setIsPlaying(false);
+        // remoteActive stays true: the current track IS a remote track, so
+        // a later play press retries the resolve instead of falling back
+        // to the YouTube stage.
+        dbg(`adapter: remote track unavailable "${track.title}" — toast shown, stopped`);
+      },
       restartCurrent: () => {
         if (audiusActive) {
           audiusPlayerRef.current?.seek(0);
           void audiusPlayerRef.current?.play();
+        } else if (remoteActive) {
+          // Failed remote track: retry the resolve; otherwise restart.
+          if (playerManagerRef.current?.remoteFailed) {
+            playerManagerRef.current?.playTrack(currentTrack);
+          } else {
+            remotePlayerRef.current?.seek(0);
+            void remotePlayerRef.current?.play();
+          }
         } else if (engineMode === 'hifi-eq') {
           studioAudioEngine.seek(0);
           studioAudioEngine.play();
@@ -623,45 +676,55 @@ export function App() {
     };
   });
 
-  // Construct the adapter layer once (mount). The manager calls the App
-  // callbacks through managerApiRef so it always uses the latest closures.
+  // Construct the adapter layer once (mount). The PlayerManager creates
+  // the single shared <audio> element and constructs all three players
+  // with it. The manager calls the App callbacks through managerApiRef so
+  // it always uses the latest closures.
   useEffect(() => {
     const apiProxy: PlayerManagerApi = {
       selectTrack: (t) => managerApiRef.current?.selectTrack(t),
       startAudiusTrack: (t) => managerApiRef.current?.startAudiusTrack(t),
+      startRemoteTrack: (t) => managerApiRef.current?.startRemoteTrack(t),
+      onTrackUnavailable: (t) => managerApiRef.current?.onTrackUnavailable(t),
       restartCurrent: () => managerApiRef.current?.restartCurrent(),
       getCurrentTimeSec: () => managerApiRef.current?.getCurrentTimeSec() ?? 0,
       getShuffle: () => managerApiRef.current?.getShuffle() ?? false,
       getRepeatMode: () => managerApiRef.current?.getRepeatMode() ?? 'off',
       getCurrentTrack: () => managerApiRef.current?.getCurrentTrack() ?? null,
     };
-    const yt = new YouTubePlayer({
-      setVideoId: (id) => setCurrentYtVideoId(id),
-      setCandidates: (ids) => setCurrentYtCandidates(ids),
-      setPlaying: (playing) => setIsPlaying(playing),
-      requestSeek: (sec) => setYtSeekRequest({ sec, nonce: Date.now() }),
-    });
-    const au = new AudiusPlayer({
-      // Media Session actions delegate to App's engine-aware handlers.
+    // Media Session actions delegate to App's engine-aware handlers.
+    const mediaSessionOpts = {
       getPlay: () => handlersRef.current.onPlay(),
       getPause: () => handlersRef.current.onPause(),
       getNext: () => handlersRef.current.onNextTrack(),
       getPrev: () => handlersRef.current.onPrevTrack(),
-      onTimeUpdate: (cur, dur) => {
+      onTimeUpdate: (cur: number, dur: number) => {
         setCurrentTimeSec(cur);
         if (dur > 0) setDurationSec(dur);
       },
-    });
-    const mgr = new PlayerManager(yt, au, apiProxy);
-    youTubePlayerRef.current = yt;
-    audiusPlayerRef.current = au;
+    };
+    const mgrConfig: PlayerManagerConfig = {
+      youTubeHooks: {
+        setVideoId: (id) => setCurrentYtVideoId(id),
+        setCandidates: (ids) => setCurrentYtCandidates(ids),
+        setPlaying: (playing) => setIsPlaying(playing),
+        requestSeek: (sec) => setYtSeekRequest({ sec, nonce: Date.now() }),
+      },
+      audiusOptions: mediaSessionOpts,
+      remoteOptions: mediaSessionOpts,
+      api: apiProxy,
+    };
+    const mgr = new PlayerManager(mgrConfig);
+    youTubePlayerRef.current = mgr.youTube;
+    audiusPlayerRef.current = mgr.audius;
+    remotePlayerRef.current = mgr.remote;
     playerManagerRef.current = mgr;
-    dbg('adapter: PlayerManager ready (YouTube + Audius)');
+    dbg('adapter: PlayerManager ready (YouTube + Audius + Remote, shared <audio>)');
     return () => {
       mgr.destroy();
-      au.destroy();
       youTubePlayerRef.current = null;
       audiusPlayerRef.current = null;
+      remotePlayerRef.current = null;
       playerManagerRef.current = null;
     };
   }, []);
@@ -1160,18 +1223,22 @@ export function App() {
       return;
     }
 
-    // Adapter routing (v52): Audius tracks play through the <audio>-based
-    // AudiusPlayer (background-capable). The YouTube path below is untouched.
-    if (playerManagerRef.current?.sourceOf(track) === 'audius') {
+    // Adapter routing (v52): non-local tracks go through the PlayerManager.
+    // Audius -> AudiusPlayer (<audio>); everything else -> RemoteAudioPlayer
+    // (.mp3 from the user's backend). The YouTube path below stays as a
+    // fallback if the manager is not constructed yet.
+    if (targetMode !== 'hifi-eq' && playerManagerRef.current) {
       playerManagerRef.current.playTrack(track);
       return;
     }
 
-    // Leaving an Audius track: stop the <audio> element and re-enable the
-    // YouTube stage before the YT flow below runs.
-    if (audiusActive) {
+    // Leaving an adapter track: stop the shared <audio> element and
+    // re-enable the YouTube stage before the YT fallback below runs.
+    if (audiusActive || remoteActive) {
       audiusPlayerRef.current?.pause();
+      remotePlayerRef.current?.pause();
       setAudiusActive(false);
+      setRemoteActive(false);
     }
 
     setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
@@ -1253,6 +1320,8 @@ export function App() {
     if (isPlaying) {
       if (audiusActive) {
         audiusPlayerRef.current?.pause();
+      } else if (remoteActive) {
+        remotePlayerRef.current?.pause();
       } else if (engineMode === 'hifi-eq') {
         studioAudioEngine.pause();
       }
@@ -1260,6 +1329,13 @@ export function App() {
     } else {
       if (audiusActive) {
         void audiusPlayerRef.current?.play();
+      } else if (remoteActive) {
+        // Failed remote track: retry the resolve; otherwise resume.
+        if (playerManagerRef.current?.remoteFailed) {
+          playerManagerRef.current?.playTrack(currentTrack);
+        } else {
+          void remotePlayerRef.current?.play();
+        }
       } else if (engineMode === 'hifi-eq') {
         if (currentTimeSec === 0) {
           studioAudioEngine.loadTrack(currentTrack, true);
@@ -1573,12 +1649,14 @@ export function App() {
     handleSelectTrack(queue[prevIdx], undefined, isFullScreenPlayerOpen);
   };
 
-  // Unified seek (v52): Audius <audio> seeks directly; hifi-eq uses the
-  // studio engine; YouTube uses the seek request prop.
+  // Unified seek (v52): Audius / Remote <audio> seek directly; hifi-eq
+  // uses the studio engine; YouTube uses the seek request prop.
   const handleSeek = (sec: number) => {
     setCurrentTimeSec(sec);
     if (audiusActive) {
       audiusPlayerRef.current?.seek(sec);
+    } else if (remoteActive) {
+      remotePlayerRef.current?.seek(sec);
     } else if (engineMode === 'hifi-eq') {
       studioAudioEngine.seek(sec);
     } else {
@@ -2542,7 +2620,7 @@ export function App() {
             label="A"
             videoId={activePlayer === 'A' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'A' ? currentYtCandidates : standbyCandidates}
-            isPlaying={activePlayer === 'A' ? (isPlaying && !audiusActive) : ((isPlaying || !hasPlayedOnce) && !audiusActive)}
+            isPlaying={activePlayer === 'A' ? (isPlaying && ytActive) : ((isPlaying || !hasPlayedOnce) && ytActive)}
             volume={activePlayer === 'A' ? volume : 0}
             isMuted={activePlayer === 'A' ? isMuted : true}
             seekRequest={activePlayer === 'A' ? ytSeekRequest : standbySeekRequest}
@@ -2607,7 +2685,7 @@ export function App() {
             label="B"
             videoId={activePlayer === 'B' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'B' ? currentYtCandidates : standbyCandidates}
-            isPlaying={activePlayer === 'B' ? (isPlaying && !audiusActive) : ((isPlaying || !hasPlayedOnce) && !audiusActive)}
+            isPlaying={activePlayer === 'B' ? (isPlaying && ytActive) : ((isPlaying || !hasPlayedOnce) && ytActive)}
             volume={activePlayer === 'B' ? volume : 0}
             isMuted={activePlayer === 'B' ? isMuted : true}
             seekRequest={activePlayer === 'B' ? ytSeekRequest : standbySeekRequest}

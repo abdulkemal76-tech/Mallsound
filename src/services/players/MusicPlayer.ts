@@ -18,6 +18,10 @@ export interface PlayerTrack {
   album?: string;
   youtubeVideoId?: string | null;
   audiusTrackId?: string | null;
+  /** Direct audio URL when already known (preview / blob URL).
+   *  RemoteAudioPlayer.load(track) uses this; the normal remote path
+   *  resolves the URL first and calls load(url, metadata) instead. */
+  audioUrl?: string | null;
   /** Extra YouTube candidates (used by the two-player flip). */
   candidateIds?: string[];
   coverUrl?: string;
@@ -32,6 +36,7 @@ export function toPlayerTrack(track: Track): PlayerTrack {
     album: track.album,
     youtubeVideoId: track.youtubeVideoId ?? null,
     audiusTrackId: track.audiusTrackId ?? null,
+    audioUrl: track.audioUrl ?? null,
     coverUrl: track.coverUrl,
     durationSec: track.durationSec,
   };
