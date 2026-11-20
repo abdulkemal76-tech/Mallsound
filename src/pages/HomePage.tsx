@@ -255,6 +255,22 @@ export const HomePage: React.FC<HomePageProps> = ({
 
   const greeting = getGreeting();
 
+  // Play an artist's tracks immediately instead of only opening search.
+  // Falls back to the search page when the catalog returns nothing.
+  const playArtistNow = async (query: string) => {
+    try {
+      const res = await searchCatalogWithMeta(query, 6);
+      const tracks = res.tracks || [];
+      if (tracks.length > 0) {
+        onSelectTrack(tracks[0], tracks);
+        return;
+      }
+    } catch (err) {
+      console.error('Gagal memutar langsung, buka pencarian:', err);
+    }
+    onNavigateToSearch(query);
+  };
+
   // Auto-rotate Hero Spotlight every 6.5 seconds
   useEffect(() => {
     if (isHovered) return;
@@ -567,7 +583,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <div className="flex flex-wrap items-center gap-3 pt-2">
                   <button
                     type="button"
-                    onClick={() => onNavigateToSearch('Tenxi')}
+                    onClick={() => playArtistNow('Tenxi')}
                     className="inline-flex items-center gap-2.5 px-6 py-3.5 rounded-2xl bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 hover:from-violet-600 hover:to-pink-600 text-white font-bold text-sm sm:text-base shadow-xl shadow-violet-500/30 hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                   >
                     <Play className="w-5 h-5 fill-current" />
@@ -576,7 +592,7 @@ export const HomePage: React.FC<HomePageProps> = ({
 
                   <button
                     type="button"
-                    onClick={() => onNavigateToSearch('Tenxi Garam dan Madu')}
+                    onClick={() => playArtistNow('Tenxi Garam dan Madu')}
                     className="inline-flex items-center gap-2 px-5 py-3.5 rounded-2xl bg-white/10 hover:bg-white/15 text-white font-semibold text-sm sm:text-base border border-white/15 hover:border-white/30 backdrop-blur-md hover:scale-105 active:scale-95 transition-all duration-200 cursor-pointer"
                   >
                     <Music className="w-4 h-4 text-violet-400" />
