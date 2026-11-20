@@ -33,6 +33,7 @@ import { GENRE_MOOD_CARDS, GenreMoodCard } from '../data/genres';
 import { GLOBAL_ARTISTS, ArtistItem } from '../data/artists';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 import { SHOEGAZE_INDO_PLAYLIST_ID } from '../data/shoegazeIndoTracks';
+import { MOOD_CARD_TO_PLAYLIST } from '../data/moodPlaylists';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
@@ -1110,7 +1111,16 @@ export const HomePage: React.FC<HomePageProps> = ({
           {GENRE_MOOD_CARDS.map((card: GenreMoodCard) => (
             <div
               key={card.id}
-              onClick={() => onNavigateToSearch(card.query)}
+              onClick={() => {
+                // 4 kartu mood di sini membuka playlist beneran (v67),
+                // kartu genre tetap membuka pencarian seperti biasa.
+                const moodPlaylistId = MOOD_CARD_TO_PLAYLIST[card.id];
+                if (moodPlaylistId && onOpenPlaylist) {
+                  onOpenPlaylist(moodPlaylistId);
+                } else {
+                  onNavigateToSearch(card.query);
+                }
+              }}
               className={`group relative p-4 rounded-2xl bg-gradient-to-br ${card.gradient} cursor-pointer border border-white/10 hover:border-white/30 shadow-md hover:shadow-xl hover:scale-105 active:scale-95 transition-all duration-200 flex flex-col justify-between h-28 sm:h-32 overflow-hidden`}
             >
               <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />

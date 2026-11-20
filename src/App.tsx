@@ -67,6 +67,7 @@ import { TrackActionModal } from './components/TrackActionModal';
 import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
 import { DJ_INDO_TRACKS } from './data/djIndoTracks';
 import { SHOEGAZE_INDO_TRACKS, SHOEGAZE_INDO_PLAYLIST, SHOEGAZE_INDO_PLAYLIST_ID } from './data/shoegazeIndoTracks';
+import { MOOD_TRACKS, MOOD_PLAYLISTS, MOOD_PLAYLIST_IDS } from './data/moodPlaylists';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -155,7 +156,7 @@ export function App() {
   const allPlaylists = useMemo(() => {
     // Playlist bawaan MallSound (mis. Shoegaze Indonesia) selalu ada di
     // paling atas Koleksi — bukan dari localStorage / cloud.
-    const list: Playlist[] = [SHOEGAZE_INDO_PLAYLIST, ...localPlaylists];
+    const list: Playlist[] = [SHOEGAZE_INDO_PLAYLIST, ...MOOD_PLAYLISTS, ...localPlaylists];
     cloudPlaylists.forEach((cp) => {
       const existingIdx = list.findIndex((lp) => lp.id === cp.id);
       if (existingIdx >= 0) {
@@ -949,6 +950,7 @@ export function App() {
       ...Object.values(resolvedSavedTracks),
       ...DJ_INDO_TRACKS,
       ...SHOEGAZE_INDO_TRACKS,
+      ...MOOD_TRACKS,
       ...BUILT_IN_TRACKS,
     ].forEach((t) => {
       const existing = map.get(t.id);
@@ -1836,8 +1838,8 @@ export function App() {
 
   const handleDeletePlaylist = async (playlistId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    // Playlist bawaan MallSound (mis. Shoegaze Indonesia) tidak bisa dihapus.
-    if (playlistId === SHOEGAZE_INDO_PLAYLIST_ID) {
+    // Playlist bawaan MallSound (mis. Shoegaze Indonesia, playlist mood) tidak bisa dihapus.
+    if (playlistId === SHOEGAZE_INDO_PLAYLIST_ID || MOOD_PLAYLIST_IDS.has(playlistId)) {
       showToast('Playlist bawaan MallSound tidak bisa dihapus');
       return;
     }
@@ -2222,6 +2224,10 @@ export function App() {
             onToggleLike={handleToggleLike}
             onOpenActions={(trk) => setActionModalTrack(trk)}
             initialQuery={searchQueryFromExternal}
+            onOpenPlaylist={(plId) => {
+              setActivePlaylistId(plId);
+              setActiveTab('library');
+            }}
           />
         )}
 
