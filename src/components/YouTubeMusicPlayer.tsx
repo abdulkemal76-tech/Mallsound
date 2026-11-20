@@ -41,14 +41,12 @@ export interface YTPlayerInstance {
 interface YouTubeMusicPlayerProps {
   videoId: string | null;
   candidateIds?: string[];
-  playlistVideoIds?: string[];
   isPlaying: boolean;
   volume: number;
   isMuted: boolean;
   seekRequest: { sec: number; nonce: number } | null;
   onTimeUpdate: (currentSec: number, durationSec: number) => void;
   onEnded: () => void;
-  onTrackAdvanced?: (nextVideoId: string) => void;
   onPlayingChange: (playing: boolean) => void;
   onFallbackToPreview?: () => void;
 }
@@ -56,14 +54,12 @@ interface YouTubeMusicPlayerProps {
 export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   videoId,
   candidateIds = [],
-  playlistVideoIds = [],
   isPlaying,
   volume,
   isMuted,
   seekRequest,
   onTimeUpdate,
   onEnded,
-  onTrackAdvanced,
   onPlayingChange,
   onFallbackToPreview,
 }) => {
@@ -74,33 +70,31 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const candidateIndexRef = useRef<number>(0);
   const candidatesRef = useRef<string[]>(candidateIds);
   const isPlayingPropRef = useRef<boolean>(isPlaying);
-  const hasEndedTriggeredRef = useRef<boolean>(false);
-  const ignoreEndUntilRef = useRef<number>(0);
-  const lastLoadedAtRef = useRef<number>(0);
 
   // === STALE CLOSURE FIX ===
+  // The YouTube player's onStateChange is a closure created once at player init.
+  // If we capture `onEnded` directly, it will always see the state from the first render.
+  // Using refs ensures onStateChange always calls the LATEST callback version.
   const onEndedRef = useRef(onEnded);
-  const onTrackAdvancedRef = useRef(onTrackAdvanced);
   const onPlayingChangeRef = useRef(onPlayingChange);
   const onTimeUpdateRef = useRef(onTimeUpdate);
   const onFallbackToPreviewRef = useRef(onFallbackToPreview);
+
+  const hasEndedTriggeredRef = useRef(false);
+  const ignoreEndUntilRef = useRef<number>(0);
+  const lastLoadedAtRef = useRef<number>(Date.now());
 
   const triggerEndedOnce = (reason: string) => {
     if (hasEndedTriggeredRef.current) return;
     if (Date.now() < ignoreEndUntilRef.current) return;
     hasEndedTriggeredRef.current = true;
-    console.log(`[YouTube Player] 🎵 Advancing queue: ${reason}`);
-    try {
-      onEndedRef.current();
-    } catch (err) {
-      console.error('[YouTube Player] Error during onEnded callback:', err);
-    }
+    console.log(`[YouTube Player] ⏩ Track ended trigger: ${reason}`);
+    onEndedRef.current();
   };
 
   // Keep all callback refs up-to-date every render (no dep array = runs every render)
   useEffect(() => {
     onEndedRef.current = onEnded;
-    onTrackAdvancedRef.current = onTrackAdvanced;
     onPlayingChangeRef.current = onPlayingChange;
     onTimeUpdateRef.current = onTimeUpdate;
     onFallbackToPreviewRef.current = onFallbackToPreview;
@@ -114,65 +108,6 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     candidateIndexRef.current = found >= 0 ? found : 0;
   }, [videoId, candidateIds]);
 
-  // Robust background player loading with Android Muted-Autoplay Bypass
-  const loadAndPlaySafely = (vid: string, playlist?: string[]) => {
-    if (!playerRef.current) return;
-    const isBg = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
-    currentVideoIdRef.current = vid;
-    hasEndedTriggeredRef.current = false;
-    lastLoadedAtRef.current = Date.now();
-    ignoreEndUntilRef.current = Date.now() + 3500;
-
-    try {
-      // Android Chromium allows background autoplay IF initialized in muted state!
-      if (isBg) {
-        try { playerRef.current.mute(); } catch {}
-      }
-
-      if (playlist && playlist.length > 1) {
-        try {
-          const sIdx = playlist.indexOf(vid);
-          (playerRef.current as any).loadPlaylist(playlist, sIdx >= 0 ? sIdx : 0, 0);
-          (playerRef.current as any).setLoop?.(true);
-        } catch {
-          playerRef.current.loadVideoById(vid);
-        }
-      } else {
-        try {
-          playerRef.current.loadVideoById({ videoId: vid, startSeconds: 0 });
-        } catch {
-          playerRef.current.loadVideoById(vid);
-        }
-      }
-
-      if (isPlayingPropRef.current) {
-        try { playerRef.current.playVideo(); } catch {}
-      }
-
-      // Once media decoder begins running, unmute so audio plays through device speakers
-      if (isBg && !isMuted && volume > 0) {
-        window.setTimeout(() => {
-          try {
-            if (playerRef.current && isPlayingPropRef.current) {
-              playerRef.current.unMute();
-              playerRef.current.setVolume(Math.round(volume * 100));
-            }
-          } catch {}
-        }, 300);
-        window.setTimeout(() => {
-          try {
-            if (playerRef.current && isPlayingPropRef.current) {
-              playerRef.current.unMute();
-              playerRef.current.setVolume(Math.round(volume * 100));
-            }
-          } catch {}
-        }, 800);
-      }
-    } catch (err) {
-      console.warn('[YouTube Player] loadAndPlaySafely failed:', err);
-    }
-  };
-
   // Load YouTube IFrame API script once
   useEffect(() => {
     if (!document.getElementById('yt-iframe-api-script')) {
@@ -183,7 +118,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     }
   }, []);
 
-  // Initialize or update videoId / playlist
+  // Initialize or update videoId
   useEffect(() => {
     if (!videoId) return;
 
@@ -197,7 +132,29 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
 
       if (playerRef.current && readyRef.current) {
         if (currentVideoIdRef.current !== videoId) {
-          loadAndPlaySafely(videoId, playlistVideoIds);
+          currentVideoIdRef.current = videoId;
+          hasEndedTriggeredRef.current = false;
+          lastLoadedAtRef.current = Date.now();
+          ignoreEndUntilRef.current = Date.now() + 3500;
+          try {
+            // In mobile background tabs, Chromium blocks unmuted autoplay on loadVideoById.
+            // Temporarily mute before loading, and unmute as soon as playback starts (state 1).
+            if (document.hidden) {
+              try { playerRef.current.mute(); } catch {}
+            }
+            playerRef.current.loadVideoById(videoId);
+          } catch {
+            // ignore
+          }
+          if (isPlayingPropRef.current) {
+            try {
+              playerRef.current.playVideo();
+            } catch {}
+          } else {
+            try {
+              playerRef.current.pauseVideo();
+            } catch {}
+          }
         }
         return;
       }
@@ -247,17 +204,10 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             } else {
               e.target.unMute();
             }
-
-            // If a playlist queue is provided, load playlist for native background transition
-            if (playlistVideoIds && playlistVideoIds.length > 1) {
-              try {
-                const sIdx = playlistVideoIds.indexOf(videoId);
-                (e.target as any).loadPlaylist(playlistVideoIds, sIdx >= 0 ? sIdx : 0, 0);
-                (e.target as any).setLoop?.(true);
-              } catch {}
-            }
-
             if (isPlayingPropRef.current) {
+              if (document.hidden) {
+                try { e.target.mute(); } catch {}
+              }
               try {
                 e.target.playVideo();
               } catch {
@@ -267,47 +217,33 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           },
           onStateChange: (e) => {
             if (e.data === 0) {
-              // Video finished: trigger next track
+              // ENDED
               triggerEndedOnce('onStateChange ENDED (data=0)');
             } else if (e.data === 5 || e.data === -1) {
-              // State 5 = CUED, State -1 = UNSTARTED (mobile background hold)
+              // State 5 = CUED, State -1 = UNSTARTED
+              // In mobile background tabs, YouTube defaults to CUED or UNSTARTED.
+              // Force playVideo() with muted bypass if document is hidden:
               if (isPlayingPropRef.current) {
-                console.log(`[YouTube Player] ⚡ Video cued/unstarted (state=${e.data}) in background, forcing playVideo()`);
-                const isBg = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
-                if (isBg) {
+                if (document.hidden) {
                   try { e.target.mute(); } catch {}
                 }
-                try { e.target.playVideo(); } catch {}
-                if (isBg && !isMuted && volume > 0) {
-                  window.setTimeout(() => {
-                    try {
-                      e.target.unMute();
-                      e.target.setVolume(Math.round(volume * 100));
-                    } catch {}
-                  }, 300);
+                try {
+                  e.target.playVideo();
+                } catch {
+                  // ignore
                 }
               }
             } else if (e.data === 1) {
               // State 1 = PLAYING
               onPlayingChangeRef.current(true);
               if (!isMuted && volume > 0) {
-                try {
-                  e.target.unMute();
-                  e.target.setVolume(Math.round(volume * 100));
-                } catch {}
+                setTimeout(() => {
+                  try {
+                    e.target.unMute();
+                    e.target.setVolume(Math.round(volume * 100));
+                  } catch {}
+                }, 250);
               }
-
-              // Detect if YouTube internal playlist auto-advanced to the next track
-              try {
-                const playingVid = (e.target as any).getVideoData?.()?.video_id;
-                if (playingVid && currentVideoIdRef.current && playingVid !== currentVideoIdRef.current) {
-                  console.log(`[YouTube Player] 🎵 YouTube playlist auto-advanced to: ${playingVid}`);
-                  currentVideoIdRef.current = playingVid;
-                  hasEndedTriggeredRef.current = false;
-                  ignoreEndUntilRef.current = Date.now() + 3500;
-                  onTrackAdvancedRef.current?.(playingVid);
-                }
-              } catch {}
 
               const dur = e.target.getDuration();
               const cur = e.target.getCurrentTime() || 0;
@@ -319,17 +255,20 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               }
             } else if (e.data === 2) {
               // State 2 = PAUSED
-              try {
-                const cur = e.target.getCurrentTime() || 0;
-                const dur = e.target.getDuration() || 0;
-                if (dur > 5 && cur >= dur - 1.2 && Date.now() > ignoreEndUntilRef.current) {
-                  triggerEndedOnce(`onStateChange PAUSED at end (cur=${cur.toFixed(1)}, dur=${dur.toFixed(1)})`);
-                  return;
-                }
-              } catch {}
+              const cur = e.target.getCurrentTime() || 0;
+              const dur = e.target.getDuration() || 0;
+              if (dur > 5 && cur >= dur - 1.2 && Date.now() > ignoreEndUntilRef.current) {
+                triggerEndedOnce(`onStateChange PAUSED at end (cur=${cur.toFixed(1)}, dur=${dur.toFixed(1)})`);
+                return;
+              }
 
-              if (isPlayingPropRef.current && Date.now() - lastLoadedAtRef.current < 5000) {
-                try { e.target.playVideo(); } catch {}
+              if (isPlayingPropRef.current && Date.now() - lastLoadedAtRef.current < 6000) {
+                if (document.hidden) {
+                  try { e.target.mute(); } catch {}
+                }
+                try {
+                  e.target.playVideo();
+                } catch {}
               }
               onPlayingChangeRef.current(false);
             }
@@ -346,6 +285,9 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               const nextVid = list[nextIdx];
               currentVideoIdRef.current = nextVid;
               try {
+                if (document.hidden) {
+                  try { e.target.mute(); } catch {}
+                }
                 e.target.loadVideoById(nextVid);
                 if (isPlayingPropRef.current) {
                   e.target.playVideo();
@@ -354,9 +296,8 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                 // ignore
               }
             } else {
-              console.warn('[YouTube Player] All candidate videos failed or unavailable, triggering audio fallback / queue advance');
+              console.warn('[YouTube Player] All candidate videos failed or unavailable, advancing queue');
               onFallbackToPreviewRef.current?.();
-              triggerEndedOnce('all candidates failed');
             }
           },
         },
@@ -424,7 +365,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           onTimeUpdate(cur, dur);
 
           // Proactive queue advance if video reaches the end
-          if (dur > 5 && cur >= dur - 0.75) {
+          if (dur > 5 && cur >= dur - 0.75 && Date.now() > ignoreEndUntilRef.current) {
             triggerEndedOnce(`progress reached end (cur=${cur.toFixed(1)}, dur=${dur.toFixed(1)})`);
           }
         }
@@ -450,12 +391,13 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
         // 1. RECENTLY LOADED AUTO-START (Essential for background playback on mobile):
         // When a new video is loaded in background, mobile browsers pause or cue it (st: 5, -1, 2).
         // Force playVideo() during the first 6 seconds until playback actually starts (st === 1).
-        if (timeSinceLoad < 6000) {
-          if (st !== 1) {
-            try {
-              playerRef.current.playVideo();
-            } catch {}
+        if (timeSinceLoad < 6000 && st !== 1) {
+          if (document.hidden) {
+            try { playerRef.current.mute(); } catch {}
           }
+          try {
+            playerRef.current.playVideo();
+          } catch {}
           return;
         }
 

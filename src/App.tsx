@@ -648,38 +648,32 @@ export function App() {
       setCurrentYtCandidates([instantId]);
     }
 
-    // 1. Resolve YouTube video ID immediately in background without waiting for lyrics
-    resolveYouTubeVideoId(track.title, track.artist, track.id)
-      .then((ytData) => {
-        if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
-          const candidateList = ytData.candidates.length > 0
-            ? ytData.candidates
-            : (ytData.videoId ? [ytData.videoId] : []);
-          const mergedCandidates = Array.from(new Set([...(instantId ? [instantId] : []), ...candidateList]));
-          if (!instantId && ytData.videoId) {
-            setCurrentYtVideoId(ytData.videoId);
+    // 1. Resolve YouTube video ID in background if not instant
+    if (!instantId) {
+      resolveYouTubeVideoId(track.title, track.artist, track.id)
+        .then((ytData) => {
+          if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
+            const candidateList =
+              ytData.candidates && ytData.candidates.length > 0
+                ? ytData.candidates
+                : ytData.videoId
+                ? [ytData.videoId]
+                : [];
+            setCurrentYtVideoId(ytData.videoId || candidateList[0]);
+            setCurrentYtCandidates(candidateList);
+            setCurrentTrack((prev) => {
+              if (prev.id !== track.id) return prev;
+              return {
+                ...prev,
+                youtubeVideoId: ytData.videoId || prev.youtubeVideoId,
+              };
+            });
           }
-          setCurrentYtCandidates(mergedCandidates);
-          setCurrentTrack((prev) => {
-            if (prev.id !== track.id) return prev;
-            return {
-              ...prev,
-              youtubeVideoId: ytData.videoId || prev.youtubeVideoId || instantId,
-            };
-          });
-        } else if (!instantId && track.audioUrl) {
-          console.warn('[App] No YouTube stream found, falling back to studio engine');
-          setEngineMode('hifi-eq');
-          studioAudioEngine.loadTrack(track, true);
-        }
-      })
-      .catch((err) => {
-        console.warn('[App] YouTube resolution failed:', err);
-        if (!instantId && track.audioUrl) {
-          setEngineMode('hifi-eq');
-          studioAudioEngine.loadTrack(track, true);
-        }
-      });
+        })
+        .catch((err) => {
+          console.warn('[App] YouTube resolution failed:', err);
+        });
+    }
 
     // 2. Fetch lyrics independently without blocking playback
     setIsLoadingLyrics(true);
@@ -746,8 +740,51 @@ export function App() {
           return next;
         });
       }
-    });
   }, [favoriteIds, localFavorites, allPlaylists, resolvedSavedTracks]);
+
+  // Pre-fetch YouTube video ID for the upcoming track in queue to ensure instantaneous background switching
+  useEffect(() => {
+    let nextTrackToPreload: Track | null = null;
+    if (playbackQueue.length > 0) {
+      nextTrackToPreload = playbackQueue[0];
+    } else {
+      const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
+      const idx = queue.findIndex((t) => t.id === currentTrack.id);
+      if (idx !== -1 && idx + 1 < queue.length) {
+        nextTrackToPreload = queue[idx + 1];
+      }
+    }
+
+    if (nextTrackToPreload && !nextTrackToPreload.youtubeVideoId) {
+      const cleanTitle = (nextTrackToPreload.title || '').toLowerCase().trim();
+      let hasImmediate = false;
+      for (const [key] of Object.entries(POPULAR_YT_MAP)) {
+        if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
+          hasImmediate = true;
+          break;
+        }
+      }
+      if (!hasImmediate) {
+        const targetId = nextTrackToPreload.id;
+        resolveYouTubeVideoId(nextTrackToPreload.title, nextTrackToPreload.artist, nextTrackToPreload.id)
+          .then((yt) => {
+            if (yt.videoId) {
+              setPlaybackQueue((prev) =>
+                prev.map((t) => (t.id === targetId ? { ...t, youtubeVideoId: yt.videoId! } : t))
+              );
+              setResolvedSavedTracks((prev) => {
+                const existing = prev[targetId];
+                if (existing) {
+                  return { ...prev, [targetId]: { ...existing, youtubeVideoId: yt.videoId! } };
+                }
+                return prev;
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [currentTrack.id, playbackQueue, displayedTracks, allKnownTracks]);
 
   // Auth Listener
   useEffect(() => {
@@ -1051,50 +1088,6 @@ export function App() {
     }
     return allKnownTracks;
   }, [allPlaylists, activePlaylistId, allKnownTracks]);
-
-  // Pre-fetch YouTube video ID for the upcoming track in queue to ensure instantaneous background switching
-  useEffect(() => {
-    let nextTrackToPreload: Track | null = null;
-    if (playbackQueue.length > 0) {
-      nextTrackToPreload = playbackQueue[0];
-    } else {
-      const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
-      const idx = queue.findIndex((t) => t.id === currentTrack.id);
-      if (idx !== -1 && idx + 1 < queue.length) {
-        nextTrackToPreload = queue[idx + 1];
-      }
-    }
-
-    if (nextTrackToPreload && !nextTrackToPreload.youtubeVideoId) {
-      const cleanTitle = (nextTrackToPreload.title || '').toLowerCase().trim();
-      let hasImmediate = false;
-      for (const [key] of Object.entries(POPULAR_YT_MAP)) {
-        if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
-          hasImmediate = true;
-          break;
-        }
-      }
-      if (!hasImmediate) {
-        const targetId = nextTrackToPreload.id;
-        resolveYouTubeVideoId(nextTrackToPreload.title, nextTrackToPreload.artist, nextTrackToPreload.id)
-          .then((yt) => {
-            if (yt.videoId) {
-              setPlaybackQueue((prev) =>
-                prev.map((t) => (t.id === targetId ? { ...t, youtubeVideoId: yt.videoId! } : t))
-              );
-              setResolvedSavedTracks((prev) => {
-                const existing = prev[targetId];
-                if (existing) {
-                  return { ...prev, [targetId]: { ...existing, youtubeVideoId: yt.videoId! } };
-                }
-                return prev;
-              });
-            }
-          })
-          .catch(() => {});
-      }
-    }
-  }, [currentTrack.id, playbackQueue, displayedTracks, allKnownTracks]);
 
   const handleToggleShuffle = () => {
     const nextShuffle = !isShuffle;
@@ -2192,27 +2185,6 @@ export function App() {
           stageMode === 'video' &&
           (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded)
         );
-        const queueVideoIds: string[] = [];
-        if (currentYtVideoId) queueVideoIds.push(currentYtVideoId);
-        const upcomingList = playbackQueue.length > 0 ? playbackQueue : (displayedTracks.length > 0 ? displayedTracks : allKnownTracks);
-        for (const t of upcomingList) {
-          if (t.id === currentTrack.id) continue;
-          let v = t.youtubeVideoId || null;
-          if (!v) {
-            const ct = (t.title || '').toLowerCase().trim();
-            for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
-              if (ct.includes(key) || key.includes(ct)) {
-                v = id;
-                break;
-              }
-            }
-          }
-          if (v && !queueVideoIds.includes(v)) {
-            queueVideoIds.push(v);
-          }
-          if (queueVideoIds.length >= 8) break;
-        }
-
         return (
           <div
             id="mallsound-global-youtube-engine"
@@ -2250,7 +2222,6 @@ export function App() {
           <YouTubeMusicPlayer
             videoId={currentYtVideoId}
             candidateIds={currentYtCandidates}
-            playlistVideoIds={queueVideoIds}
             isPlaying={isPlaying}
             volume={volume}
             isMuted={isMuted}
@@ -2266,20 +2237,15 @@ export function App() {
               }
             }}
             onEnded={() => handleNextTrack(true)}
-            onTrackAdvanced={(nextVid) => {
-              console.log('[App] 🎵 Internal YouTube transition to next track:', nextVid);
-              handleNextTrack(true);
-            }}
             onPlayingChange={(playing) => {
               if (playing) {
                 setIsPlaying(true);
               }
             }}
             onFallbackToPreview={() => {
-              console.warn('[App] YouTube video unavailable, falling back to HiFi audio engine');
-              showToast('⚠️ Video diblokir YouTube, memutar via audio studio...');
-              setStageMode('cover');
-              handleSwitchEngineMode('hifi-eq');
+              console.warn('[App] YouTube video unavailable, skipping to next track');
+              showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
+              handleNextTrack(true);
             }}
           />
         </div>
