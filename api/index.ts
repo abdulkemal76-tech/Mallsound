@@ -370,6 +370,69 @@ app.get('/api/music/lyrics', async (req, res) => {
   }
 });
 
+// YouTube mengubah struktur halaman playlist: item playlist kini dirender
+// sebagai `lockupViewModel` (bukan lagi `playlistVideoRenderer`), dan tidak
+// ada lagi `ytInitialData`. Tiap item punya:
+//   contentId = videoId
+//   metadata.lockupMetadataViewModel.title.content = judul video
+// Fungsi ini mengekstrak pasangan (videoId, judul) dari lockupViewModel.
+// Mengembalikan array kosong kalau struktur tidak ditemukan.
+function extractLockupPlaylistItems(html: string): Array<{ videoId: string; title: string }> {
+  const items: Array<{ videoId: string; title: string }> = [];
+  const marker = '"lockupViewModel":{"contentImage"';
+  let pos = 0;
+  const seen = new Set<string>();
+
+  // Ekstrak satu objek JSON yang kurungnya seimbang, mulai dari `{`.
+  const extractBalanced = (start: number): string | null => {
+    let depth = 0;
+    let inStr = false;
+    let esc = false;
+    for (let i = start; i < html.length; i++) {
+      const c = html[i];
+      if (inStr) {
+        if (esc) esc = false;
+        else if (c === '\\') esc = true;
+        else if (c === '"') inStr = false;
+      } else {
+        if (c === '"') inStr = true;
+        else if (c === '{') depth += 1;
+        else if (c === '}') {
+          depth -= 1;
+          if (depth === 0) return html.slice(start, i + 1);
+        }
+      }
+    }
+    return null;
+  };
+
+  while (true) {
+    const idx = html.indexOf(marker, pos);
+    if (idx < 0) break;
+    const braceIdx = html.indexOf('{', idx);
+    if (braceIdx < 0) break;
+    const jsonStr = extractBalanced(braceIdx);
+    if (!jsonStr) break;
+    try {
+      const obj = JSON.parse(jsonStr) as {
+        contentId?: string;
+        metadata?: { lockupMetadataViewModel?: { title?: { content?: string } } };
+      };
+      const videoId = obj.contentId || '';
+      const title = obj.metadata?.lockupMetadataViewModel?.title?.content || '';
+      if (/^[a-zA-Z0-9_-]{11}$/.test(videoId) && title && !seen.has(videoId)) {
+        seen.add(videoId);
+        items.push({ videoId, title });
+      }
+    } catch {
+      // abaikan objek yang gagal diparse
+    }
+    pos = idx + marker.length;
+    if (items.length >= 100) break;
+  }
+  return items;
+}
+
 app.get('/api/playlist/import', async (req, res) => {
   try {
     const rawUrl = String(req.query.url || '').trim();
@@ -471,28 +534,36 @@ app.get('/api/playlist/import', async (req, res) => {
             playlistTitle = titleMatch[1].trim();
           }
 
-          // Extract video title and videoId
-          const trackMatches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})".*?"title":{"runs":\[{"text":"([^"]+)"}\]/g)];
+          // Bersihkan judul YouTube: sering "Artis - Judul" atau "Judul (Official Video)"
           const seen = new Set<string>();
+          const addCandidate = (videoId: string, title: string) => {
+            if (!videoId || !title || seen.has(videoId)) return;
+            seen.add(videoId);
+            let cleanArtist = '';
+            let cleanTitle = title.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+            if (cleanTitle.includes(' - ')) {
+              const parts = cleanTitle.split(' - ');
+              cleanArtist = parts[0].trim();
+              cleanTitle = parts.slice(1).join(' - ').trim();
+            }
+            candidates.push({
+              title: cleanTitle || title,
+              artist: cleanArtist,
+              youtubeId: videoId,
+            });
+          };
 
-          for (const m of trackMatches) {
-            const videoId = m[1];
-            const title = m[2];
-            if (videoId && title && !seen.has(videoId)) {
-              seen.add(videoId);
-              // Clean up YouTube title: often "Artist - Title" or "Title (Official Video)"
-              let cleanArtist = '';
-              let cleanTitle = title.replace(/\(.*?\)|\[.*?\]/g, '').trim();
-              if (cleanTitle.includes(' - ')) {
-                const parts = cleanTitle.split(' - ');
-                cleanArtist = parts[0].trim();
-                cleanTitle = parts.slice(1).join(' - ').trim();
-              }
-              candidates.push({
-                title: cleanTitle || title,
-                artist: cleanArtist,
-                youtubeId: videoId,
-              });
+          // Struktur baru YouTube (lockupViewModel); kalau kosong, coba
+          // regex struktur lama (playlistVideoRenderer).
+          const lockupItems = extractLockupPlaylistItems(html);
+          for (const it of lockupItems) {
+            addCandidate(it.videoId, it.title);
+            if (candidates.length >= 35) break;
+          }
+          if (candidates.length === 0) {
+            const trackMatches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})".*?"title":{"runs":\[{"text":"([^"]+)"}\]/g)];
+            for (const m of trackMatches) {
+              addCandidate(m[1], m[2]);
               if (candidates.length >= 35) break;
             }
           }

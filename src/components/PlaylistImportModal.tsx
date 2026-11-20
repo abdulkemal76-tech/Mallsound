@@ -27,10 +27,18 @@ function detectPlatform(url: string): PlatformType {
   if (trimmed.includes('open.spotify.com/playlist/')) {
     return 'spotify';
   }
+  // YouTube Music: terima /playlist DAN /watch yang membawa ?list=...
+  // (link yang dibagikan dari aplikasi YT Music sering berupa watch URL).
   if (trimmed.includes('music.youtube.com/playlist')) {
     return 'ytmusic';
   }
+  if (trimmed.includes('music.youtube.com/watch') && /[?&]list=/.test(trimmed)) {
+    return 'ytmusic';
+  }
   if (trimmed.includes('youtube.com/playlist')) {
+    return 'youtube';
+  }
+  if (trimmed.includes('youtube.com/watch') && /[?&]list=/.test(trimmed)) {
     return 'youtube';
   }
   return 'unknown';
