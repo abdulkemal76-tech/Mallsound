@@ -814,42 +814,42 @@ export const HomePage: React.FC<HomePageProps> = ({
 
         {/* ===================== SLIDE NAVIGATION CONTROLS ===================== */}
         <div className="px-6 sm:px-10 py-3 bg-neutral-900/90 border-t border-white/10 flex items-center justify-between gap-3">
-          {/* Slide Selector Pills */}
-          <div className="flex items-center gap-2 overflow-x-auto scrollbar-none">
+          {/* Slide Selector Pills — lebar sama rata, satu baris, tidak membungkus */}
+          <div className="flex flex-1 items-center gap-2 min-w-0">
             <button
               type="button"
               onClick={() => setActiveSlide(0)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 flex items-center justify-center px-2 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 activeSlide === 0
                   ? 'bg-violet-500 text-white shadow-md shadow-violet-500/30'
                   : 'bg-white/5 hover:bg-white/10 text-white/50'
               }`}
             >
-              ⚡ 1. Tenxi
+              <span className="truncate">⚡ 1. Tenxi</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSlide(1)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 flex items-center justify-center px-2 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 activeSlide === 1
                   ? 'bg-red-500 text-white shadow-md shadow-red-500/30'
                   : 'bg-white/5 hover:bg-white/10 text-white/50'
               }`}
             >
-              🎸 2. Dongker
+              <span className="truncate">🎸 2. Dongker</span>
             </button>
 
             <button
               type="button"
               onClick={() => setActiveSlide(2)}
-              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              className={`flex-1 min-w-0 flex items-center justify-center px-2 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
                 activeSlide === 2
                   ? 'bg-amber-500 text-white shadow-md shadow-amber-500/30'
                   : 'bg-white/5 hover:bg-white/10 text-white/50'
               }`}
             >
-              🌻 3. Rex Orange County
+              <span className="truncate">🌻 3. Rex Orange County</span>
             </button>
           </div>
 

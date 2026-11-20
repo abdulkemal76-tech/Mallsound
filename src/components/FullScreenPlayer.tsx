@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ChevronDown,
   ChevronRight,
@@ -138,6 +138,35 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
   const [savedToast, setSavedToast] = useState<string | null>(null);
   const [searchQueueQuery, setSearchQueueQuery] = useState('');
   const [isSearchingQueue, setIsSearchingQueue] = useState(false);
+
+  // Auto-scroll lirik: ikuti baris lirik yang sedang jalan.
+  const lyricsContainerRef = useRef<HTMLDivElement | null>(null);
+  const lyricLineRefs = useRef<Map<number, HTMLButtonElement>>(new Map());
+  // Kapan terakhir pengguna menggulir sendiri (agar auto-scroll tidak
+  // melawan mereka saat sedang membaca lirik di atas/bawah).
+  const userScrolledAtRef = useRef(0);
+  // Penanda bahwa guliran berasal dari auto-scroll (bukan pengguna),
+  // supaya onScroll tidak salah menganggapnya guliran manual.
+  const isAutoScrollingRef = useRef(false);
+
+  const handleLyricsScroll = () => {
+    if (isAutoScrollingRef.current) return;
+    userScrolledAtRef.current = Date.now();
+  };
+
+  // Gulir lirik ke baris yang sedang dinyanyikan (tengah layar, halus).
+  // Jeda saat pengguna baru saja menggulir sendiri (4 detik).
+  useEffect(() => {
+    if (overlayPanel !== 'lyrics' || activeLyricIndex < 0) return;
+    if (Date.now() - userScrolledAtRef.current < 4000) return;
+    const lineEl = lyricLineRefs.current.get(activeLyricIndex);
+    if (!lineEl) return;
+    isAutoScrollingRef.current = true;
+    lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    window.setTimeout(() => {
+      isAutoScrollingRef.current = false;
+    }, 800);
+  }, [activeLyricIndex, overlayPanel, currentTrack.id]);
 
   const filteredSearchTracks = React.useMemo(() => {
     if (!searchQueueQuery.trim() || !allAvailableTracks) return [];
@@ -286,12 +315,20 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
                   </span>
                   {isLoadingLyrics && <Loader2 className="w-4 h-4 animate-spin text-amber-400 shrink-0" />}
                 </div>
-                <div className="flex-1 overflow-y-auto space-y-3 pr-1">
+                <div
+                  ref={lyricsContainerRef}
+                  onScroll={handleLyricsScroll}
+                  className="flex-1 overflow-y-auto space-y-3 pr-1"
+                >
                   {(currentTrack.lyrics || []).map((line, i) => {
                     const isCurrentLine = i === activeLyricIndex;
                     return (
                       <button
                         key={`${line.timeSec}-${i}`}
+                        ref={(el) => {
+                          if (el) lyricLineRefs.current.set(i, el);
+                          else lyricLineRefs.current.delete(i);
+                        }}
                         type="button"
                         onClick={() => onSeek(line.timeSec)}
                         className={`w-full text-left py-1.5 px-2.5 rounded-lg transition-colors cursor-pointer ${
