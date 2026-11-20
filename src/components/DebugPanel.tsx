@@ -6,6 +6,9 @@ import { BUILD_VERSION, clearDebugLog, getDebugLog, type DebugEntry } from '../s
 export const DebugPanel: React.FC = () => {
   const [entries, setEntries] = useState<DebugEntry[]>(() => getDebugLog());
   const [copied, setCopied] = useState(false);
+  // Collapsed: the panel shrinks to a thin bar at the TOP so the bottom
+  // player bar (Next, fullscreen) stays clickable in ?debug=1 mode.
+  const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
     const id = window.setInterval(() => setEntries(getDebugLog()), 1000);
@@ -31,7 +34,8 @@ export const DebugPanel: React.FC = () => {
         position: 'fixed',
         left: 8,
         right: 8,
-        bottom: 8,
+        bottom: collapsed ? undefined : 8,
+        top: collapsed ? 8 : undefined,
         zIndex: 9999,
         background: 'rgba(0,0,0,0.88)',
         color: '#a7f3d0',
@@ -40,14 +44,20 @@ export const DebugPanel: React.FC = () => {
         fontFamily: 'monospace',
         fontSize: 11,
         lineHeight: 1.5,
-        maxHeight: '38vh',
+        maxHeight: collapsed ? undefined : '38vh',
         overflowY: 'auto',
         border: '1px solid rgba(255,255,255,0.25)',
       }}
     >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: collapsed ? 0 : 6 }}>
         <strong style={{ color: '#fff' }}>MallSound {BUILD_VERSION} — debug</strong>
         <span>
+          <button
+            onClick={() => setCollapsed((c) => !c)}
+            style={{ marginRight: 6, padding: '4px 8px', borderRadius: 6, border: 'none', background: '#4b5563', color: '#fff', fontSize: 11 }}
+          >
+            {collapsed ? 'Tampilkan Log' : 'Ciutkan'}
+          </button>
           <button
             onClick={copyLog}
             style={{ marginRight: 6, padding: '4px 8px', borderRadius: 6, border: 'none', background: '#059669', color: '#fff', fontSize: 11 }}
@@ -62,7 +72,7 @@ export const DebugPanel: React.FC = () => {
           </button>
         </span>
       </div>
-      {shown.length === 0 ? (
+      {!collapsed && (shown.length === 0 ? (
         <div style={{ color: '#9ca3af' }}>Belum ada log.</div>
       ) : (
         shown.map((e, i) => (
@@ -70,7 +80,7 @@ export const DebugPanel: React.FC = () => {
             <span style={{ color: '#6b7280' }}>{e.t}</span> {e.msg}
           </div>
         ))
-      )}
+      ))}
     </div>
   );
 };

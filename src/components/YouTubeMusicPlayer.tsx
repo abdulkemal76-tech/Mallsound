@@ -60,6 +60,7 @@ interface YouTubeMusicPlayerProps {
   onEnded: () => void;
   onPlayingChange: (playing: boolean) => void;
   onFallbackToPreview?: () => void;
+  label?: string;
 }
 
 export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
@@ -73,12 +74,14 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   onEnded,
   onPlayingChange,
   onFallbackToPreview,
+  label = '',
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
   const readyRef = useRef(false);
   const currentVideoIdRef = useRef<string | null>(null);
   const candidateIndexRef = useRef<number>(0);
+  const logTag = label ? `[${label}] ` : '';
   const candidatesRef = useRef<string[]>(candidateIds);
   const isPlayingPropRef = useRef<boolean>(isPlaying);
 
@@ -169,7 +172,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           hasEndedTriggeredRef.current = false;
           lastLoadedAtRef.current = Date.now();
           ignoreEndUntilRef.current = Date.now() + 3500;
-          dbg(`YT loadVideoById: ${videoId} hidden=${document.hidden}`);
+          dbg(`${logTag}YT loadVideoById: ${videoId} hidden=${document.hidden}`);
           try {
             // CUE instead of LOAD: loadVideoById fires an immediate (unmuted)
             // autoplay attempt that races the mute() below — in a hidden tab
@@ -259,7 +262,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             }
           },
           onStateChange: (e) => {
-            dbg(`YT state: ${e.data} (0=ENDED 1=PLAYING 2=PAUSED 3=BUFFERING 5=CUED -1=UNSTARTED) hidden=${document.hidden}`);
+            dbg(`${logTag}YT state: ${e.data} (0=ENDED 1=PLAYING 2=PAUSED 3=BUFFERING 5=CUED -1=UNSTARTED) hidden=${document.hidden}`);
             if (e.data === 0) {
               // ENDED
               triggerEndedOnce('onStateChange ENDED (data=0)');
@@ -453,7 +456,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           if (Date.now() - lastWatchdogLogRef.current > 5000) {
             lastWatchdogLogRef.current = Date.now();
             const ms = getMuteState();
-            dbg(`watchdog retry play: st=${st} muted=${ms.muted} vol=${ms.vol} sinceLoad=${Math.round(timeSinceLoad / 1000)}s hidden=${document.hidden}`);
+            dbg(`${logTag}watchdog retry play: st=${st} muted=${ms.muted} vol=${ms.vol} sinceLoad=${Math.round(timeSinceLoad / 1000)}s hidden=${document.hidden}`);
           }
           if (document.hidden) {
             muteForBackground(playerRef.current);

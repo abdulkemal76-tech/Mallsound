@@ -1043,6 +1043,11 @@ export function App() {
     // Two-player flip: if the standby player already holds this track AND
     // is actually playing (muted), switch the audible role to it instead of
     // loading the video into the main player (which cannot start while hidden).
+    // NOTE: do NOT seek to 0 here. The user's v48 log proved a seek while
+    // hidden re-buffers the already-playing standby and it gets stuck at
+    // BUFFERING (the hidden-tab play gate blocks the resume). Just unmute
+    // and let it continue from where it already is — the song is heard from
+    // mid-way instead of silence.
     const canFlip =
       targetMode !== 'hifi-eq' &&
       standbyVideoId !== null &&
@@ -1054,8 +1059,6 @@ export function App() {
       setActivePlayer(nextActive);
       setCurrentYtVideoId(standbyVideoId);
       setCurrentYtCandidates(standbyCandidates.length > 0 ? standbyCandidates : [standbyVideoId]);
-      // Restart the flipped-in player from 0:00 (it has been playing muted).
-      setYtSeekRequest({ sec: 0, nonce: Date.now() });
       setStandbyVideoId(null);
       setStandbyTrackId(null);
       setStandbyCandidates([]);
@@ -2331,6 +2334,7 @@ export function App() {
             style={{ opacity: activePlayer === 'A' ? 1 : 0, pointerEvents: activePlayer === 'A' ? 'auto' : 'none' }}
           >
           <YouTubeMusicPlayer
+            label="A"
             videoId={activePlayer === 'A' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'A' ? currentYtCandidates : standbyCandidates}
             isPlaying={activePlayer === 'A' ? isPlaying : true}
@@ -2350,7 +2354,7 @@ export function App() {
               } else {
                 // Standby loop guard: keep the pre-roll playing forever so it
                 // never reaches ENDED before the flip.
-                if (dur > 0 && cur > dur - 15) {
+                if (dur > 0 && cur > dur - 15 && !document.hidden) {
                   setStandbySeekRequest({ sec: 0, nonce: Date.now() });
                 }
               }
@@ -2384,6 +2388,7 @@ export function App() {
             style={{ opacity: activePlayer === 'B' ? 1 : 0, pointerEvents: activePlayer === 'B' ? 'auto' : 'none' }}
           >
           <YouTubeMusicPlayer
+            label="B"
             videoId={activePlayer === 'B' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'B' ? currentYtCandidates : standbyCandidates}
             isPlaying={activePlayer === 'B' ? isPlaying : true}
@@ -2401,7 +2406,7 @@ export function App() {
                   }
                 }
               } else {
-                if (dur > 0 && cur > dur - 15) {
+                if (dur > 0 && cur > dur - 15 && !document.hidden) {
                   setStandbySeekRequest({ sec: 0, nonce: Date.now() });
                 }
               }
