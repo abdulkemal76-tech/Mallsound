@@ -1,4 +1,4 @@
-import { Track } from '../types/music';
+import { Playlist, Track } from '../types/music';
 
 // Kurasi shoegaze Indonesia — diputar langsung dari kartu "Shoegaze" di
 // Beranda. Semua videoId terverifikasi via oEmbed (judul + channel cocok).
@@ -214,3 +214,21 @@ export const SHOEGAZE_INDO_TRACKS: Track[] = [
     lyrics: [],
   },
 ];
+
+// Playlist bawaan MallSound untuk kartu Shoegaze — mengetuk kartu membuka
+// daftar lagu ini (bukan langsung memutar). Playlist bawaan tidak bisa
+// dihapus; lagunya juga tidak bisa dikeluarkan dari daftar.
+export const SHOEGAZE_INDO_PLAYLIST_ID = 'pl_shoegaze_indo';
+
+export const SHOEGAZE_INDO_PLAYLIST: Playlist = {
+  id: SHOEGAZE_INDO_PLAYLIST_ID,
+  title: 'Shoegaze Indonesia',
+  description: 'The Milo, Seaside, Sunlotus & more — shoegaze & dream pop Indonesia',
+  coverTheme: 'indigo',
+  trackIds: SHOEGAZE_INDO_TRACKS.map((t) => t.id),
+  ownerId: 'mallsound',
+  ownerName: 'MallSound',
+  isPublic: true,
+  createdAt: new Date(),
+  updatedAt: new Date(),
+};

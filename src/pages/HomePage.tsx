@@ -32,7 +32,7 @@ import { TRENDING_SECTIONS, TrendingSection } from '../data/trending';
 import { GENRE_MOOD_CARDS, GenreMoodCard } from '../data/genres';
 import { GLOBAL_ARTISTS, ArtistItem } from '../data/artists';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
-import { SHOEGAZE_INDO_TRACKS } from '../data/shoegazeIndoTracks';
+import { SHOEGAZE_INDO_PLAYLIST_ID } from '../data/shoegazeIndoTracks';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
@@ -45,6 +45,7 @@ export interface HomePageProps {
   onOpenActions?: (track: Track, e?: React.MouseEvent) => void;
   onNavigateToDJ?: () => void;
   onNavigateToGuide?: () => void;
+  onOpenPlaylist?: (playlistId: string) => void;
 }
 
 // Fallback image component with graceful degradation
@@ -161,7 +162,7 @@ interface QuickPickItem {
   gradient: string;
   actionQuery?: string;
   djTrack?: Track;
-  tracks?: Track[];
+  playlistId?: string;
 }
 
 const QUICK_PICKS: QuickPickItem[] = [
@@ -187,7 +188,7 @@ const QUICK_PICKS: QuickPickItem[] = [
     subtitle: 'The Milo, Seaside, Sunlotus & more',
     coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
     gradient: 'from-fuchsia-600/40 via-purple-900/30 to-black',
-    tracks: SHOEGAZE_INDO_TRACKS,
+    playlistId: SHOEGAZE_INDO_PLAYLIST_ID,
   },
   {
     id: 'qp-tiktok-fyp',
@@ -241,6 +242,7 @@ export const HomePage: React.FC<HomePageProps> = ({
   onOpenActions,
   onNavigateToDJ,
   onNavigateToGuide,
+  onOpenPlaylist,
 }) => {
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [recommendedTracks, setRecommendedTracks] = useState<Track[]>([]);
@@ -503,8 +505,8 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div
               key={item.id}
               onClick={() => {
-                if (item.tracks && item.tracks.length > 0) {
-                  onSelectTrack(item.tracks[0], item.tracks);
+                if (item.playlistId && onOpenPlaylist) {
+                  onOpenPlaylist(item.playlistId);
                 } else if (item.djTrack) {
                   onSelectTrack(item.djTrack, DJ_INDO_TRACKS);
                 } else if (item.actionQuery) {

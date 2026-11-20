@@ -30,6 +30,7 @@ import {
   X,
 } from 'lucide-react';
 import { Track, Playlist, PlaylistCoverTheme } from '../types/music';
+import { SHOEGAZE_INDO_PLAYLIST_ID } from '../data/shoegazeIndoTracks';
 
 export interface LibraryPageProps {
   // Playlists
@@ -686,7 +687,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               {activePlaylistTracks.map((track, idx) =>
                 renderTrackRow(track, idx, {
                   playlistId: activePlaylist.id,
-                  canRemove: true,
+                  canRemove: activePlaylist.id !== SHOEGAZE_INDO_PLAYLIST_ID,
                   contextTracks: activePlaylistTracks,
                 })
               )}

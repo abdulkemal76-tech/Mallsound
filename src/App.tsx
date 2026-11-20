@@ -66,7 +66,7 @@ import { PlaylistImportModal } from './components/PlaylistImportModal';
 import { TrackActionModal } from './components/TrackActionModal';
 import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
 import { DJ_INDO_TRACKS } from './data/djIndoTracks';
-import { SHOEGAZE_INDO_TRACKS } from './data/shoegazeIndoTracks';
+import { SHOEGAZE_INDO_TRACKS, SHOEGAZE_INDO_PLAYLIST, SHOEGAZE_INDO_PLAYLIST_ID } from './data/shoegazeIndoTracks';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -153,7 +153,9 @@ export function App() {
 
   // Merged Playlists (local + cloud)
   const allPlaylists = useMemo(() => {
-    const list: Playlist[] = [...localPlaylists];
+    // Playlist bawaan MallSound (mis. Shoegaze Indonesia) selalu ada di
+    // paling atas Koleksi — bukan dari localStorage / cloud.
+    const list: Playlist[] = [SHOEGAZE_INDO_PLAYLIST, ...localPlaylists];
     cloudPlaylists.forEach((cp) => {
       const existingIdx = list.findIndex((lp) => lp.id === cp.id);
       if (existingIdx >= 0) {
@@ -1824,6 +1826,11 @@ export function App() {
 
   const handleDeletePlaylist = async (playlistId: string, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Playlist bawaan MallSound (mis. Shoegaze Indonesia) tidak bisa dihapus.
+    if (playlistId === SHOEGAZE_INDO_PLAYLIST_ID) {
+      showToast('Playlist bawaan MallSound tidak bisa dihapus');
+      return;
+    }
     // 1. Remove from local playlists
     setLocalPlaylists((prev) => {
       const updated = prev.filter((p) => p.id !== playlistId);
@@ -2189,6 +2196,10 @@ export function App() {
             }}
             onNavigateToDJ={() => setActiveTab('dj')}
             onNavigateToGuide={() => setActiveTab('profile')}
+            onOpenPlaylist={(plId) => {
+              setActivePlaylistId(plId);
+              setActiveTab('library');
+            }}
           />
         )}
 
