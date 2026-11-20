@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Sliders,
   Gauge,
@@ -13,13 +13,12 @@ import {
   Globe,
   Info,
   Download,
-  Smartphone,
   Plus,
+  Puzzle,
 } from 'lucide-react';
 import { EQUALIZER_PRESETS } from '../types/music';
 import { ThemeColorPicker } from '../components/ThemeColorPicker';
 import { ThemeMode, getThemeConfig } from '../theme/themeConfig';
-import { usePWAInstall } from '../hooks/usePWAInstall';
 
 export interface ProfilePageProps {
   user?: { displayName: string | null; email: string | null; photoURL: string | null } | null;
@@ -85,20 +84,6 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
   crossfadeSec,
   onCrossfadeChange,
 }) => {
-  const { isInstallable, promptInstall } = usePWAInstall();
-  const [showInstallGuide, setShowInstallGuide] = useState(false);
-
-  const handleAddShortcut = async () => {
-    if (isInstallable) {
-      const res = await promptInstall();
-      if (res !== 'accepted') {
-        setShowInstallGuide((prev) => !prev);
-      }
-    } else {
-      setShowInstallGuide((prev) => !prev);
-    }
-  };
-
   return (
     <div className="space-y-6 pb-28 sm:pb-24 max-w-4xl mx-auto px-4 sm:px-6 pt-2">
       {/* Header Banner */}
@@ -401,7 +386,8 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <Info className="w-4 h-4 text-sky-400 flex-shrink-0 mt-0.5" />
           <p className="text-xs text-white/80 leading-relaxed">
             Browser bawaan Android menghentikan audio saat kamu beralih ke aplikasi lain.
-            Gunakan browser yang mendukung <span className="font-semibold text-sky-300">pemutaran latar belakang</span> supaya musik terus mengalir meski layar mati.
+            Pakai <span className="font-semibold text-sky-300">Lemur Browser</span> + pintasan layar utama dan ekstensi{' '}
+            <span className="font-semibold text-sky-300">Always Active Window</span> supaya musik terus mengalir meski layar mati.
           </p>
         </div>
 
@@ -410,9 +396,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">Cara Pakai:</p>
           <ol className="list-none space-y-2">
             {[
-              'Unduh salah satu browser di bawah ini',
-              'Buka mallz12.my.id melalui browser tersebut',
-              'Putar lagu, lalu minimalkan atau kunci layar — musik tetap jalan!',
+              'Pasang Lemur Browser dari tombol di bawah ini',
+              'Tambahkan pintasan MallSound ke layar utama lewat menu Lemur (⋮ → Tambahkan ke Layar Utama)',
+              'Pasang ekstensi Always Active Window dari Chrome Web Store lewat Lemur',
+              'Buka MallSound dari pintasan, putar lagu, lalu minimalkan atau kunci layar — musik tetap jalan!',
             ].map((step, i) => (
               <li key={i} className="flex items-start gap-2.5 text-xs text-white/75">
                 <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-500/30 text-sky-300 font-bold text-[10px] flex items-center justify-center border border-sky-500/40">
@@ -431,7 +418,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
             {[
               {
                 name: 'Lemur Browser',
-                sub: 'Mendukung putar latar belakang',
+                sub: 'Paling disarankan • dukung ekstensi',
                 url: 'https://play.google.com/store/search?q=lemur+browser&c=apps',
                 color: 'from-sky-500 to-cyan-500',
                 shadow: 'shadow-cyan-500/25',
@@ -469,71 +456,66 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
           </div>
         </div>
 
-        {/* APK Pintasan MallSound Langsung Pasang (33 KB) */}
+        {/* Pintasan Lemur — cara paling benar (selalu tampil) */}
         <div className="pt-2 border-t border-sky-500/20 space-y-2">
           <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
-            APK Pintasan MallSound (Langsung Pasang):
+            Pintasan Lemur (Cara Paling Benar):
           </p>
+          <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2 text-xs text-white/90">
+            <p className="font-semibold text-emerald-300 flex items-center gap-1.5">
+              <Info className="w-4 h-4" /> Cara Pasang Pintasan di Lemur Browser:
+            </p>
+            <ol className="list-decimal pl-4 space-y-1.5 text-white/80 text-[11px]">
+              <li>
+                Ketuk tombol <b>Menu Titik Tiga (⋮)</b> di sudut Lemur.
+              </li>
+              <li>
+                Pilih opsi <b>&quot;Tambahkan ke Layar Utama&quot; (Add to Home screen)</b>.
+              </li>
+              <li>
+                Tekan <b>Tambah / Add</b>. Ikon pintasan MallSound akan langsung aktif di layar utama HP kamu!
+              </li>
+            </ol>
+          </div>
+        </div>
 
+        {/* Ekstensi Always Active Window */}
+        <div className="pt-2 border-t border-sky-500/20 space-y-2">
+          <p className="text-xs font-semibold text-white/60 uppercase tracking-wider">
+            Ekstensi Always Active Window:
+          </p>
           <a
-            href="/MallSound-Pintasan.apk"
-            download="MallSound-Pintasan.apk"
-            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-emerald-700/30 hover:from-emerald-600/40 hover:to-teal-600/40 border border-emerald-500/50 text-white transition-all group shadow-lg shadow-emerald-950/20"
+            href="https://chromewebstore.google.com/detail/always-active-window-alwa/ehllkhjndgnlokhomdlhgbineffifcbj"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="w-full flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-violet-600/30 via-purple-600/30 to-violet-700/30 hover:from-violet-600/40 hover:to-purple-600/40 border border-violet-500/50 text-white transition-all group shadow-lg shadow-violet-950/20"
           >
             <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 flex-shrink-0 group-hover:scale-105 transition-transform">
-                <Smartphone className="w-5 h-5" />
+              <div className="p-2.5 rounded-xl bg-violet-500/20 text-violet-300 border border-violet-500/30 flex-shrink-0 group-hover:scale-105 transition-transform">
+                <Puzzle className="w-5 h-5" />
               </div>
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
                   <h4 className="text-xs sm:text-sm font-bold text-white truncate">
-                    Download APK Pintasan MallSound
+                    Always Active Window
                   </h4>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/30 text-emerald-200 border border-emerald-500/40 font-mono font-bold">
-                    33 KB • Langsung Instal
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-violet-500/30 text-violet-200 border border-violet-500/40 font-mono font-bold">
+                    Ekstensi Chrome
                   </span>
                 </div>
-                <p className="text-[11px] text-emerald-200/80 truncate">
-                  File APK shortcut super ringan (33 KB) &bull; Solusi jika pintasan browser tidak muncul di HP
+                <p className="text-[11px] text-violet-200/80">
+                  Bikin tab Lemur selalu aktif, supaya musik tetap jalan saat layar mati &bull; Pasang dari Chrome Web Store
                 </p>
               </div>
             </div>
-            <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-500 text-neutral-950 font-bold text-xs flex-shrink-0 group-hover:bg-emerald-400 transition-colors shadow-md">
+            <div className="flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-violet-500 text-white font-bold text-xs flex-shrink-0 group-hover:bg-violet-400 transition-colors shadow-md">
               <Download className="w-3.5 h-3.5" />
-              <span>Unduh APK (33 KB)</span>
+              <span>Pasang Ekstensi</span>
             </div>
           </a>
-
-          {/* Opsi Pintasan Browser Cepat */}
-          <button
-            type="button"
-            onClick={handleAddShortcut}
-            className="w-full flex items-center justify-between px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs transition-colors cursor-pointer"
-          >
-            <span className="text-[11px]">Atau coba tambah pintasan lewat menu browser HP</span>
-            <span className="text-sky-400 font-semibold text-[11px] flex items-center gap-1">
-              Petunjuk Browser <Info className="w-3 h-3" />
-            </span>
-          </button>
-
-          {showInstallGuide && (
-            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/30 space-y-2 text-xs text-white/90">
-              <p className="font-semibold text-emerald-300 flex items-center gap-1.5">
-                <Info className="w-4 h-4" /> Cara Pasang Pintasan di Lemur Browser / Chrome:
-              </p>
-              <ol className="list-decimal pl-4 space-y-1.5 text-white/80 text-[11px]">
-                <li>
-                  Ketuk tombol <b>Menu Titik Tiga (⋮)</b> di sudut browser kamu.
-                </li>
-                <li>
-                  Pilih opsi <b>&quot;Tambahkan ke Layar Utama&quot; (Add to Home screen)</b> atau <b>&quot;Pasang Aplikasi&quot;</b>.
-                </li>
-                <li>
-                  Tekan <b>Tambah / Add</b>. Ikon pintasan MallSound akan langsung aktif di layar utama HP kamu!
-                </li>
-              </ol>
-            </div>
-          )}
+          <p className="text-[11px] text-white/50 leading-relaxed">
+            Buka link di atas lewat Lemur, ketuk <b className="text-white/70">Tambahkan ke Chrome</b>, lalu aktifkan ekstensinya. Lemur mendukung ekstensi Chrome, jadi tab MallSound tetap dianggap aktif.
+          </p>
         </div>
 
         {/* Open Shortcut */}
