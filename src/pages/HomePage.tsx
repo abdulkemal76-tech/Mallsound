@@ -32,6 +32,7 @@ import { TRENDING_SECTIONS, TrendingSection } from '../data/trending';
 import { GENRE_MOOD_CARDS, GenreMoodCard } from '../data/genres';
 import { GLOBAL_ARTISTS, ArtistItem } from '../data/artists';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
+import { SHOEGAZE_INDO_TRACKS } from '../data/shoegazeIndoTracks';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
@@ -160,6 +161,7 @@ interface QuickPickItem {
   gradient: string;
   actionQuery?: string;
   djTrack?: Track;
+  tracks?: Track[];
 }
 
 const QUICK_PICKS: QuickPickItem[] = [
@@ -182,10 +184,10 @@ const QUICK_PICKS: QuickPickItem[] = [
   {
     id: 'qp-shoegaze',
     title: 'Shoegaze',
-    subtitle: 'Fuzz, Reverb & Dream Pop',
+    subtitle: 'The Milo, Seaside, Sunlotus & more',
     coverUrl: 'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=300&h=300&fit=crop',
     gradient: 'from-fuchsia-600/40 via-purple-900/30 to-black',
-    actionQuery: 'Shoegaze',
+    tracks: SHOEGAZE_INDO_TRACKS,
   },
   {
     id: 'qp-tiktok-fyp',
@@ -501,7 +503,9 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div
               key={item.id}
               onClick={() => {
-                if (item.djTrack) {
+                if (item.tracks && item.tracks.length > 0) {
+                  onSelectTrack(item.tracks[0], item.tracks);
+                } else if (item.djTrack) {
                   onSelectTrack(item.djTrack, DJ_INDO_TRACKS);
                 } else if (item.actionQuery) {
                   onNavigateToSearch(item.actionQuery);

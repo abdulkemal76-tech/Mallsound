@@ -66,6 +66,7 @@ import { PlaylistImportModal } from './components/PlaylistImportModal';
 import { TrackActionModal } from './components/TrackActionModal';
 import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
 import { DJ_INDO_TRACKS } from './data/djIndoTracks';
+import { SHOEGAZE_INDO_TRACKS } from './data/shoegazeIndoTracks';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -945,6 +946,7 @@ export function App() {
       ...recentlyPlayed,
       ...Object.values(resolvedSavedTracks),
       ...DJ_INDO_TRACKS,
+      ...SHOEGAZE_INDO_TRACKS,
       ...BUILT_IN_TRACKS,
     ].forEach((t) => {
       const existing = map.get(t.id);
