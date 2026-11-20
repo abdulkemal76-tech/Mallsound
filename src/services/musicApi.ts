@@ -433,6 +433,15 @@ export const POPULAR_YT_MAP: Record<string, string> = {
   'perunggu - berhasil': 'dF5-h001r60',
   '33x': 'U7l0ePjZvxM',
   'perunggu - 33x': 'U7l0ePjZvxM',
+  // Dongker (verified via oEmbed — must sit BEFORE 'taruh' below, because
+  // "bertaruh" contains "taruh" and the map is matched first-wins).
+  'bertaruh pada api': 'fjAFcewRl64',
+  'dongker - bertaruh pada api': 'fjAFcewRl64',
+  'tuhan di reruntuh kota': 'hzu_5lUQFk8',
+  'dongker - tuhan di reruntuh kota': 'hzu_5lUQFk8',
+  'lautan bunga warna terang': 'ETLJ1ZgtvM0',
+  'lautan bunga warna merah': 'ETLJ1ZgtvM0',
+  'dongker - lautan bunga warna terang': 'ETLJ1ZgtvM0',
   'taruh': 'WzR4p549GzE',
   'nadin amizah - taruh': 'WzR4p549GzE',
   // Verified DJ Indo

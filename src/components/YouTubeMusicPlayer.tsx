@@ -48,6 +48,7 @@ export interface YTPlayerInstance {
   unMute: () => void;
   getCurrentTime: () => number;
   getDuration: () => number;
+  getVideoData: () => { video_id?: string; title?: string; author?: string } | undefined;
   loadVideoById: (videoId: string) => void;
   cueVideoById: (videoId: string) => void;
   destroy: () => void;
@@ -209,6 +210,10 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               playerRef.current.pauseVideo();
             } catch {}
           }
+          // Reset the progress display to 0:00 immediately — the poller
+          // would otherwise keep reporting the previous video's time
+          // until the new video starts, so the bar follows the old song.
+          onTimeUpdateRef.current(0, 0);
         }
         return;
       }
@@ -427,6 +432,12 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     const interval = window.setInterval(() => {
       if (!playerRef.current || !readyRef.current || !isPlaying) return;
       try {
+        // Skip stale time: while the player still holds the previous video
+        // (new videoId set but not yet cued), reporting its time would
+        // overwrite the 0:00 reset from handleSelectTrack, so the progress
+        // bar keeps following the old song's duration.
+        const vid = playerRef.current.getVideoData?.()?.video_id;
+        if (vid && videoId && vid !== videoId) return;
         const cur = playerRef.current.getCurrentTime() || 0;
         const dur = playerRef.current.getDuration() || 0;
         if (dur > 0) {
@@ -443,7 +454,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     }, 250);
 
     return () => window.clearInterval(interval);
-  }, [isPlaying, onTimeUpdate]);
+  }, [isPlaying, onTimeUpdate, videoId]);
 
   // Aggressive background playback poller & wake-up watchdog (runs every 400ms even in background tabs)
   useEffect(() => {
