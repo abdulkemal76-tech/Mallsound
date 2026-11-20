@@ -1711,7 +1711,17 @@ export default function App() {
                 setDurationSec(dur);
               }}
               onEnded={() => handleNextTrack(true)}
-              onPlayingChange={(playing) => setIsPlaying(playing)}
+              onPlayingChange={(playing) => {
+                // A PAUSED report that arrives while the tab is
+                // hidden is YouTube/Chrome blocking play in
+                // background, not the user pressing pause. Accepting
+                // it would set isPlaying=false and kill every
+                // retry, so the next track never starts until the
+                // page is reopened. Ignore it; the watchdog in
+                // YouTubeMusicPlayer keeps retrying instead.
+                if (!playing && document.hidden) return;
+                setIsPlaying(playing);
+              }}
               onFallbackToPreview={() => handleSwitchEngineMode('hifi-eq')}
             />
           ) : null
