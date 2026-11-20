@@ -61,6 +61,7 @@ interface YouTubeMusicPlayerProps {
   onPlayingChange: (playing: boolean) => void;
   onFallbackToPreview?: () => void;
   label?: string;
+  onStateChange?: (state: number) => void;
 }
 
 export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
@@ -75,6 +76,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   onPlayingChange,
   onFallbackToPreview,
   label = '',
+  onStateChange,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const playerRef = useRef<YTPlayerInstance | null>(null);
@@ -93,6 +95,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const onPlayingChangeRef = useRef(onPlayingChange);
   const onTimeUpdateRef = useRef(onTimeUpdate);
   const onFallbackToPreviewRef = useRef(onFallbackToPreview);
+  const onStateChangeRef = useRef(onStateChange);
 
   const hasEndedTriggeredRef = useRef(false);
   const ignoreEndUntilRef = useRef<number>(0);
@@ -134,6 +137,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     onPlayingChangeRef.current = onPlayingChange;
     onTimeUpdateRef.current = onTimeUpdate;
     onFallbackToPreviewRef.current = onFallbackToPreview;
+    onStateChangeRef.current = onStateChange;
     isPlayingPropRef.current = isPlaying;
   });
 
@@ -263,6 +267,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           },
           onStateChange: (e) => {
             dbg(`${logTag}YT state: ${e.data} (0=ENDED 1=PLAYING 2=PAUSED 3=BUFFERING 5=CUED -1=UNSTARTED) hidden=${document.hidden}`);
+            onStateChangeRef.current?.(e.data);
             if (e.data === 0) {
               // ENDED
               triggerEndedOnce('onStateChange ENDED (data=0)');

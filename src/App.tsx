@@ -338,6 +338,15 @@ export function App() {
   const [standbyCandidates, setStandbyCandidates] = useState<string[]>([]);
   const [standbySeekRequest, setStandbySeekRequest] = useState<{ sec: number; nonce: number } | null>(null);
   const [standbyIsPlaying, setStandbyIsPlaying] = useState(false);
+  // Once the user has pressed play at least once, the standby must follow
+  // the app's play/pause state. Before the first play it pre-rolls so the
+  // next track is ready. Without this, the standby keeps playing (muted)
+  // after the user pauses and the app can never fully stop.
+  const [hasPlayedOnce, setHasPlayedOnce] = useState(false);
+
+  useEffect(() => {
+    if (isPlaying) setHasPlayedOnce(true);
+  }, [isPlaying]);
   const [stageMode, setStageMode] = useState<'cover' | 'video'>('cover');
   const [videoStageRect, setVideoStageRect] = useState<{
     top: number;
@@ -2337,7 +2346,7 @@ export function App() {
             label="A"
             videoId={activePlayer === 'A' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'A' ? currentYtCandidates : standbyCandidates}
-            isPlaying={activePlayer === 'A' ? isPlaying : true}
+            isPlaying={activePlayer === 'A' ? isPlaying : (isPlaying || !hasPlayedOnce)}
             volume={activePlayer === 'A' ? volume : 0}
             isMuted={activePlayer === 'A' ? isMuted : true}
             seekRequest={activePlayer === 'A' ? ytSeekRequest : standbySeekRequest}
@@ -2362,14 +2371,19 @@ export function App() {
             onEnded={() => {
               if (activePlayer === 'A') handleNextTrack(true);
             }}
+            onStateChange={(state) => {
+              // Raw state is the source of truth for the standby gate.
+              if (activePlayer !== 'A') {
+                setStandbyIsPlaying(state === 1);
+              }
+            }}
             onPlayingChange={(playing) => {
               if (activePlayer === 'A') {
                 if (playing) {
                   setIsPlaying(true);
                 }
-              } else {
-                setStandbyIsPlaying(playing);
-                if (playing) dbg(`standby playing: ${standbyVideoId}`);
+              } else if (playing) {
+                dbg(`standby playing: ${standbyVideoId}`);
               }
             }}
             onFallbackToPreview={() => {
@@ -2391,7 +2405,7 @@ export function App() {
             label="B"
             videoId={activePlayer === 'B' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'B' ? currentYtCandidates : standbyCandidates}
-            isPlaying={activePlayer === 'B' ? isPlaying : true}
+            isPlaying={activePlayer === 'B' ? isPlaying : (isPlaying || !hasPlayedOnce)}
             volume={activePlayer === 'B' ? volume : 0}
             isMuted={activePlayer === 'B' ? isMuted : true}
             seekRequest={activePlayer === 'B' ? ytSeekRequest : standbySeekRequest}
@@ -2414,14 +2428,18 @@ export function App() {
             onEnded={() => {
               if (activePlayer === 'B') handleNextTrack(true);
             }}
+            onStateChange={(state) => {
+              if (activePlayer !== 'B') {
+                setStandbyIsPlaying(state === 1);
+              }
+            }}
             onPlayingChange={(playing) => {
               if (activePlayer === 'B') {
                 if (playing) {
                   setIsPlaying(true);
                 }
-              } else {
-                setStandbyIsPlaying(playing);
-                if (playing) dbg(`standby playing: ${standbyVideoId}`);
+              } else if (playing) {
+                dbg(`standby playing: ${standbyVideoId}`);
               }
             }}
             onFallbackToPreview={() => {
