@@ -154,15 +154,28 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
     userScrolledAtRef.current = Date.now();
   };
 
-  // Gulir lirik ke baris yang sedang dinyanyikan (tengah layar, halus).
+  // Gulir lirik ke baris yang sedang dinyanyikan.
+  // Hanya menggulir kalau baris aktif sudah keluar dari "zona nyaman"
+  // (25%–65% tinggi area lirik). Kalau barisnya masih nyaman terlihat,
+  // diam saja — menengahkan ulang di tiap baris yang bikin gulirannya
+  // terasa goyang / tidak pas. Saat menggulir, baris aktif mendarat di
+  // ~40% dari atas supaya lirik berikutnya tetap terlihat di bawahnya.
   // Jeda saat pengguna baru saja menggulir sendiri (4 detik).
   useEffect(() => {
     if (overlayPanel !== 'lyrics' || activeLyricIndex < 0) return;
     if (Date.now() - userScrolledAtRef.current < 4000) return;
+    const container = lyricsContainerRef.current;
     const lineEl = lyricLineRefs.current.get(activeLyricIndex);
-    if (!lineEl) return;
+    if (!container || !lineEl) return;
+    const containerRect = container.getBoundingClientRect();
+    const lineRect = lineEl.getBoundingClientRect();
+    const h = container.clientHeight;
+    const relTop = lineRect.top - containerRect.top;
+    const relBottom = lineRect.bottom - containerRect.top;
+    if (relTop >= h * 0.25 && relBottom <= h * 0.65) return;
+    const targetScrollTop = container.scrollTop + (relTop - h * 0.4);
     isAutoScrollingRef.current = true;
-    lineEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    container.scrollTo({ top: Math.max(0, targetScrollTop), behavior: 'smooth' });
     window.setTimeout(() => {
       isAutoScrollingRef.current = false;
     }, 800);
