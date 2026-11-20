@@ -51,6 +51,12 @@ import {
 import { YouTubeMusicPlayer } from './components/YouTubeMusicPlayer';
 import { DebugPanel } from './components/DebugPanel';
 import { dbg } from './services/debugLog';
+// Player adapter layer (v52): MusicPlayer interface + YouTube/Audius
+// adapters + PlayerManager (queue advance + background defer rule).
+import { YouTubePlayer } from './services/players/YouTubePlayer';
+import { AudiusPlayer } from './services/players/AudiusPlayer';
+import { PlayerManager, type PlayerManagerApi } from './services/players/PlayerManager';
+import type { PlayerTrack } from './services/players/MusicPlayer';
 import { FullScreenPlayer } from './components/FullScreenPlayer';
 import { AddCustomTrackModal, CreatePlaylistModal } from './components/Modals';
 import { SettingsModal } from './components/SettingsModal';
@@ -347,6 +353,10 @@ export function App() {
   useEffect(() => {
     if (isPlaying) setHasPlayedOnce(true);
   }, [isPlaying]);
+  // Player adapter layer (v52): when an Audius track is active, the <audio>
+  // element plays it and the YouTube stage is paused (its isPlaying prop
+  // is gated by !audiusActive below) so two sources never sound together.
+  const [audiusActive, setAudiusActive] = useState(false);
   const [stageMode, setStageMode] = useState<'cover' | 'video'>('cover');
   const [videoStageRect, setVideoStageRect] = useState<{
     top: number;
@@ -536,6 +546,14 @@ export function App() {
     onSeekTo: (_sec: number) => {},
   });
 
+  // ── Player adapter layer (v52) ──
+  const youTubePlayerRef = useRef<YouTubePlayer | null>(null);
+  const audiusPlayerRef = useRef<AudiusPlayer | null>(null);
+  const playerManagerRef = useRef<PlayerManager | null>(null);
+  // Latest App callbacks for the manager (avoids stale closures — the
+  // manager is constructed once, the callbacks change every render).
+  const managerApiRef = useRef<PlayerManagerApi | null>(null);
+
   useEffect(() => {
     handlersRef.current = {
       onPlay: () => {
@@ -546,16 +564,107 @@ export function App() {
       onNextTrack: () => handleNextTrack(),
       onPrevTrack: handlePrevTrack,
       onSeekTo: (sec: number) => {
-        setCurrentTimeSec(sec);
-        if (engineMode === 'hifi-eq') {
-          studioAudioEngine.seek(sec);
-        } else {
-          setYtSeekRequest({ sec, nonce: Date.now() });
-        }
+        handleSeek(sec);
       },
     };
     backgroundAudioService.updateHandlers(handlersRef.current);
   });
+
+  // Keep the PlayerManager's callbacks pointing at the latest App functions.
+  // (Same no-dep pattern as handlersRef above.)
+  useEffect(() => {
+    managerApiRef.current = {
+      // YT path: App's existing selection flow (flip / pre-roll / watchdog).
+      // preserveQueue=false so handleSelectTrack consumes the track from
+      // the playback queue, matching the manager's own index advance.
+      selectTrack: (track) =>
+        handleSelectTrack(track, undefined, isFullScreenPlayerOpen, undefined, false),
+      startAudiusTrack: (track) => {
+        setAudiusActive(true);
+        setStageMode('cover');
+        setCurrentTrack(track);
+        setCurrentTimeSec(0);
+        setDurationSec(track.durationSec);
+        setIsPlaying(true);
+        setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
+        backgroundAudioService.ensureAudioActive();
+        // Lyrics only — no YouTube resolve for an Audius track.
+        setIsLoadingLyrics(true);
+        fetchTrackLyrics(track.title, track.artist, track.durationSec)
+          .then((lyricsResult) => {
+            setIsLoadingLyrics(false);
+            setCurrentTrack((prev) => {
+              if (prev.id !== track.id) return prev;
+              return { ...prev, lyrics: lyricsResult };
+            });
+          })
+          .catch(() => {
+            setIsLoadingLyrics(false);
+          });
+        dbg(`adapter: Audius track started "${track.title}" - ${track.artist}`);
+      },
+      restartCurrent: () => {
+        if (audiusActive) {
+          audiusPlayerRef.current?.seek(0);
+          void audiusPlayerRef.current?.play();
+        } else if (engineMode === 'hifi-eq') {
+          studioAudioEngine.seek(0);
+          studioAudioEngine.play();
+        } else {
+          setYtSeekRequest({ sec: 0, nonce: Date.now() });
+        }
+        setCurrentTimeSec(0);
+        setIsPlaying(true);
+      },
+      getCurrentTimeSec: () => currentTimeSec,
+      getShuffle: () => isShuffle,
+      getRepeatMode: () => repeatMode,
+      getCurrentTrack: () => currentTrack,
+    };
+  });
+
+  // Construct the adapter layer once (mount). The manager calls the App
+  // callbacks through managerApiRef so it always uses the latest closures.
+  useEffect(() => {
+    const apiProxy: PlayerManagerApi = {
+      selectTrack: (t) => managerApiRef.current?.selectTrack(t),
+      startAudiusTrack: (t) => managerApiRef.current?.startAudiusTrack(t),
+      restartCurrent: () => managerApiRef.current?.restartCurrent(),
+      getCurrentTimeSec: () => managerApiRef.current?.getCurrentTimeSec() ?? 0,
+      getShuffle: () => managerApiRef.current?.getShuffle() ?? false,
+      getRepeatMode: () => managerApiRef.current?.getRepeatMode() ?? 'off',
+      getCurrentTrack: () => managerApiRef.current?.getCurrentTrack() ?? null,
+    };
+    const yt = new YouTubePlayer({
+      setVideoId: (id) => setCurrentYtVideoId(id),
+      setCandidates: (ids) => setCurrentYtCandidates(ids),
+      setPlaying: (playing) => setIsPlaying(playing),
+      requestSeek: (sec) => setYtSeekRequest({ sec, nonce: Date.now() }),
+    });
+    const au = new AudiusPlayer({
+      // Media Session actions delegate to App's engine-aware handlers.
+      getPlay: () => handlersRef.current.onPlay(),
+      getPause: () => handlersRef.current.onPause(),
+      getNext: () => handlersRef.current.onNextTrack(),
+      getPrev: () => handlersRef.current.onPrevTrack(),
+      onTimeUpdate: (cur, dur) => {
+        setCurrentTimeSec(cur);
+        if (dur > 0) setDurationSec(dur);
+      },
+    });
+    const mgr = new PlayerManager(yt, au, apiProxy);
+    youTubePlayerRef.current = yt;
+    audiusPlayerRef.current = au;
+    playerManagerRef.current = mgr;
+    dbg('adapter: PlayerManager ready (YouTube + Audius)');
+    return () => {
+      mgr.destroy();
+      au.destroy();
+      youTubePlayerRef.current = null;
+      audiusPlayerRef.current = null;
+      playerManagerRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     backgroundAudioService.init({
@@ -965,6 +1074,24 @@ export function App() {
     }
   };
 
+  // Drive the YouTube stage through the adapter (v52). Falls back to the
+  // direct state updates if the adapter is not constructed yet (only
+  // possible before mount — handleSelectTrack never runs that early).
+  const loadYouTubeTrack = (playerTrack: PlayerTrack) => {
+    if (youTubePlayerRef.current) {
+      youTubePlayerRef.current.load(playerTrack);
+    } else {
+      setCurrentYtVideoId(playerTrack.youtubeVideoId ?? null);
+      setCurrentYtCandidates(
+        playerTrack.candidateIds && playerTrack.candidateIds.length > 0
+          ? playerTrack.candidateIds
+          : playerTrack.youtubeVideoId
+          ? [playerTrack.youtubeVideoId]
+          : []
+      );
+    }
+  };
+
   const handleSelectTrack = (
     track: Track,
     forceMode?: PlaybackEngineMode,
@@ -1033,6 +1160,20 @@ export function App() {
       return;
     }
 
+    // Adapter routing (v52): Audius tracks play through the <audio>-based
+    // AudiusPlayer (background-capable). The YouTube path below is untouched.
+    if (playerManagerRef.current?.sourceOf(track) === 'audius') {
+      playerManagerRef.current.playTrack(track);
+      return;
+    }
+
+    // Leaving an Audius track: stop the <audio> element and re-enable the
+    // YouTube stage before the YT flow below runs.
+    if (audiusActive) {
+      audiusPlayerRef.current?.pause();
+      setAudiusActive(false);
+    }
+
     setResolvedSavedTracks((prev) => ({ ...prev, [track.id]: track }));
     setCurrentTrack(track);
     setCurrentTimeSec(0);
@@ -1066,16 +1207,30 @@ export function App() {
     if (canFlip) {
       const nextActive = activePlayer === 'A' ? 'B' : 'A';
       setActivePlayer(nextActive);
-      setCurrentYtVideoId(standbyVideoId);
-      setCurrentYtCandidates(standbyCandidates.length > 0 ? standbyCandidates : [standbyVideoId]);
+      loadYouTubeTrack({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        youtubeVideoId: standbyVideoId,
+        candidateIds: standbyCandidates.length > 0 ? standbyCandidates : [standbyVideoId],
+        coverUrl: track.coverUrl,
+        durationSec: track.durationSec,
+      });
       setStandbyVideoId(null);
       setStandbyTrackId(null);
       setStandbyCandidates([]);
       setStandbyIsPlaying(false);
       dbg(`flip to standby player ${nextActive}: "${track.title}" (${standbyVideoId}) hidden=${document.hidden}`);
     } else if (immediateYtId) {
-      setCurrentYtVideoId(immediateYtId);
-      setCurrentYtCandidates([immediateYtId]);
+      loadYouTubeTrack({
+        id: track.id,
+        title: track.title,
+        artist: track.artist,
+        youtubeVideoId: immediateYtId,
+        candidateIds: [immediateYtId],
+        coverUrl: track.coverUrl,
+        durationSec: track.durationSec,
+      });
     }
 
     setIsPlaying(true);
@@ -1096,12 +1251,16 @@ export function App() {
   const handleTogglePlay = () => {
     backgroundAudioService.ensureAudioActive();
     if (isPlaying) {
-      if (engineMode === 'hifi-eq') {
+      if (audiusActive) {
+        audiusPlayerRef.current?.pause();
+      } else if (engineMode === 'hifi-eq') {
         studioAudioEngine.pause();
       }
       setIsPlaying(false);
     } else {
-      if (engineMode === 'hifi-eq') {
+      if (audiusActive) {
+        void audiusPlayerRef.current?.play();
+      } else if (engineMode === 'hifi-eq') {
         if (currentTimeSec === 0) {
           studioAudioEngine.loadTrack(currentTrack, true);
         } else {
@@ -1121,8 +1280,15 @@ export function App() {
             }
           }
           if (!fallbackId) fallbackId = 'Ch3l_Q9PxpQ';
-          setCurrentYtVideoId(fallbackId);
-          setCurrentYtCandidates([fallbackId]);
+          loadYouTubeTrack({
+            id: currentTrack.id,
+            title: currentTrack.title,
+            artist: currentTrack.artist,
+            youtubeVideoId: fallbackId,
+            candidateIds: [fallbackId],
+            coverUrl: currentTrack.coverUrl,
+            durationSec: currentTrack.durationSec,
+          });
         }
       }
       setIsPlaying(true);
@@ -1204,6 +1370,29 @@ export function App() {
       .catch(() => {});
   }, [currentTrack.id, playbackQueue, displayedTracks, allKnownTracks]);
 
+  // Keep the PlayerManager's queue in sync with the app's effective
+  // sequence (v52) so its next()/prev() and defer decisions walk the same
+  // list the UI shows: the playback queue first, otherwise the displayed
+  // list. The manager never mutates App's queue — it only reads it here.
+  useEffect(() => {
+    const mgr = playerManagerRef.current;
+    if (!mgr) return;
+    let list: Track[];
+    let idx: number;
+    if (playbackQueue.length > 0) {
+      list = [currentTrack, ...playbackQueue];
+      idx = 0;
+    } else {
+      list = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
+      idx = list.findIndex((t) => t.id === currentTrack.id);
+      if (idx === -1) {
+        list = [currentTrack, ...list];
+        idx = 0;
+      }
+    }
+    mgr.setQueue(list, idx);
+  }, [currentTrack.id, playbackQueue, displayedTracks, allKnownTracks]);
+
   const handleToggleShuffle = () => {
     const nextShuffle = !isShuffle;
     setIsShuffle(nextShuffle);
@@ -1246,6 +1435,14 @@ export function App() {
   };
 
   const handleNextTrack = (fromEnded = false) => {
+    // Adapter path (v52): for YouTube/Audius playback the PlayerManager
+    // owns the advance (queue walk + background defer rule). The legacy
+    // logic below stays for the hifi-eq engine.
+    if (engineMode !== 'hifi-eq' && playerManagerRef.current) {
+      playerManagerRef.current.next();
+      return;
+    }
+
     // 1. REPEAT ONE check: If track finished naturally and repeat is 'one', replay current track from 0:00!
     if (fromEnded && repeatMode === 'one') {
       if (engineMode === 'hifi-eq') {
@@ -1333,6 +1530,13 @@ export function App() {
   };
 
   const handlePrevTrack = () => {
+    // Adapter path (v52): PlayerManager owns prev (restart / defer rule).
+    // The legacy logic below stays for the hifi-eq engine.
+    if (engineMode !== 'hifi-eq' && playerManagerRef.current) {
+      playerManagerRef.current.prev();
+      return;
+    }
+
     if (currentTimeSec > 4) {
       if (engineMode === 'hifi-eq') {
         studioAudioEngine.seek(0);
@@ -1367,6 +1571,19 @@ export function App() {
     const idx = queue.findIndex((t) => t.id === currentTrack.id);
     const prevIdx = (idx - 1 + queue.length) % queue.length;
     handleSelectTrack(queue[prevIdx], undefined, isFullScreenPlayerOpen);
+  };
+
+  // Unified seek (v52): Audius <audio> seeks directly; hifi-eq uses the
+  // studio engine; YouTube uses the seek request prop.
+  const handleSeek = (sec: number) => {
+    setCurrentTimeSec(sec);
+    if (audiusActive) {
+      audiusPlayerRef.current?.seek(sec);
+    } else if (engineMode === 'hifi-eq') {
+      studioAudioEngine.seek(sec);
+    } else {
+      setYtSeekRequest({ sec, nonce: Date.now() });
+    }
   };
 
   const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1884,14 +2101,7 @@ export function App() {
             currentTimeSec={currentTimeSec}
             durationSec={durationSec}
             onTogglePlay={handleTogglePlay}
-            onSeek={(sec) => {
-              setCurrentTimeSec(sec);
-              if (engineMode === 'hifi-eq') {
-                studioAudioEngine.seek(sec);
-              } else {
-                setYtSeekRequest({ sec, nonce: Date.now() });
-              }
-            }}
+            onSeek={handleSeek}
             onNextTrack={() => handleNextTrack()}
             onPrevTrack={handlePrevTrack}
             playbackRate={playbackRate}
@@ -2112,14 +2322,7 @@ export function App() {
         onNextTrack={handleNextTrack}
         currentTimeSec={currentTimeSec}
         durationSec={durationSec}
-        onSeek={(sec) => {
-          setCurrentTimeSec(sec);
-          if (engineMode === 'hifi-eq') {
-            studioAudioEngine.seek(sec);
-          } else {
-            setYtSeekRequest({ sec, nonce: Date.now() });
-          }
-        }}
+        onSeek={handleSeek}
         volume={volume}
         isMuted={isMuted}
         onVolumeChange={handleVolumeChange}
@@ -2193,14 +2396,7 @@ export function App() {
         onTogglePlay={handleTogglePlay}
         onPrevTrack={handlePrevTrack}
         onNextTrack={handleNextTrack}
-        onSeek={(sec) => {
-          setCurrentTimeSec(sec);
-          if (engineMode === 'hifi-eq') {
-            studioAudioEngine.seek(sec);
-          } else {
-            setYtSeekRequest({ sec, nonce: Date.now() });
-          }
-        }}
+        onSeek={handleSeek}
         isShuffle={isShuffle}
         onToggleShuffle={handleToggleShuffle}
         isRepeat={isRepeat}
@@ -2346,7 +2542,7 @@ export function App() {
             label="A"
             videoId={activePlayer === 'A' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'A' ? currentYtCandidates : standbyCandidates}
-            isPlaying={activePlayer === 'A' ? isPlaying : (isPlaying || !hasPlayedOnce)}
+            isPlaying={activePlayer === 'A' ? (isPlaying && !audiusActive) : ((isPlaying || !hasPlayedOnce) && !audiusActive)}
             volume={activePlayer === 'A' ? volume : 0}
             isMuted={activePlayer === 'A' ? isMuted : true}
             seekRequest={activePlayer === 'A' ? ytSeekRequest : standbySeekRequest}
@@ -2369,7 +2565,12 @@ export function App() {
               }
             }}
             onEnded={() => {
-              if (activePlayer === 'A') handleNextTrack(true);
+              if (activePlayer === 'A') {
+                // Adapter (v52): route through the manager so the defer rule
+                // applies (hidden + next track is YouTube -> wait for visible).
+                if (playerManagerRef.current) playerManagerRef.current.handleEnded();
+                else handleNextTrack(true);
+              }
             }}
             onStateChange={(state) => {
               // Raw state is the source of truth for the standby gate.
@@ -2390,7 +2591,8 @@ export function App() {
               if (activePlayer === 'A') {
                 console.warn('[App] YouTube video unavailable, skipping to next track');
                 showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
-                handleNextTrack(true);
+                if (playerManagerRef.current) playerManagerRef.current.next();
+                else handleNextTrack(true);
               } else {
                 dbg('standby fallback: video unavailable');
               }
@@ -2405,7 +2607,7 @@ export function App() {
             label="B"
             videoId={activePlayer === 'B' ? currentYtVideoId : standbyVideoId}
             candidateIds={activePlayer === 'B' ? currentYtCandidates : standbyCandidates}
-            isPlaying={activePlayer === 'B' ? isPlaying : (isPlaying || !hasPlayedOnce)}
+            isPlaying={activePlayer === 'B' ? (isPlaying && !audiusActive) : ((isPlaying || !hasPlayedOnce) && !audiusActive)}
             volume={activePlayer === 'B' ? volume : 0}
             isMuted={activePlayer === 'B' ? isMuted : true}
             seekRequest={activePlayer === 'B' ? ytSeekRequest : standbySeekRequest}
@@ -2426,7 +2628,10 @@ export function App() {
               }
             }}
             onEnded={() => {
-              if (activePlayer === 'B') handleNextTrack(true);
+              if (activePlayer === 'B') {
+                if (playerManagerRef.current) playerManagerRef.current.handleEnded();
+                else handleNextTrack(true);
+              }
             }}
             onStateChange={(state) => {
               if (activePlayer !== 'B') {
@@ -2446,7 +2651,8 @@ export function App() {
               if (activePlayer === 'B') {
                 console.warn('[App] YouTube video unavailable, skipping to next track');
                 showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
-                handleNextTrack(true);
+                if (playerManagerRef.current) playerManagerRef.current.next();
+                else handleNextTrack(true);
               } else {
                 dbg('standby fallback: video unavailable');
               }

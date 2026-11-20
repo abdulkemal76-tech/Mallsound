@@ -22,6 +22,10 @@ import { Track } from '../types/music';
 import { MOOD_CARDS, GENRE_CARDS, GenreMoodCard } from '../data/genres';
 import { GLOBAL_ARTISTS, ARTIST_CATEGORIES, ArtistItem } from '../data/artists';
 import { searchCatalogWithMeta } from '../services/musicApi';
+// Audius search (v52): merged below the catalog results, marked "Audius".
+// Audius tracks play through AudiusPlayer (<audio>) and CAN start while
+// the tab is hidden — unlike the YouTube catalog tracks.
+import { searchAudiusTracks } from '../services/players/audiusApi';
 
 export interface SearchPageProps {
   onSelectTrack: (track: Track, contextTracks?: Track[]) => void;
@@ -142,8 +146,22 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           36
         );
 
+        // Audius results (v52): appended after the catalog, so the YouTube
+        // catalog keeps its order. Failures return [] and change nothing.
+        let audiusTracks: Track[] = [];
+        try {
+          audiusTracks = await searchAudiusTracks(debouncedQuery, 8);
+        } catch {
+          audiusTracks = [];
+        }
+
         if (!isCancelled) {
-          setSearchResults(tracks);
+          const seen = new Set(tracks.map((t) => t.id));
+          const merged = [
+            ...tracks,
+            ...audiusTracks.filter((t) => !seen.has(t.id)),
+          ];
+          setSearchResults(merged);
           setCorrectedQuery(suggestedCorrection);
         }
       } catch (err) {
@@ -514,6 +532,14 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                           <span className="hidden sm:inline text-amber-400/80 font-mono text-[10px]">
                             {track.bitrateLabel || '24-bit FLAC'}
                           </span>
+                          {track.source === 'audius' && (
+                            <span
+                              className="hidden sm:inline px-1.5 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-semibold text-[10px] border border-emerald-400/30"
+                              title="Diputar lewat Audius — bisa jalan di latar belakang"
+                            >
+                              Audius
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>

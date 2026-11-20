@@ -34,6 +34,11 @@ export interface Track {
   audioUrl: string; // '/api/music/audio-proxy?url=...' or 'synth://...' or Blob URL
   rawPreviewUrl?: string;
   youtubeVideoId?: string | null;
+  /** Audius track id (hash or numeric) — when present, the track plays
+   *  through AudiusPlayer (<audio>, background-capable) instead of YouTube. */
+  audiusTrackId?: string | null;
+  /** Playback source, used by the player adapter layer (v52) and the search UI badge. */
+  source?: 'audius' | 'youtube';
   bitrateLabel: string;
   releaseYear: number;
   playsCount: number;
