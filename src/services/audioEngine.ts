@@ -25,6 +25,31 @@ export class StudioAudioEngine {
   private onTimeUpdateCallback?: (currentTime: number, duration: number) => void;
   private onTrackEndCallback?: () => void;
 
+  public async resume(): Promise<void> {
+    this.ensureContext();
+    try {
+      await this.ctx?.resume();
+    } catch {
+      // ignore — resume is best-effort when returning from background
+    }
+    if (
+      this.isPlayingState &&
+      this.htmlAudio &&
+      !this.currentTrack?.audioUrl.startsWith('synth://')
+    ) {
+      try {
+        await this.htmlAudio.play();
+      } catch {
+        // Autoplay may still be blocked in background; the caller
+        // (visibilitychange / Media Session) retries on user action.
+      }
+    }
+  }
+
+  public get isPlaying(): boolean {
+    return this.isPlayingState;
+  }
+
   private ensureContext() {
     if (!this.ctx) {
       const AudioCtx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -95,6 +120,11 @@ export class StudioAudioEngine {
       if (!this.htmlAudio) {
         this.htmlAudio = new Audio();
         this.htmlAudio.crossOrigin = 'anonymous';
+        this.htmlAudio.preload = 'auto';
+        this.htmlAudio.setAttribute('playsinline', '');
+        // Keep the element alive for background playback: it is routed
+        // through AudioContext for EQ, so resume() must be called when
+        // the tab becomes visible again (see App.tsx visibility handler).
         this.htmlAudio.addEventListener('timeupdate', () => {
           if (this.htmlAudio && !this.currentTrack?.audioUrl.startsWith('synth://')) {
             this.currentTimeSec = this.htmlAudio.currentTime;
@@ -162,8 +192,16 @@ export class StudioAudioEngine {
     } else if (this.htmlAudio) {
       this.htmlAudio.playbackRate = this.playbackRate;
       this.htmlAudio.play().catch(() => {
-        // Fallback to procedural studio synth if browser blocks or URL fails
-        this.startSynthLoop();
+        // play() can be rejected when called from background (no user
+        // gesture / autoplay policy). Retry once shortly after — e.g.
+        // when the tab becomes visible again — before falling back
+        // to the procedural synth, which would replace the real track.
+        window.setTimeout(() => {
+          if (!this.isPlayingState || !this.htmlAudio) return;
+          this.htmlAudio?.play().catch(() => {
+            this.startSynthLoop();
+          });
+        }, 600);
       });
     }
   }
@@ -278,20 +316,41 @@ export class StudioAudioEngine {
     const sixteenthMs = (60 / effectiveBpm / 4) * 1000;
 
     this.lastTickPerf = performance.now();
+    // Anchor the clock to AudioContext time, not performance.now:
+    // ctx.currentTime freezes while the context is suspended in
+    // background, so the progress bar no longer runs ahead of the
+    // (silent) audio, and the track does not end prematurely.
+    let lastCtxTime = this.ctx ? this.ctx.currentTime : 0;
 
     // Trigger first step immediately
     this.triggerSequencerStep(synth);
 
     this.stepTimerId = window.setInterval(() => {
       if (!this.isPlayingState) return;
-      this.triggerSequencerStep(synth);
+      // If the timer was throttled in background, catch up on missed
+      // steps instead of silently dropping them.
+      if (this.ctx) {
+        const stepDurationSec = 60 / (synth.bpm * this.playbackRate) / 4;
+        const elapsed = this.ctx.currentTime - lastCtxTime;
+        const stepsToPlay = Math.max(
+          1,
+          Math.min(4, Math.floor(elapsed / stepDurationSec) || 1)
+        );
+        for (let i = 0; i < stepsToPlay; i++) {
+          this.triggerSequencerStep(synth);
+        }
+      } else {
+        this.triggerSequencerStep(synth);
+      }
     }, sixteenthMs);
 
     this.clockTimerId = window.setInterval(() => {
       if (!this.isPlayingState || !this.currentTrack) return;
-      const now = performance.now();
-      const deltaSec = ((now - this.lastTickPerf) / 1000) * this.playbackRate;
-      this.lastTickPerf = now;
+      if (!this.ctx) return;
+      const nowCtx = this.ctx.currentTime;
+      const deltaSec = Math.max(0, nowCtx - lastCtxTime) * this.playbackRate;
+      lastCtxTime = nowCtx;
+      this.lastTickPerf = performance.now();
 
       this.currentTimeSec += deltaSec;
       if (this.currentTimeSec >= this.currentTrack.durationSec) {
