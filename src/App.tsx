@@ -49,6 +49,8 @@ import {
 
 // Component imports
 import { YouTubeMusicPlayer } from './components/YouTubeMusicPlayer';
+import { DebugPanel } from './components/DebugPanel';
+import { dbg } from './services/debugLog';
 import { FullScreenPlayer } from './components/FullScreenPlayer';
 import { AddCustomTrackModal, CreatePlaylistModal } from './components/Modals';
 import { SettingsModal } from './components/SettingsModal';
@@ -648,31 +650,53 @@ export function App() {
       setCurrentYtCandidates([instantId]);
     }
 
-    // 1. Resolve YouTube video ID in background if not instant
+    // 1. Resolve YouTube video ID in background if not instant.
+    // Retries up to 3 times: in a background tab the first fetch can be
+    // delayed by timer/network throttling, and a failed resolve leaves the
+    // player stuck on the previous (ended) video in silence.
     if (!instantId) {
-      resolveYouTubeVideoId(track.title, track.artist, track.id)
-        .then((ytData) => {
-          if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
-            const candidateList =
-              ytData.candidates && ytData.candidates.length > 0
-                ? ytData.candidates
-                : ytData.videoId
-                ? [ytData.videoId]
-                : [];
-            setCurrentYtVideoId(ytData.videoId || candidateList[0]);
-            setCurrentYtCandidates(candidateList);
-            setCurrentTrack((prev) => {
-              if (prev.id !== track.id) return prev;
-              return {
-                ...prev,
-                youtubeVideoId: ytData.videoId || prev.youtubeVideoId,
-              };
-            });
-          }
-        })
-        .catch((err) => {
-          console.warn('[App] YouTube resolution failed:', err);
-        });
+      dbg(`resolve start: "${track.title}" - ${track.artist} (hidden=${document.hidden})`);
+      const startedAt = Date.now();
+      const tryResolve = (attempt: number) => {
+        resolveYouTubeVideoId(track.title, track.artist, track.id)
+          .then((ytData) => {
+            if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
+              const candidateList =
+                ytData.candidates && ytData.candidates.length > 0
+                  ? ytData.candidates
+                  : ytData.videoId
+                  ? [ytData.videoId]
+                  : [];
+              dbg(`resolve OK: "${track.title}" -> ${ytData.videoId || candidateList[0]} in ${Date.now() - startedAt}ms (attempt ${attempt})`);
+              setCurrentYtVideoId(ytData.videoId || candidateList[0]);
+              setCurrentYtCandidates(candidateList);
+              setCurrentTrack((prev) => {
+                if (prev.id !== track.id) return prev;
+                return {
+                  ...prev,
+                  youtubeVideoId: ytData.videoId || prev.youtubeVideoId,
+                };
+              });
+            } else if (attempt < 3) {
+              dbg(`resolve empty: "${track.title}" attempt ${attempt}, retrying...`);
+              window.setTimeout(() => tryResolve(attempt + 1), 2000);
+            } else {
+              dbg(`resolve FAILED: "${track.title}" no videoId after 3 attempts`);
+            }
+          })
+          .catch((err) => {
+            if (attempt < 3) {
+              dbg(`resolve error: "${track.title}" attempt ${attempt}, retrying...`);
+              window.setTimeout(() => tryResolve(attempt + 1), 2000);
+            } else {
+              dbg(`resolve FAILED: "${track.title}" ${String(err)}`);
+              console.warn('[App] YouTube resolution failed:', err);
+            }
+          });
+      };
+      tryResolve(1);
+    } else {
+      dbg(`track id instant: "${track.title}" -> ${instantId}`);
     }
 
     // 2. Fetch lyrics independently without blocking playback
@@ -705,7 +729,16 @@ export function App() {
       ...DJ_INDO_TRACKS,
       ...BUILT_IN_TRACKS,
     ].forEach((t) => {
-      if (!map.has(t.id)) {
+      const existing = map.get(t.id);
+      if (!existing) {
+        map.set(t.id, t);
+        return;
+      }
+      // Prefer the entry that already has a resolved YouTube videoId
+      // (e.g. from the pre-fetch into resolvedSavedTracks), so sequential
+      // playback can load the next track synchronously instead of
+      // re-resolving it at track-change time in a background tab.
+      if (!existing.youtubeVideoId && t.youtubeVideoId) {
         map.set(t.id, t);
       }
     });
@@ -992,6 +1025,8 @@ export function App() {
     }
 
     setIsPlaying(true);
+
+    dbg(`select track: "${track.title}" - ${track.artist} immediateYtId=${immediateYtId || 'NONE'} hidden=${document.hidden}`);
 
     if (targetMode === 'hifi-eq') {
       studioAudioEngine.loadTrack(track, true);
@@ -2285,6 +2320,8 @@ export function App() {
           <span>{toastMessage}</span>
         </div>
       )}
+      {/* Debug panel (?debug=1) — shows what the player did in background */}
+      {typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('debug') && <DebugPanel />}
     </div>
   );
 }

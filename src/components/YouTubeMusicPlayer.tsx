@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { dbg } from '../services/debugLog';
 
 // Persistent play watchdog: keep retrying playVideo() (muted while the tab
 // is hidden) for up to 120 s after a track load. Background tabs throttle
@@ -90,6 +91,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const hasEndedTriggeredRef = useRef(false);
   const ignoreEndUntilRef = useRef<number>(0);
   const lastLoadedAtRef = useRef<number>(Date.now());
+  const lastWatchdogLogRef = useRef<number>(0);
 
   const triggerEndedOnce = (reason: string) => {
     if (hasEndedTriggeredRef.current) return;
@@ -143,6 +145,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           hasEndedTriggeredRef.current = false;
           lastLoadedAtRef.current = Date.now();
           ignoreEndUntilRef.current = Date.now() + 3500;
+          dbg(`YT loadVideoById: ${videoId} hidden=${document.hidden}`);
           try {
             // In mobile background tabs, Chromium blocks unmuted autoplay on loadVideoById.
             // Temporarily mute before loading, and unmute as soon as playback starts (state 1).
@@ -223,6 +226,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             }
           },
           onStateChange: (e) => {
+            dbg(`YT state: ${e.data} (0=ENDED 1=PLAYING 2=PAUSED 3=BUFFERING 5=CUED -1=UNSTARTED) hidden=${document.hidden}`);
             if (e.data === 0) {
               // ENDED
               triggerEndedOnce('onStateChange ENDED (data=0)');
@@ -405,6 +409,10 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
         // for up to WATCHDOG_MAX_MS — background tabs throttle timers, so a 6 s window
         // could expire before a single retry ran.
         if (timeSinceLoad < WATCHDOG_MAX_MS && st !== 1) {
+          if (Date.now() - lastWatchdogLogRef.current > 5000) {
+            lastWatchdogLogRef.current = Date.now();
+            dbg(`watchdog retry play: st=${st} sinceLoad=${Math.round(timeSinceLoad / 1000)}s hidden=${document.hidden}`);
+          }
           if (document.hidden) {
             try { playerRef.current.mute(); } catch {}
           }
@@ -447,6 +455,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   // Immediate revival on visibility change or window focus
   useEffect(() => {
     const handleVisOrFocus = () => {
+      dbg(`visibility: ${document.visibilityState} focus=${document.hasFocus()} isPlaying=${isPlayingPropRef.current}`);
       if (isPlayingPropRef.current && playerRef.current && readyRef.current) {
         try {
           playerRef.current.playVideo();
