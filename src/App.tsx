@@ -648,30 +648,55 @@ export function App() {
       setCurrentYtCandidates([instantId]);
     }
 
+    // 1. Resolve YouTube video ID immediately in background without waiting for lyrics
+    resolveYouTubeVideoId(track.title, track.artist, track.id)
+      .then((ytData) => {
+        if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
+          const candidateList = ytData.candidates.length > 0
+            ? ytData.candidates
+            : (ytData.videoId ? [ytData.videoId] : []);
+          const mergedCandidates = Array.from(new Set([...(instantId ? [instantId] : []), ...candidateList]));
+          if (!instantId && ytData.videoId) {
+            setCurrentYtVideoId(ytData.videoId);
+          }
+          setCurrentYtCandidates(mergedCandidates);
+          setCurrentTrack((prev) => {
+            if (prev.id !== track.id) return prev;
+            return {
+              ...prev,
+              youtubeVideoId: ytData.videoId || prev.youtubeVideoId || instantId,
+            };
+          });
+        } else if (!instantId && track.audioUrl) {
+          console.warn('[App] No YouTube stream found, falling back to studio engine');
+          setEngineMode('hifi-eq');
+          studioAudioEngine.loadTrack(track, true);
+        }
+      })
+      .catch((err) => {
+        console.warn('[App] YouTube resolution failed:', err);
+        if (!instantId && track.audioUrl) {
+          setEngineMode('hifi-eq');
+          studioAudioEngine.loadTrack(track, true);
+        }
+      });
+
+    // 2. Fetch lyrics independently without blocking playback
     setIsLoadingLyrics(true);
-    const [lyricsResult, ytData] = await Promise.all([
-      fetchTrackLyrics(track.title, track.artist, track.durationSec),
-      resolveYouTubeVideoId(track.title, track.artist, track.id),
-    ]);
-    setIsLoadingLyrics(false);
-    if (ytData.videoId || (ytData.candidates && ytData.candidates.length > 0)) {
-      const candidateList = ytData.candidates.length > 0
-        ? ytData.candidates
-        : (ytData.videoId ? [ytData.videoId] : []);
-      const mergedCandidates = Array.from(new Set([...(instantId ? [instantId] : []), ...candidateList]));
-      if (!instantId && ytData.videoId) {
-        setCurrentYtVideoId(ytData.videoId);
-      }
-      setCurrentYtCandidates(mergedCandidates);
-    }
-    setCurrentTrack((prev) => {
-      if (prev.id !== track.id) return prev;
-      return {
-        ...prev,
-        lyrics: lyricsResult,
-        youtubeVideoId: ytData.videoId || prev.youtubeVideoId || instantId,
-      };
-    });
+    fetchTrackLyrics(track.title, track.artist, track.durationSec)
+      .then((lyricsResult) => {
+        setIsLoadingLyrics(false);
+        setCurrentTrack((prev) => {
+          if (prev.id !== track.id) return prev;
+          return {
+            ...prev,
+            lyrics: lyricsResult,
+          };
+        });
+      })
+      .catch(() => {
+        setIsLoadingLyrics(false);
+      });
   };
 
   // Combined Track Dictionary
@@ -1141,15 +1166,14 @@ export function App() {
 
     const nextIdx = idx + 1;
     if (nextIdx >= queue.length) {
-      if (repeatMode === 'all' || repeatMode === 'one') {
+      // Continuous Auto-Play: If queue reaches the end, loop seamlessly to start or pick from catalog
+      if (queue.length > 1) {
         handleSelectTrack(queue[0], undefined, isFullScreenPlayerOpen);
-        return;
+      } else {
+        const otherTracks = allKnownTracks.filter((t) => t.id !== currentTrack.id);
+        const nextSong = otherTracks.length > 0 ? otherTracks[0] : queue[0];
+        handleSelectTrack(nextSong, undefined, isFullScreenPlayerOpen);
       }
-      if (fromEnded) {
-        setIsPlaying(false);
-        return;
-      }
-      handleSelectTrack(queue[0], undefined, isFullScreenPlayerOpen);
       return;
     }
 
