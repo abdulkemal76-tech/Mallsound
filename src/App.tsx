@@ -1303,6 +1303,16 @@ export function App() {
         coverUrl: track.coverUrl,
         durationSec: track.durationSec,
       });
+      // v66 — mulai dari detik 0: standby sudah memutar lagu ini (mute) sejak
+      // sebelum ganti lagu, bahkan di-loop, jadi tanpa seek lagu berikutnya
+      // terdengar dari tengah-tengah, bukan dari 0:00. Seek hanya saat tab
+      // tidak hidden (ekstensi Always Active Window membuat document.hidden
+      // false walau di latar belakang, jadi seek jalan di sana). Saat tab
+      // benar-benar hidden tanpa ekstensi, seek bisa bikin player stall
+      // (bukti v48) — lewati saja, biar tetap bunyi dari tengah ketimbang diam.
+      if (!document.hidden) {
+        setYtSeekRequest({ sec: 0, nonce: Date.now() });
+      }
       setStandbyVideoId(null);
       setStandbyTrackId(null);
       setStandbyCandidates([]);
