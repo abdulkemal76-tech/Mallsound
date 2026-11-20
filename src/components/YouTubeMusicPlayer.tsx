@@ -38,6 +38,8 @@ export interface YTPlayerInstance {
   pauseVideo: () => void;
   seekTo: (seconds: number, allowSeekAhead: boolean) => void;
   setVolume: (volume: number) => void;
+  getVolume: () => number;
+  isMuted: () => boolean;
   mute: () => void;
   unMute: () => void;
   getCurrentTime: () => number;
@@ -93,6 +95,27 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const ignoreEndUntilRef = useRef<number>(0);
   const lastLoadedAtRef = useRef<number>(Date.now());
   const lastWatchdogLogRef = useRef<number>(0);
+
+  // Mute state probe (for the debug log) and a "make sure this play
+  // attempt is muted" helper. Chrome's autoplay check treats a video as
+  // muted when it is muted OR its volume is 0, so we do both — if the
+  // YT player's mute flag doesn't stick to a freshly cued video,
+  // setVolume(0) is the second line of defence.
+  const getMuteState = () => {
+    try {
+      const p = playerRef.current as unknown as { isMuted?: () => boolean; getVolume?: () => number } | null;
+      return {
+        muted: typeof p?.isMuted === 'function' ? p.isMuted() : null,
+        vol: typeof p?.getVolume === 'function' ? p.getVolume() : null,
+      };
+    } catch {
+      return { muted: null, vol: null };
+    }
+  };
+  const muteForBackground = (target: YTPlayerInstance) => {
+    try { target.setVolume(0); } catch {}
+    try { target.mute(); } catch {}
+  };
 
   const triggerEndedOnce = (reason: string) => {
     if (hasEndedTriggeredRef.current) return;
@@ -166,7 +189,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           if (isPlayingPropRef.current) {
             try {
               if (document.hidden) {
-                try { playerRef.current.mute(); } catch {}
+                muteForBackground(playerRef.current);
               }
               playerRef.current.playVideo();
             } catch {}
@@ -246,7 +269,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               // Force playVideo() with muted bypass if document is hidden:
               if (isPlayingPropRef.current) {
                 if (document.hidden) {
-                  try { e.target.mute(); } catch {}
+                  muteForBackground(e.target);
                 }
                 try {
                   e.target.playVideo();
@@ -285,7 +308,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
 
               if (isPlayingPropRef.current && Date.now() - lastLoadedAtRef.current < WATCHDOG_MAX_MS) {
                 if (document.hidden) {
-                  try { e.target.mute(); } catch {}
+                  muteForBackground(e.target);
                 }
                 try {
                   e.target.playVideo();
@@ -311,7 +334,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               currentVideoIdRef.current = nextVid;
               try {
                 if (document.hidden) {
-                  try { e.target.mute(); } catch {}
+                  muteForBackground(e.target);
                 }
                 const cueNext = (e.target as unknown as { cueVideoById?: (id: string) => void }).cueVideoById;
                 if (typeof cueNext === 'function') {
@@ -321,7 +344,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                 }
                 if (isPlayingPropRef.current) {
                   if (document.hidden) {
-                    try { e.target.mute(); } catch {}
+                    muteForBackground(e.target);
                   }
                   e.target.playVideo();
                 }
@@ -429,10 +452,11 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
         if (timeSinceLoad < WATCHDOG_MAX_MS && st !== 1) {
           if (Date.now() - lastWatchdogLogRef.current > 5000) {
             lastWatchdogLogRef.current = Date.now();
-            dbg(`watchdog retry play: st=${st} sinceLoad=${Math.round(timeSinceLoad / 1000)}s hidden=${document.hidden}`);
+            const ms = getMuteState();
+            dbg(`watchdog retry play: st=${st} muted=${ms.muted} vol=${ms.vol} sinceLoad=${Math.round(timeSinceLoad / 1000)}s hidden=${document.hidden}`);
           }
           if (document.hidden) {
-            try { playerRef.current.mute(); } catch {}
+            muteForBackground(playerRef.current);
           }
           try {
             playerRef.current.playVideo();
@@ -458,7 +482,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           // Unmuted playVideo() is blocked by autoplay policy in background tabs —
           // always mute first while hidden; the PLAYING handler unmutes after start.
           if (document.hidden) {
-            try { playerRef.current.mute(); } catch {}
+            muteForBackground(playerRef.current);
           }
           playerRef.current.playVideo();
         }
