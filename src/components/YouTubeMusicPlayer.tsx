@@ -43,6 +43,7 @@ export interface YTPlayerInstance {
   getCurrentTime: () => number;
   getDuration: () => number;
   loadVideoById: (videoId: string) => void;
+  cueVideoById: (videoId: string) => void;
   destroy: () => void;
 }
 
@@ -147,17 +148,26 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           ignoreEndUntilRef.current = Date.now() + 3500;
           dbg(`YT loadVideoById: ${videoId} hidden=${document.hidden}`);
           try {
-            // In mobile background tabs, Chromium blocks unmuted autoplay on loadVideoById.
-            // Temporarily mute before loading, and unmute as soon as playback starts (state 1).
-            if (document.hidden) {
-              try { playerRef.current.mute(); } catch {}
+            // CUE instead of LOAD: loadVideoById fires an immediate (unmuted)
+            // autoplay attempt that races the mute() below — in a hidden tab
+            // Chrome blocks that unmuted attempt and the player gets stuck
+            // on UNSTARTED (-1) while every later playVideo() is ignored.
+            // cueVideoById only loads the video (state CUED); we then mute
+            // first and play explicitly, so the play attempt is muted.
+            const cue = (playerRef.current as unknown as { cueVideoById?: (id: string) => void }).cueVideoById;
+            if (typeof cue === 'function') {
+              cue.call(playerRef.current, videoId);
+            } else {
+              playerRef.current.loadVideoById(videoId);
             }
-            playerRef.current.loadVideoById(videoId);
           } catch {
             // ignore
           }
           if (isPlayingPropRef.current) {
             try {
+              if (document.hidden) {
+                try { playerRef.current.mute(); } catch {}
+              }
               playerRef.current.playVideo();
             } catch {}
           } else {
@@ -303,8 +313,16 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
                 if (document.hidden) {
                   try { e.target.mute(); } catch {}
                 }
-                e.target.loadVideoById(nextVid);
+                const cueNext = (e.target as unknown as { cueVideoById?: (id: string) => void }).cueVideoById;
+                if (typeof cueNext === 'function') {
+                  cueNext.call(e.target, nextVid);
+                } else {
+                  e.target.loadVideoById(nextVid);
+                }
                 if (isPlayingPropRef.current) {
+                  if (document.hidden) {
+                    try { e.target.mute(); } catch {}
+                  }
                   e.target.playVideo();
                 }
               } catch {
