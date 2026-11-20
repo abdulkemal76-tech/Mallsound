@@ -1219,22 +1219,21 @@ export const HomePage: React.FC<HomePageProps> = ({
                 <ExternalLink className="w-3.5 h-3.5 opacity-80" />
               </a>
 
-              {/* Direct APK Pintasan Download (33 KB) */}
+              {/* Ekstensi Always Active Window */}
               <a
-                href="/MallSound-Pintasan.apk"
-                download="MallSound-Pintasan.apk"
-                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-emerald-600/30 via-teal-600/30 to-emerald-700/30 border border-emerald-500/50 text-white font-bold text-xs shadow-lg shadow-emerald-950/20 hover:opacity-95 transition-all"
+                href="https://chromewebstore.google.com/detail/always-active-window-alwa/ehllkhjndgnlokhomdlhgbineffifcbj"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-between gap-3 p-3.5 rounded-2xl bg-gradient-to-r from-violet-600/30 via-purple-600/30 to-violet-700/30 border border-violet-500/50 text-white font-bold text-xs shadow-lg shadow-violet-950/20 hover:opacity-95 transition-all"
               >
                 <div className="flex items-center gap-2.5">
-                  <Download className="w-4 h-4 text-emerald-400" />
+                  <Download className="w-4 h-4 text-violet-400" />
                   <div className="text-left">
-                    <p className="font-bold text-white">Download APK Pintasan MallSound</p>
-                    <p className="text-[10px] text-emerald-300 font-normal">Super Ringan (33 KB) &bull; Langsung Pasang di HP</p>
+                    <p className="font-bold text-white">Pasang Ekstensi Always Active Window</p>
+                    <p className="text-[10px] text-violet-300 font-normal">Bikin tab Lemur selalu aktif &bull; dari Chrome Web Store</p>
                   </div>
                 </div>
-                <span className="px-2.5 py-1 rounded-lg bg-emerald-500 text-neutral-950 font-bold text-[11px] shrink-0">
-                  Unduh (33 KB)
-                </span>
+                <ExternalLink className="w-3.5 h-3.5 opacity-80" />
               </a>
 
               {/* Add to Home Shortcut Tip */}
