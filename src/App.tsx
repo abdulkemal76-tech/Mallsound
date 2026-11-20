@@ -2192,6 +2192,27 @@ export function App() {
           stageMode === 'video' &&
           (isFullScreenPlayerOpen || isDesktopNowPlayingExpanded)
         );
+        const queueVideoIds: string[] = [];
+        if (currentYtVideoId) queueVideoIds.push(currentYtVideoId);
+        const upcomingList = playbackQueue.length > 0 ? playbackQueue : (displayedTracks.length > 0 ? displayedTracks : allKnownTracks);
+        for (const t of upcomingList) {
+          if (t.id === currentTrack.id) continue;
+          let v = t.youtubeVideoId || null;
+          if (!v) {
+            const ct = (t.title || '').toLowerCase().trim();
+            for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+              if (ct.includes(key) || key.includes(ct)) {
+                v = id;
+                break;
+              }
+            }
+          }
+          if (v && !queueVideoIds.includes(v)) {
+            queueVideoIds.push(v);
+          }
+          if (queueVideoIds.length >= 8) break;
+        }
+
         return (
           <div
             id="mallsound-global-youtube-engine"
@@ -2229,6 +2250,7 @@ export function App() {
           <YouTubeMusicPlayer
             videoId={currentYtVideoId}
             candidateIds={currentYtCandidates}
+            playlistVideoIds={queueVideoIds}
             isPlaying={isPlaying}
             volume={volume}
             isMuted={isMuted}
@@ -2244,6 +2266,10 @@ export function App() {
               }
             }}
             onEnded={() => handleNextTrack(true)}
+            onTrackAdvanced={(nextVid) => {
+              console.log('[App] 🎵 Internal YouTube transition to next track:', nextVid);
+              handleNextTrack(true);
+            }}
             onPlayingChange={(playing) => {
               if (playing) {
                 setIsPlaying(true);
