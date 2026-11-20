@@ -252,7 +252,7 @@ app.get('/api/music/yt', async (req, res) => {
     }
 
     const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(
-      `${q} official audio lirik`
+      `${q} official audio`
     )}`;
     const response = await fetch(searchUrl, {
       headers: {

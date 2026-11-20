@@ -2210,21 +2210,20 @@ export function App() {
                   }
                 : {
                     position: 'fixed',
-                    top: '-9999px',
-                    left: '-9999px',
-                    width: '240px',
-                    height: '180px',
-                    zIndex: -100,
-                    opacity: 0,
+                    bottom: '0px',
+                    right: '0px',
+                    width: '4px',
+                    height: '4px',
+                    zIndex: 1,
+                    opacity: 0.05,
                     pointerEvents: 'none',
-                    boxShadow: 'none',
-                    border: 'none',
+                    overflow: 'hidden',
                   }
             }
             className={
               isVideoStageActive
                 ? "transition-all duration-300 rounded-3xl overflow-hidden shadow-2xl border border-white/10"
-                : "pointer-events-none opacity-0 border-0 shadow-none"
+                : "pointer-events-none border-0 shadow-none"
             }
           >
           <YouTubeMusicPlayer
@@ -2236,7 +2235,13 @@ export function App() {
             seekRequest={ytSeekRequest}
             onTimeUpdate={(cur, dur) => {
               setCurrentTimeSec(cur);
-              setDurationSec(dur);
+              if (dur > 0) {
+                if (currentTrack.durationSec > 30 && dur > currentTrack.durationSec * 2.2) {
+                  setDurationSec(currentTrack.durationSec);
+                } else {
+                  setDurationSec(dur);
+                }
+              }
             }}
             onEnded={() => handleNextTrack(true)}
             onPlayingChange={(playing) => {
