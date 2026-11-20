@@ -72,6 +72,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const isPlayingPropRef = useRef<boolean>(isPlaying);
   const hasEndedTriggeredRef = useRef<boolean>(false);
   const ignoreEndUntilRef = useRef<number>(0);
+  const lastLoadedAtRef = useRef<number>(0);
 
   // === STALE CLOSURE FIX ===
   // The YouTube player's onStateChange is a closure created once at player init.
@@ -136,16 +137,26 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
         if (currentVideoIdRef.current !== videoId) {
           currentVideoIdRef.current = videoId;
           hasEndedTriggeredRef.current = false;
-          ignoreEndUntilRef.current = Date.now() + 2500;
+          lastLoadedAtRef.current = Date.now();
+          ignoreEndUntilRef.current = Date.now() + 3500;
           try {
-            playerRef.current.loadVideoById(videoId);
-            if (isPlayingPropRef.current) {
-              playerRef.current.playVideo();
-            } else {
-              playerRef.current.pauseVideo();
-            }
+            playerRef.current.loadVideoById({
+              videoId,
+              startSeconds: 0,
+            });
           } catch {
-            // ignore
+            try {
+              playerRef.current.loadVideoById(videoId);
+            } catch {}
+          }
+          if (isPlayingPropRef.current) {
+            try {
+              playerRef.current.playVideo();
+            } catch {}
+          } else {
+            try {
+              playerRef.current.pauseVideo();
+            } catch {}
           }
         }
         return;
@@ -154,7 +165,8 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
       if (!containerRef.current) return;
       currentVideoIdRef.current = videoId;
       hasEndedTriggeredRef.current = false;
-      ignoreEndUntilRef.current = Date.now() + 2500;
+      lastLoadedAtRef.current = Date.now();
+      ignoreEndUntilRef.current = Date.now() + 3500;
 
       playerRef.current = new window.YT.Player(containerRef.current, {
         width: '100%',
@@ -175,7 +187,8 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           onReady: (e) => {
             readyRef.current = true;
             hasEndedTriggeredRef.current = false;
-            ignoreEndUntilRef.current = Date.now() + 2500;
+            lastLoadedAtRef.current = Date.now();
+            ignoreEndUntilRef.current = Date.now() + 3500;
             try {
               const iframe = (e.target as any).getIframe?.();
               if (iframe) {
@@ -206,6 +219,18 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             if (e.data === 0) {
               // Use unified trigger to guarantee single next-track call
               triggerEndedOnce('onStateChange ENDED (data=0)');
+            } else if (e.data === 5 || e.data === -1) {
+              // State 5 = CUED, State -1 = UNSTARTED
+              // In mobile background tabs, YouTube defaults to CUED instead of playing!
+              // Force playVideo() immediately to break through Android background restrictions:
+              if (isPlayingPropRef.current) {
+                console.log(`[YouTube Player] ⚡ Video cued/unstarted (state=${e.data}) in background, forcing playVideo()`);
+                try {
+                  e.target.playVideo();
+                } catch (err) {
+                  console.warn('playVideo failed on state ' + e.data, err);
+                }
+              }
             } else if (e.data === 1) {
               const dur = e.target.getDuration();
               const cur = e.target.getCurrentTime() || 0;
@@ -221,18 +246,26 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               try {
                 const cur = e.target.getCurrentTime() || 0;
                 const dur = e.target.getDuration() || 0;
-                if (dur > 5 && cur >= dur - 1.2) {
+                if (dur > 5 && cur >= dur - 1.2 && Date.now() > ignoreEndUntilRef.current) {
                   triggerEndedOnce(`onStateChange PAUSED at end (cur=${cur.toFixed(1)}, dur=${dur.toFixed(1)})`);
                   return;
                 }
               } catch {}
+
+              // If unexpectedly paused while user wants it playing and it was recently loaded (< 5s), auto-resume:
+              if (isPlayingPropRef.current && Date.now() - lastLoadedAtRef.current < 5000) {
+                try {
+                  e.target.playVideo();
+                } catch {}
+              }
               onPlayingChangeRef.current(false);
             }
           },
           onError: (e) => {
             console.warn('[YouTube Player] Error code:', e.data, 'Current ID:', currentVideoIdRef.current);
             hasEndedTriggeredRef.current = false;
-            ignoreEndUntilRef.current = Date.now() + 2500;
+            lastLoadedAtRef.current = Date.now();
+            ignoreEndUntilRef.current = Date.now() + 3500;
             const list = candidatesRef.current;
             const nextIdx = candidateIndexRef.current + 1;
             if (nextIdx < list.length) {
@@ -330,27 +363,42 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     return () => window.clearInterval(interval);
   }, [isPlaying, onTimeUpdate]);
 
-  // Aggressive background playback poller & wake-up watchdog (runs every 500ms even in background tabs)
+  // Aggressive background playback poller & wake-up watchdog (runs every 400ms even in background tabs)
   useEffect(() => {
     const resumeInterval = window.setInterval(() => {
       if (!isPlayingPropRef.current || !playerRef.current || !readyRef.current) return;
       try {
-        const cur = typeof playerRef.current.getCurrentTime === 'function' ? playerRef.current.getCurrentTime() || 0 : 0;
-        const dur = typeof playerRef.current.getDuration === 'function' ? playerRef.current.getDuration() || 0 : 0;
+        const timeSinceLoad = Date.now() - lastLoadedAtRef.current;
         const stateGetter = (playerRef.current as unknown as { getPlayerState?: () => number }).getPlayerState;
         const st = typeof stateGetter === 'function' ? stateGetter.call(playerRef.current) : -1;
+        const cur = typeof playerRef.current.getCurrentTime === 'function' ? playerRef.current.getCurrentTime() || 0 : 0;
+        const dur = typeof playerRef.current.getDuration === 'function' ? playerRef.current.getDuration() || 0 : 0;
 
-        // 1. ENDED DETECTION: If state is ENDED (0), or reached end of duration in background
-        if (st === 0) {
-          triggerEndedOnce('background watchdog st === 0 (ENDED)');
+        // 1. RECENTLY LOADED AUTO-START (Essential for background playback on mobile):
+        // When a new video is loaded in background, mobile browsers pause or cue it (st: 5, -1, 2).
+        // Force playVideo() during the first 6 seconds until playback actually starts (st === 1).
+        if (timeSinceLoad < 6000) {
+          if (st !== 1) {
+            try {
+              playerRef.current.playVideo();
+            } catch {}
+          }
           return;
         }
-        if (dur > 5 && (cur >= dur - 0.8 || (st === 2 && cur >= dur - 1.5))) {
-          triggerEndedOnce(`background watchdog reached end (cur=${cur.toFixed(1)}, dur=${dur.toFixed(1)}, st=${st})`);
-          return;
+
+        // 2. ENDED DETECTION: If state is ENDED (0), or reached end of duration in background
+        if (Date.now() > ignoreEndUntilRef.current) {
+          if (st === 0) {
+            triggerEndedOnce('background watchdog st === 0 (ENDED)');
+            return;
+          }
+          if (dur > 5 && (cur >= dur - 0.8 || (st === 2 && cur >= dur - 1.5))) {
+            triggerEndedOnce(`background watchdog reached end (cur=${cur.toFixed(1)}, dur=${dur.toFixed(1)}, st=${st})`);
+            return;
+          }
         }
 
-        // 2. MID-TRACK PAUSE REVIVAL: If unexpectedly paused/cued while document is hidden and NOT at track end
+        // 3. MID-TRACK PAUSE REVIVAL: If unexpectedly paused/cued while document is hidden and NOT at track end
         const isBackground = document.hidden || (typeof document.hasFocus === 'function' && !document.hasFocus());
         if (isBackground && (st === 2 || st === 5 || st === -1) && (dur <= 0 || cur < dur - 2.5)) {
           playerRef.current.playVideo();
@@ -358,7 +406,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
       } catch {
         // ignore
       }
-    }, 500);
+    }, 400);
 
     return () => window.clearInterval(resumeInterval);
   }, []);

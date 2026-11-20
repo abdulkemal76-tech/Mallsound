@@ -119,6 +119,13 @@ class BackgroundAudioService {
    */
   public updateNowPlaying(track: Track) {
     this.currentTrack = track;
+    try {
+      if (this.isPlaying && this.silentAudioElement) {
+        this.silentAudioElement.play().catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
     if (!('mediaSession' in navigator)) return;
 
     const artwork: MediaImage[] = [];

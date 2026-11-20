@@ -1052,6 +1052,50 @@ export function App() {
     return allKnownTracks;
   }, [allPlaylists, activePlaylistId, allKnownTracks]);
 
+  // Pre-fetch YouTube video ID for the upcoming track in queue to ensure instantaneous background switching
+  useEffect(() => {
+    let nextTrackToPreload: Track | null = null;
+    if (playbackQueue.length > 0) {
+      nextTrackToPreload = playbackQueue[0];
+    } else {
+      const queue = displayedTracks.length > 0 ? displayedTracks : allKnownTracks;
+      const idx = queue.findIndex((t) => t.id === currentTrack.id);
+      if (idx !== -1 && idx + 1 < queue.length) {
+        nextTrackToPreload = queue[idx + 1];
+      }
+    }
+
+    if (nextTrackToPreload && !nextTrackToPreload.youtubeVideoId) {
+      const cleanTitle = (nextTrackToPreload.title || '').toLowerCase().trim();
+      let hasImmediate = false;
+      for (const [key] of Object.entries(POPULAR_YT_MAP)) {
+        if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
+          hasImmediate = true;
+          break;
+        }
+      }
+      if (!hasImmediate) {
+        const targetId = nextTrackToPreload.id;
+        resolveYouTubeVideoId(nextTrackToPreload.title, nextTrackToPreload.artist, nextTrackToPreload.id)
+          .then((yt) => {
+            if (yt.videoId) {
+              setPlaybackQueue((prev) =>
+                prev.map((t) => (t.id === targetId ? { ...t, youtubeVideoId: yt.videoId! } : t))
+              );
+              setResolvedSavedTracks((prev) => {
+                const existing = prev[targetId];
+                if (existing) {
+                  return { ...prev, [targetId]: { ...existing, youtubeVideoId: yt.videoId! } };
+                }
+                return prev;
+              });
+            }
+          })
+          .catch(() => {});
+      }
+    }
+  }, [currentTrack.id, playbackQueue, displayedTracks, allKnownTracks]);
+
   const handleToggleShuffle = () => {
     const nextShuffle = !isShuffle;
     setIsShuffle(nextShuffle);
