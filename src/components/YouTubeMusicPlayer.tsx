@@ -73,47 +73,66 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const candidateIndexRef = useRef<number>(0);
   const candidatesRef = useRef<string[]>(candidateIds);
   const isPlayingPropRef = useRef<boolean>(isPlaying);
-  const retryTimersRef = useRef<number[]>([]);
+  const watchdogIntervalRef = useRef<number | null>(null);
+  const watchdogTimeoutRef = useRef<number | null>(null);
+  // How long the watchdog keeps retrying after a track change.
+  // Background tabs throttle timers, so a retry may only fire once
+  // a minute — the watchdog must therefore outlive the old 2.6 s
+  // burst by a wide margin, and it also fires again the moment the
+  // tab becomes visible (via resumeRequest).
+  const WATCHDOG_MAX_MS = 120000;
 
-  // playVideo() called once right after loadVideoById() is silently
-  // ignored when the tab is in background (autoplay policy) or the
-  // player is still buffering/cued. Retry a few times instead of
-  // leaving the next track stuck at 0:00.
-  const clearPlayRetries = () => {
-    retryTimersRef.current.forEach((id) => window.clearTimeout(id));
-    retryTimersRef.current = [];
+  const stopPlayWatchdog = () => {
+    if (watchdogIntervalRef.current !== null) {
+      window.clearInterval(watchdogIntervalRef.current);
+      watchdogIntervalRef.current = null;
+    }
+    if (watchdogTimeoutRef.current !== null) {
+      window.clearTimeout(watchdogTimeoutRef.current);
+      watchdogTimeoutRef.current = null;
+    }
   };
 
-  const attemptPlay = () => {
-    if (!playerRef.current || !readyRef.current) return;
-    if (!isPlayingPropRef.current) return;
+  // Returns true once the player is actually PLAYING (state 1).
+  const attemptPlay = (): boolean => {
+    if (!playerRef.current || !readyRef.current) return false;
+    if (!isPlayingPropRef.current) return false;
     try {
       const state = playerRef.current.getPlayerState();
-      if (state !== 1) {
-        playerRef.current.playVideo();
+      if (state === 1) {
+        stopPlayWatchdog();
+        return true;
       }
+      playerRef.current.playVideo();
     } catch {
       try {
         playerRef.current.playVideo();
       } catch {
-        // ignore — a later retry will try again
+        // ignore — the watchdog will try again
       }
     }
+    return false;
   };
 
-  const schedulePlayRetries = () => {
-    clearPlayRetries();
-    [350, 1200, 2600].forEach((delay) => {
-      retryTimersRef.current.push(
-        window.setTimeout(() => {
-          attemptPlay();
-        }, delay)
-      );
-    });
+  // playVideo() called right after loadVideoById() is silently
+  // ignored when the tab is in background (autoplay policy) or the
+  // player is still buffering/cued — and the old 3-shot retry
+  // (350/1200/2600 ms) expired long before the next track had
+  // buffered, leaving it stuck at 0:00 until the user reopened
+  // the page. Keep retrying until the player reports PLAYING.
+  const startPlayWatchdog = () => {
+    stopPlayWatchdog();
+    if (attemptPlay()) return;
+    watchdogIntervalRef.current = window.setInterval(() => {
+      attemptPlay();
+    }, 1000);
+    watchdogTimeoutRef.current = window.setTimeout(() => {
+      stopPlayWatchdog();
+    }, WATCHDOG_MAX_MS);
   };
 
   useEffect(() => {
-    return () => clearPlayRetries();
+    return () => stopPlayWatchdog();
   }, []);
 
   useEffect(() => {
@@ -150,14 +169,14 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
       if (playerRef.current && readyRef.current) {
         if (currentVideoIdRef.current !== videoId) {
           currentVideoIdRef.current = videoId;
-          clearPlayRetries();
+          stopPlayWatchdog();
           playerRef.current.loadVideoById(videoId);
           if (isPlayingPropRef.current) {
             // Do not rely on this single call: in background it is
-            // often swallowed. schedulePlayRetries() retries after
+            // often swallowed. startPlayWatchdog() retries after
             // the player has buffered / been cued.
             attemptPlay();
-            schedulePlayRetries();
+            startPlayWatchdog();
           } else {
             playerRef.current.pauseVideo();
           }
@@ -188,29 +207,41 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             }
             if (isPlayingPropRef.current) {
               e.target.playVideo();
-              schedulePlayRetries();
+              startPlayWatchdog();
             }
           },
           onStateChange: (e) => {
             if (e.data === 0) {
-              clearPlayRetries();
+              stopPlayWatchdog();
               onEnded();
             } else if (e.data === 1) {
-              clearPlayRetries();
+              stopPlayWatchdog();
               const dur = e.target.getDuration();
               if (dur > 0) {
                 onTimeUpdate(e.target.getCurrentTime() || 0, dur);
               }
               onPlayingChange(true);
             } else if (e.data === 2) {
-              onPlayingChange(false);
+              // PAUSED (2): YouTube itself pauses the player when
+              // play is blocked in a background tab. That is NOT
+              // the user pressing pause — forwarding it would make
+              // the app set isPlaying=false and stop every retry,
+              // so the next track would never start until the page
+              // is reopened. Keep retrying instead; a real user
+              // pause goes through the isPlaying prop, not this.
+              if (isPlayingPropRef.current) {
+                startPlayWatchdog();
+              } else {
+                stopPlayWatchdog();
+                onPlayingChange(false);
+              }
             } else if (e.data === 3 || e.data === 5) {
               // BUFFERING (3) / CUED (5): the video is loaded but
               // not playing yet. This is the exact state the next
               // track used to get stuck in when backgrounded.
               if (isPlayingPropRef.current) {
                 attemptPlay();
-                schedulePlayRetries();
+                startPlayWatchdog();
               }
             }
           },
@@ -225,7 +256,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
               e.target.loadVideoById(nextVid);
               if (isPlayingPropRef.current) {
                 e.target.playVideo();
-                schedulePlayRetries();
+                startPlayWatchdog();
               }
             } else {
               onFallbackToPreview?.();
@@ -247,9 +278,9 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     try {
       if (isPlaying) {
         playerRef.current.playVideo();
-        schedulePlayRetries();
+        startPlayWatchdog();
       } else {
-        clearPlayRetries();
+        stopPlayWatchdog();
         playerRef.current.pauseVideo();
       }
     } catch {
@@ -266,7 +297,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     if (!isPlayingPropRef.current) return;
     try {
       playerRef.current.playVideo();
-      schedulePlayRetries();
+      startPlayWatchdog();
     } catch {
       // ignore
     }
