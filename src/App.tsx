@@ -323,6 +323,21 @@ export function App() {
     return ['Ch3l_Q9PxpQ', '7Jm2Il2U-c0'];
   });
   const [ytSeekRequest, setYtSeekRequest] = useState<{ sec: number; nonce: number } | null>(null);
+
+  // Two-player pre-roll for background playback (v48):
+  // A YouTube video cannot START while its tab is hidden on mobile, but a
+  // video that is already playing keeps playing when the tab hides. So a
+  // second ("standby") player pre-loads the NEXT track and plays it muted
+  // while the tab is still visible. At track change we flip: the standby
+  // becomes audible (seek to 0 + unmute) and the old active player becomes
+  // the standby for the following track. No new play() call is needed in
+  // the background — only a seek + unmute on an already-playing player.
+  const [activePlayer, setActivePlayer] = useState<'A' | 'B'>('A');
+  const [standbyVideoId, setStandbyVideoId] = useState<string | null>(null);
+  const [standbyTrackId, setStandbyTrackId] = useState<string | null>(null);
+  const [standbyCandidates, setStandbyCandidates] = useState<string[]>([]);
+  const [standbySeekRequest, setStandbySeekRequest] = useState<{ sec: number; nonce: number } | null>(null);
+  const [standbyIsPlaying, setStandbyIsPlaying] = useState(false);
   const [stageMode, setStageMode] = useState<'cover' | 'video'>('cover');
   const [videoStageRect, setVideoStageRect] = useState<{
     top: number;
@@ -630,11 +645,16 @@ export function App() {
   }, []);
 
   // Enrich track with synced lyrics (.lrc) + YouTube Music videoId
-  const enrichTrackMetadata = async (track: Track) => {
+  // skipVideoResolve: used on a two-player flip — the standby player already
+  // has the right video loaded, so resolving a (possibly different) videoId
+  // here could reload the active player while the tab is hidden. Lyrics
+  // are still fetched.
+  const enrichTrackMetadata = async (track: Track, skipVideoResolve = false) => {
     if (track.audioUrl.startsWith('blob:')) {
       if (!track.youtubeVideoId) return;
     }
 
+    if (!skipVideoResolve) {
     let instantId = track.youtubeVideoId || null;
     if (!instantId) {
       const cleanTitle = (track.title || '').toLowerCase().trim();
@@ -697,6 +717,7 @@ export function App() {
       tryResolve(1);
     } else {
       dbg(`track id instant: "${track.title}" -> ${instantId}`);
+    }
     }
 
     // 2. Fetch lyrics independently without blocking playback
@@ -1019,14 +1040,35 @@ export function App() {
         }
       }
     }
-    if (immediateYtId) {
+    // Two-player flip: if the standby player already holds this track AND
+    // is actually playing (muted), switch the audible role to it instead of
+    // loading the video into the main player (which cannot start while hidden).
+    const canFlip =
+      targetMode !== 'hifi-eq' &&
+      standbyVideoId !== null &&
+      standbyTrackId === track.id &&
+      standbyIsPlaying &&
+      (immediateYtId === null || immediateYtId === standbyVideoId);
+    if (canFlip) {
+      const nextActive = activePlayer === 'A' ? 'B' : 'A';
+      setActivePlayer(nextActive);
+      setCurrentYtVideoId(standbyVideoId);
+      setCurrentYtCandidates(standbyCandidates.length > 0 ? standbyCandidates : [standbyVideoId]);
+      // Restart the flipped-in player from 0:00 (it has been playing muted).
+      setYtSeekRequest({ sec: 0, nonce: Date.now() });
+      setStandbyVideoId(null);
+      setStandbyTrackId(null);
+      setStandbyCandidates([]);
+      setStandbyIsPlaying(false);
+      dbg(`flip to standby player ${nextActive}: "${track.title}" (${standbyVideoId}) hidden=${document.hidden}`);
+    } else if (immediateYtId) {
       setCurrentYtVideoId(immediateYtId);
       setCurrentYtCandidates([immediateYtId]);
     }
 
     setIsPlaying(true);
 
-    dbg(`select track: "${track.title}" - ${track.artist} immediateYtId=${immediateYtId || 'NONE'} hidden=${document.hidden}`);
+    dbg(`select track: "${track.title}" - ${track.artist} immediateYtId=${immediateYtId || 'NONE'} flip=${canFlip} hidden=${document.hidden}`);
 
     if (targetMode === 'hifi-eq') {
       studioAudioEngine.loadTrack(track, true);
@@ -1034,7 +1076,9 @@ export function App() {
       studioAudioEngine.pause();
     }
 
-    enrichTrackMetadata(track);
+    // On a flip, skip the video-ID resolution (the standby already has the
+    // right video loaded) but still fetch lyrics.
+    enrichTrackMetadata(track, canFlip);
   };
 
   const handleTogglePlay = () => {
@@ -1081,7 +1125,9 @@ export function App() {
     return allKnownTracks;
   }, [allPlaylists, activePlaylistId, allKnownTracks]);
 
-  // Pre-fetch YouTube video ID for the upcoming track in queue
+  // Pre-fetch YouTube video ID for the upcoming track in queue + arm the
+  // standby (pre-roll) player with it, so the next track is already playing
+  // (muted) before the tab is hidden.
   // MUST be placed AFTER displayedTracks & allKnownTracks declarations to avoid TDZ error
   useEffect(() => {
     let nextTrackToPreload: Track | null = null;
@@ -1095,35 +1141,55 @@ export function App() {
       }
     }
 
-    if (nextTrackToPreload && !nextTrackToPreload.youtubeVideoId) {
-      const cleanTitle = (nextTrackToPreload.title || '').toLowerCase().trim();
-      let hasImmediate = false;
-      for (const [key] of Object.entries(POPULAR_YT_MAP)) {
-        if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
-          hasImmediate = true;
-          break;
-        }
+    if (!nextTrackToPreload) return;
+
+    // Arm the standby player with the next track's videoId so it can
+    // start playing (muted) while the tab is still visible.
+    const armStandby = (vid: string, candidates: string[]) => {
+      if (vid && vid !== currentYtVideoId) {
+        setStandbyTrackId(nextTrackToPreload!.id);
+        setStandbyVideoId(vid);
+        setStandbyCandidates(candidates.length > 0 ? candidates : [vid]);
+        dbg(`standby arm: "${nextTrackToPreload!.title}" -> ${vid}`);
       }
-      if (!hasImmediate) {
-        const targetId = nextTrackToPreload.id;
-        resolveYouTubeVideoId(nextTrackToPreload.title, nextTrackToPreload.artist, nextTrackToPreload.id)
-          .then((yt) => {
-            if (yt.videoId) {
-              setPlaybackQueue((prev) =>
-                prev.map((t) => (t.id === targetId ? { ...t, youtubeVideoId: yt.videoId! } : t))
-              );
-              setResolvedSavedTracks((prev) => {
-                const existing = prev[targetId];
-                if (existing) {
-                  return { ...prev, [targetId]: { ...existing, youtubeVideoId: yt.videoId! } };
-                }
-                return prev;
-              });
-            }
-          })
-          .catch(() => {});
+    };
+
+    if (nextTrackToPreload.youtubeVideoId) {
+      armStandby(nextTrackToPreload.youtubeVideoId, [nextTrackToPreload.youtubeVideoId]);
+      return;
+    }
+
+    const cleanTitle = (nextTrackToPreload.title || '').toLowerCase().trim();
+    let immediateId: string | null = null;
+    for (const [key, id] of Object.entries(POPULAR_YT_MAP)) {
+      if (cleanTitle.includes(key) || key.includes(cleanTitle)) {
+        immediateId = id;
+        break;
       }
     }
+    if (immediateId) {
+      armStandby(immediateId, [immediateId]);
+      return;
+    }
+
+    const targetId = nextTrackToPreload.id;
+    resolveYouTubeVideoId(nextTrackToPreload.title, nextTrackToPreload.artist, nextTrackToPreload.id)
+      .then((yt) => {
+        if (yt.videoId) {
+          setPlaybackQueue((prev) =>
+            prev.map((t) => (t.id === targetId ? { ...t, youtubeVideoId: yt.videoId! } : t))
+          );
+          setResolvedSavedTracks((prev) => {
+            const existing = prev[targetId];
+            if (existing) {
+              return { ...prev, [targetId]: { ...existing, youtubeVideoId: yt.videoId! } };
+            }
+            return prev;
+          });
+          armStandby(yt.videoId, yt.candidates && yt.candidates.length > 0 ? yt.candidates : [yt.videoId]);
+        }
+      })
+      .catch(() => {});
   }, [currentTrack.id, playbackQueue, displayedTracks, allKnownTracks]);
 
   const handleToggleShuffle = () => {
@@ -2256,35 +2322,114 @@ export function App() {
                 : "pointer-events-none border-0 shadow-none"
             }
           >
+          {/* Two YouTube players: A and B. One is the audible "active" player,
+              the other is the muted "standby" (pre-roll) player that is already
+              playing the next track so a track change in the background only
+              needs a seek + unmute on a playing player. */}
+          <div
+            className="absolute inset-0"
+            style={{ opacity: activePlayer === 'A' ? 1 : 0, pointerEvents: activePlayer === 'A' ? 'auto' : 'none' }}
+          >
           <YouTubeMusicPlayer
-            videoId={currentYtVideoId}
-            candidateIds={currentYtCandidates}
+            videoId={activePlayer === 'A' ? currentYtVideoId : standbyVideoId}
+            candidateIds={activePlayer === 'A' ? currentYtCandidates : standbyCandidates}
             isPlaying={isPlaying}
-            volume={volume}
-            isMuted={isMuted}
-            seekRequest={ytSeekRequest}
+            volume={activePlayer === 'A' ? volume : 0}
+            isMuted={activePlayer === 'A' ? isMuted : true}
+            seekRequest={activePlayer === 'A' ? ytSeekRequest : standbySeekRequest}
             onTimeUpdate={(cur, dur) => {
-              setCurrentTimeSec(cur);
-              if (dur > 0) {
-                if (currentTrack.durationSec > 30 && dur > currentTrack.durationSec * 2.2) {
-                  setDurationSec(currentTrack.durationSec);
-                } else {
-                  setDurationSec(dur);
+              if (activePlayer === 'A') {
+                setCurrentTimeSec(cur);
+                if (dur > 0) {
+                  if (currentTrack.durationSec > 30 && dur > currentTrack.durationSec * 2.2) {
+                    setDurationSec(currentTrack.durationSec);
+                  } else {
+                    setDurationSec(dur);
+                  }
+                }
+              } else {
+                // Standby loop guard: keep the pre-roll playing forever so it
+                // never reaches ENDED before the flip.
+                if (dur > 0 && cur > dur - 15) {
+                  setStandbySeekRequest({ sec: 0, nonce: Date.now() });
                 }
               }
             }}
-            onEnded={() => handleNextTrack(true)}
+            onEnded={() => {
+              if (activePlayer === 'A') handleNextTrack(true);
+            }}
             onPlayingChange={(playing) => {
-              if (playing) {
-                setIsPlaying(true);
+              if (activePlayer === 'A') {
+                if (playing) {
+                  setIsPlaying(true);
+                }
+              } else {
+                setStandbyIsPlaying(playing);
+                if (playing) dbg(`standby playing: ${standbyVideoId}`);
               }
             }}
             onFallbackToPreview={() => {
-              console.warn('[App] YouTube video unavailable, skipping to next track');
-              showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
-              handleNextTrack(true);
+              if (activePlayer === 'A') {
+                console.warn('[App] YouTube video unavailable, skipping to next track');
+                showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
+                handleNextTrack(true);
+              } else {
+                dbg('standby fallback: video unavailable');
+              }
             }}
           />
+          </div>
+          <div
+            className="absolute inset-0"
+            style={{ opacity: activePlayer === 'B' ? 1 : 0, pointerEvents: activePlayer === 'B' ? 'auto' : 'none' }}
+          >
+          <YouTubeMusicPlayer
+            videoId={activePlayer === 'B' ? currentYtVideoId : standbyVideoId}
+            candidateIds={activePlayer === 'B' ? currentYtCandidates : standbyCandidates}
+            isPlaying={isPlaying}
+            volume={activePlayer === 'B' ? volume : 0}
+            isMuted={activePlayer === 'B' ? isMuted : true}
+            seekRequest={activePlayer === 'B' ? ytSeekRequest : standbySeekRequest}
+            onTimeUpdate={(cur, dur) => {
+              if (activePlayer === 'B') {
+                setCurrentTimeSec(cur);
+                if (dur > 0) {
+                  if (currentTrack.durationSec > 30 && dur > currentTrack.durationSec * 2.2) {
+                    setDurationSec(currentTrack.durationSec);
+                  } else {
+                    setDurationSec(dur);
+                  }
+                }
+              } else {
+                if (dur > 0 && cur > dur - 15) {
+                  setStandbySeekRequest({ sec: 0, nonce: Date.now() });
+                }
+              }
+            }}
+            onEnded={() => {
+              if (activePlayer === 'B') handleNextTrack(true);
+            }}
+            onPlayingChange={(playing) => {
+              if (activePlayer === 'B') {
+                if (playing) {
+                  setIsPlaying(true);
+                }
+              } else {
+                setStandbyIsPlaying(playing);
+                if (playing) dbg(`standby playing: ${standbyVideoId}`);
+              }
+            }}
+            onFallbackToPreview={() => {
+              if (activePlayer === 'B') {
+                console.warn('[App] YouTube video unavailable, skipping to next track');
+                showToast('⚠️ Lagu tidak tersedia di YouTube, memutar lagu berikutnya...');
+                handleNextTrack(true);
+              } else {
+                dbg('standby fallback: video unavailable');
+              }
+            }}
+          />
+          </div>
         </div>
       );
     })()}
