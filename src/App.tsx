@@ -2160,6 +2160,11 @@ export function App() {
         activeTab={activeTab}
         onTabChange={(tab) => {
           setIsDesktopNowPlayingExpanded(false);
+          // v71 — ketuk Library harus kembali ke DAFTAR koleksi, bukan
+          // nyangkut di detail playlist yang terakhir dibuka. Kalau
+          // activePlaylistId tidak dibersihkan, LibraryPage tetap
+          // menampilkan detail playlist lama walau tab sudah 'library'.
+          if (tab === 'library') setActivePlaylistId(null);
           setActiveTab(tab);
         }}
         playlists={allPlaylists}
@@ -2442,6 +2447,9 @@ export function App() {
           activeTab={activeTab}
           accentColor={accentColor}
           onTabChange={(tab) => {
+            // v71 — sama seperti sidebar desktop: ketuk Koleksi harus
+            // kembali ke daftar koleksi (bersihkan detail playlist).
+            if (tab === 'library') setActivePlaylistId(null);
             setActiveTab(tab);
             window.scrollTo({ top: 0, behavior: 'smooth' });
           }}
