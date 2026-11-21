@@ -600,7 +600,7 @@ export const FullScreenPlayer: React.FC<FullScreenPlayerProps> = ({
               type="range"
               min={0}
               max={Math.max(1, durationSec)}
-              value={currentTimeSec}
+              value={Math.min(currentTimeSec, Math.max(1, durationSec))}
               onChange={(e) => onSeek(Number(e.target.value))}
               className="w-full h-1 bg-white/25 rounded-lg accent-white cursor-pointer"
               aria-label="Garis waktu pemutaran"

@@ -570,16 +570,13 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           </div>
         </div>
 
-        {/* Hero Banner Header */}
+        {/* Hero Banner Header — v88: shadow-2xl + glow radial dihapus (bayangan di Koleksi). */}
         <div
-          className={`relative rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b ${theme.heroGradient} p-6 sm:p-8 backdrop-blur-2xl shadow-2xl`}
+          className={`relative rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b ${theme.heroGradient} p-6 sm:p-8 backdrop-blur-2xl`}
         >
-          {/* Subtle Ambient Radial Glow */}
-          <div className="absolute -top-24 -left-24 w-72 h-72 bg-white/10 rounded-full blur-3xl pointer-events-none" />
-
           <div className="relative z-10 flex flex-col md:flex-row md:items-end gap-6 sm:gap-8">
             {/* Playlist Artwork Cover */}
-            <div className="w-40 h-40 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-3xl overflow-hidden shadow-2xl border border-white/20 shrink-0 relative group mx-auto md:mx-0">
+            <div className="w-40 h-40 sm:w-52 sm:h-52 md:w-56 md:h-56 rounded-3xl overflow-hidden border border-white/20 shrink-0 relative group mx-auto md:mx-0">
               <PlaylistCoverCollage
                 tracks={activePlaylistTracks}
                 theme={activePlaylist.coverTheme}
@@ -592,7 +589,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                   onClick={() => handlePlayAll(activePlaylistTracks)}
                   className="absolute inset-0 bg-black/40 backdrop-blur-[2px] opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
                 >
-                  <div className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center shadow-xl transform group-hover:scale-110 active:scale-95 transition-transform">
+                  <div className="w-14 h-14 rounded-full bg-white text-black flex items-center justify-center transform group-hover:scale-110 active:scale-95 transition-transform">
                     <Play className="w-6 h-6 fill-current translate-x-0.5" />
                   </div>
                 </div>
@@ -644,7 +641,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                   type="button"
                   onClick={() => handlePlayAll(activePlaylistTracks)}
                   disabled={activePlaylistTracks.length === 0}
-                  className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl font-bold text-sm text-black bg-white hover:bg-white/90 active:scale-95 transition-all shadow-xl disabled:opacity-40 cursor-pointer"
+                  className="inline-flex items-center gap-2.5 px-6 py-3 rounded-2xl font-bold text-sm text-black bg-white hover:bg-white/90 active:scale-95 transition-all disabled:opacity-40 cursor-pointer"
                 >
                   <Play className="w-5 h-5 fill-current" />
                   <span>Putar Semua</span>
@@ -746,14 +743,14 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           )}
         </div>
 
-        {/* Folder Hero Banner */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-white/10 via-white/5 to-transparent border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl">
+        {/* Folder Hero Banner — v88: gradient + shadow-xl + glow dihapus
+            (bayangan melintang yang mengganggu di Koleksi). Kini datar. */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
             <div
-              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-white shadow-xl shrink-0"
+              className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-white shrink-0"
               style={{
                 backgroundColor: accentColor,
-                boxShadow: `0 0 24px ${accentColor}55`,
               }}
             >
               <Folder className="w-8 h-8 sm:w-10 sm:h-10 fill-white/20" />
@@ -782,10 +779,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               <button
                 type="button"
                 onClick={() => handlePlayAll(selectedFolder.tracks)}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white shadow-lg transition-transform hover:scale-105 active:scale-95 cursor-pointer"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl text-sm font-bold text-white transition-transform hover:scale-105 active:scale-95 cursor-pointer"
                 style={{
                   backgroundColor: accentColor,
-                  boxShadow: `0 0 16px ${accentColor}66`,
                 }}
               >
                 <Play className="w-4 h-4 fill-white" />

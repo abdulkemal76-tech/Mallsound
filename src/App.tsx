@@ -2817,7 +2817,20 @@ export function App() {
               if (activePlayer === 'A') {
                 setCurrentTimeSec(cur);
                 if (dur > 0) {
-                  if (currentTrack.durationSec > 30 && dur > currentTrack.durationSec * 2.2) {
+                  // v88: lagu impor fallback (id imported_*) durasinya cuma
+                  // tebakan 210 dtk (3:30) — JANGAN dikunci. Lagu sejam
+                  // (DJ mixtape) harus pakai durasi asli YouTube, kalau
+                  // tidak progress bar mentok di 3:30 padahal lagu jalan
+                  // terus. Guard "prefer stored" hanya untuk lagu yang
+                  // durasi tersimpannya dari metadata asli.
+                  const isImportedFallback =
+                    currentTrack.id.startsWith('imported_') &&
+                    currentTrack.durationSec === 210;
+                  if (
+                    !isImportedFallback &&
+                    currentTrack.durationSec > 30 &&
+                    dur > currentTrack.durationSec * 2.2
+                  ) {
                     setDurationSec(currentTrack.durationSec);
                   } else {
                     setDurationSec(dur);
@@ -2879,7 +2892,15 @@ export function App() {
               if (activePlayer === 'B') {
                 setCurrentTimeSec(cur);
                 if (dur > 0) {
-                  if (currentTrack.durationSec > 30 && dur > currentTrack.durationSec * 2.2) {
+                  // v88: sama seperti player A — lagu impor fallback jangan dikunci di 210.
+                  const isImportedFallback =
+                    currentTrack.id.startsWith('imported_') &&
+                    currentTrack.durationSec === 210;
+                  if (
+                    !isImportedFallback &&
+                    currentTrack.durationSec > 30 &&
+                    dur > currentTrack.durationSec * 2.2
+                  ) {
                     setDurationSec(currentTrack.durationSec);
                   } else {
                     setDurationSec(dur);
