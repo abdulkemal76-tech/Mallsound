@@ -68,6 +68,7 @@ import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
 import { DJ_INDO_TRACKS } from './data/djIndoTracks';
 import { SHOEGAZE_INDO_TRACKS, SHOEGAZE_INDO_PLAYLIST, SHOEGAZE_INDO_PLAYLIST_ID } from './data/shoegazeIndoTracks';
 import { MOOD_TRACKS, MOOD_PLAYLISTS, MOOD_PLAYLIST_IDS } from './data/moodPlaylists';
+import { GENRE_TRACKS, GENRE_PLAYLISTS, GENRE_PLAYLIST_IDS } from './data/genrePlaylists';
 
 // Pages
 import { HomePage } from './pages/HomePage';
@@ -156,7 +157,7 @@ export function App() {
   const allPlaylists = useMemo(() => {
     // Playlist bawaan MallSound (mis. Shoegaze Indonesia) selalu ada di
     // paling atas Koleksi — bukan dari localStorage / cloud.
-    const list: Playlist[] = [SHOEGAZE_INDO_PLAYLIST, ...MOOD_PLAYLISTS, ...localPlaylists];
+    const list: Playlist[] = [SHOEGAZE_INDO_PLAYLIST, ...MOOD_PLAYLISTS, ...GENRE_PLAYLISTS, ...localPlaylists];
     cloudPlaylists.forEach((cp) => {
       const existingIdx = list.findIndex((lp) => lp.id === cp.id);
       if (existingIdx >= 0) {
@@ -951,6 +952,7 @@ export function App() {
       ...DJ_INDO_TRACKS,
       ...SHOEGAZE_INDO_TRACKS,
       ...MOOD_TRACKS,
+      ...GENRE_TRACKS,
       ...BUILT_IN_TRACKS,
     ].forEach((t) => {
       const existing = map.get(t.id);
@@ -1852,7 +1854,7 @@ export function App() {
   const handleDeletePlaylist = async (playlistId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     // Playlist bawaan MallSound (mis. Shoegaze Indonesia, playlist mood) tidak bisa dihapus.
-    if (playlistId === SHOEGAZE_INDO_PLAYLIST_ID || MOOD_PLAYLIST_IDS.has(playlistId)) {
+    if (playlistId === SHOEGAZE_INDO_PLAYLIST_ID || MOOD_PLAYLIST_IDS.has(playlistId) || GENRE_PLAYLIST_IDS.has(playlistId)) {
       showToast('Playlist bawaan MallSound tidak bisa dihapus');
       return;
     }

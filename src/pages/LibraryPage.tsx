@@ -32,6 +32,7 @@ import {
 import { Track, Playlist, PlaylistCoverTheme } from '../types/music';
 import { SHOEGAZE_INDO_PLAYLIST_ID } from '../data/shoegazeIndoTracks';
 import { MOOD_PLAYLIST_IDS } from '../data/moodPlaylists';
+import { GENRE_PLAYLIST_IDS } from '../data/genrePlaylists';
 
 export interface LibraryPageProps {
   // Playlists
@@ -688,7 +689,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               {activePlaylistTracks.map((track, idx) =>
                 renderTrackRow(track, idx, {
                   playlistId: activePlaylist.id,
-                  canRemove: activePlaylist.id !== SHOEGAZE_INDO_PLAYLIST_ID && !MOOD_PLAYLIST_IDS.has(activePlaylist.id),
+                  canRemove: activePlaylist.id !== SHOEGAZE_INDO_PLAYLIST_ID && !MOOD_PLAYLIST_IDS.has(activePlaylist.id) && !GENRE_PLAYLIST_IDS.has(activePlaylist.id),
                   contextTracks: activePlaylistTracks,
                 })
               )}

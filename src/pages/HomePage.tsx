@@ -34,6 +34,7 @@ import { GLOBAL_ARTISTS, ArtistItem } from '../data/artists';
 import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 import { SHOEGAZE_INDO_PLAYLIST_ID } from '../data/shoegazeIndoTracks';
 import { MOOD_CARD_TO_PLAYLIST } from '../data/moodPlaylists';
+import { GENRE_CARD_TO_PLAYLIST } from '../data/genrePlaylists';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
@@ -1112,11 +1113,13 @@ export const HomePage: React.FC<HomePageProps> = ({
             <div
               key={card.id}
               onClick={() => {
-                // 4 kartu mood di sini membuka playlist beneran (v67),
-                // kartu genre tetap membuka pencarian seperti biasa.
+                // Kartu mood/genre di sini membuka playlist beneran (v67/v82),
+                // sisanya membuka pencarian seperti biasa.
                 const moodPlaylistId = MOOD_CARD_TO_PLAYLIST[card.id];
-                if (moodPlaylistId && onOpenPlaylist) {
-                  onOpenPlaylist(moodPlaylistId);
+                const genrePlaylistId = GENRE_CARD_TO_PLAYLIST[card.id];
+                const playlistId = moodPlaylistId || genrePlaylistId;
+                if (playlistId && onOpenPlaylist) {
+                  onOpenPlaylist(playlistId);
                 } else {
                   onNavigateToSearch(card.query);
                 }

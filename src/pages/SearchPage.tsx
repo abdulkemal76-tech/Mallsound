@@ -21,6 +21,7 @@ import {
 import { Track } from '../types/music';
 import { MOOD_CARDS, GENRE_CARDS, GenreMoodCard } from '../data/genres';
 import { MOOD_CARD_TO_PLAYLIST, MOOD_PLAYLISTS } from '../data/moodPlaylists';
+import { GENRE_CARD_TO_PLAYLIST, GENRE_PLAYLISTS } from '../data/genrePlaylists';
 import { GLOBAL_ARTISTS, ARTIST_CATEGORIES, ArtistItem } from '../data/artists';
 import { searchCatalogWithMeta } from '../services/musicApi';
 // Audius search (v52): merged below the catalog results, marked "Audius".
@@ -345,10 +346,23 @@ export const SearchPage: React.FC<SearchPageProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-              {GENRE_CARDS.map((card: GenreMoodCard) => (
+              {GENRE_CARDS.map((card: GenreMoodCard) => {
+                // Kartu genre membuka playlist terkurasi (v82), seperti kartu
+                // mood — fallback ke pencarian kalau playlist tidak ada.
+                const playlistId = GENRE_CARD_TO_PLAYLIST[card.id];
+                const trackCount = playlistId
+                  ? GENRE_PLAYLISTS.find((p) => p.id === playlistId)?.trackIds.length ?? 0
+                  : 0;
+                return (
                 <div
                   key={card.id}
-                  onClick={() => handleQuickSelect(card.query)}
+                  onClick={() => {
+                    if (playlistId && onOpenPlaylist) {
+                      onOpenPlaylist(playlistId);
+                    } else {
+                      handleQuickSelect(card.query);
+                    }
+                  }}
                   className={`group relative p-4 sm:p-5 rounded-2xl bg-gradient-to-br ${card.gradient} cursor-pointer border border-white/10 hover:border-white/30 shadow-md hover:shadow-xl hover:scale-[1.03] active:scale-[0.98] transition-all duration-200 flex flex-col justify-between h-28 sm:h-32 overflow-hidden`}
                 >
                   <div className="absolute inset-0 bg-black/10 group-hover:bg-transparent transition-colors" />
@@ -359,9 +373,15 @@ export const SearchPage: React.FC<SearchPageProps> = ({
                     <span className="font-display font-bold text-sm sm:text-base text-white drop-shadow-sm group-hover:text-amber-200 transition-colors">
                       {card.label}
                     </span>
+                    {trackCount > 0 && (
+                      <span className="block text-[11px] text-white/70 font-medium">
+                        {trackCount} lagu
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </section>
 
