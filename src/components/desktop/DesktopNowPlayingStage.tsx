@@ -25,6 +25,9 @@ export interface DesktopNowPlayingStageProps {
   isPlaying: boolean;
   onSelectTrack: (track: Track) => void;
   queueTracks: Track[];
+  // v81 — katalog lengkap, dipakai tab RELATED untuk mencari karya lain
+  // dari artis yang sama (bukan sekadar 10 lagu antrean).
+  allTracks?: Track[];
   videoStageSlot?: React.ReactNode;
   stageMode: 'cover' | 'video';
   onSwitchStageMode: (mode: 'cover' | 'video') => void;
@@ -50,6 +53,7 @@ export const DesktopNowPlayingStage: React.FC<DesktopNowPlayingStageProps> = ({
   isPlaying,
   onSelectTrack,
   queueTracks,
+  allTracks,
   videoStageSlot,
   stageMode,
   onSwitchStageMode,
@@ -303,27 +307,69 @@ export const DesktopNowPlayingStage: React.FC<DesktopNowPlayingStageProps> = ({
 
             {/* Tab 3: RELATED */}
             {activeTab === 'related' && (
-              <div className="space-y-3">
-                <p className="text-xs text-white/50">
-                  Lagu serupa dan karya lain dari artis ini:
-                </p>
-                {queueTracks.slice(0, 10).map((trk) => (
-                  <div
-                    key={trk.id}
-                    onClick={() => onSelectTrack(trk)}
-                    className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors"
-                  >
-                    <img
-                      src={trk.coverUrl}
-                      alt={trk.title}
-                      className="w-10 h-10 rounded-lg object-cover shrink-0"
-                    />
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-semibold text-white truncate">{trk.title}</p>
-                      <p className="text-[11px] text-white/50 truncate mt-0.5">{trk.artist}</p>
+              <div className="space-y-4">
+                {(() => {
+                  // v81 — RELATED kini benar-benar karya artis yang sama:
+                  // cari di katalog lengkap berdasarkan nama artis pertama,
+                  // lalu isi sisanya (maks 10) dengan lagu lain dari antrean.
+                  const mainArtist = currentTrack.artist
+                    .split(/[, &]+/)
+                    .map((s) => s.trim())
+                    .filter(Boolean)[0]?.toLowerCase();
+                  const pool = allTracks && allTracks.length > 0 ? allTracks : queueTracks;
+                  const sameArtist = mainArtist
+                    ? pool.filter(
+                        (t) =>
+                          t.id !== currentTrack.id &&
+                          t.artist.toLowerCase().includes(mainArtist),
+                      )
+                    : [];
+                  const seen = new Set(sameArtist.map((t) => t.id));
+                  seen.add(currentTrack.id);
+                  const queueFill = queueTracks
+                    .filter((t) => !seen.has(t.id))
+                    .slice(0, Math.max(0, 10 - sameArtist.length));
+                  const renderRow = (trk: Track) => (
+                    <div
+                      key={trk.id}
+                      onClick={() => onSelectTrack(trk)}
+                      className="flex items-center gap-3 p-2.5 rounded-xl hover:bg-white/5 cursor-pointer transition-colors"
+                    >
+                      <img
+                        src={trk.coverUrl}
+                        alt={trk.title}
+                        className="w-10 h-10 rounded-lg object-cover shrink-0"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-semibold text-white truncate">{trk.title}</p>
+                        <p className="text-[11px] text-white/50 truncate mt-0.5">{trk.artist}</p>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                  return (
+                    <>
+                      {sameArtist.length > 0 && (
+                        <div className="space-y-3">
+                          <p className="text-xs text-white/50">
+                            Karya lain dari {currentTrack.artist.split(',')[0].trim()}:
+                          </p>
+                          {sameArtist.slice(0, 10).map(renderRow)}
+                        </div>
+                      )}
+                      {queueFill.length > 0 && (
+                        <div className="space-y-3">
+                          <p className="text-xs text-white/50">Lagu lain dari antrean:</p>
+                          {queueFill.map(renderRow)}
+                        </div>
+                      )}
+                      {sameArtist.length === 0 && queueFill.length === 0 && (
+                        <p className="text-xs text-white/40 py-6 text-center">
+                          Belum ada lagu terkait untuk lagu ini.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
             )}
           </div>

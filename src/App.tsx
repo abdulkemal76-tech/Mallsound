@@ -2523,6 +2523,7 @@ export function App() {
         isPlaying={isPlaying}
         onSelectTrack={(trk) => handleSelectTrack(trk, undefined, true)}
         queueTracks={playbackQueue.length > 0 ? playbackQueue : (displayedTracks.length > 0 ? displayedTracks : allKnownTracks)}
+        allTracks={allKnownTracks}
         stageMode={stageMode}
         onSwitchStageMode={(mode) => {
           setStageMode(mode);
