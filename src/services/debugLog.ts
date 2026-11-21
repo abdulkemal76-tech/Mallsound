@@ -1,7 +1,7 @@
 // MallSound debug log — ring buffer persisted to localStorage so a background
 // playback failure on the user's phone can be inspected afterwards.
 // Enabled always (cheap); the on-screen panel only shows with ?debug=1.
-export const BUILD_VERSION = 'v84-lighter-code-split';
+export const BUILD_VERSION = 'v85-rekomendasi-viral-25';
 
 const KEY = 'mallsound_debug_log';
 const MAX_ENTRIES = 120;

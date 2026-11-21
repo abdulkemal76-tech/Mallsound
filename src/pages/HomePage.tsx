@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Play,
   Pause,
@@ -35,6 +35,7 @@ import { DJ_INDO_TRACKS } from '../data/djIndoTracks';
 import { SHOEGAZE_INDO_PLAYLIST_ID } from '../data/shoegazeIndoTracks';
 import { MOOD_CARD_TO_PLAYLIST } from '../data/moodPlaylists';
 import { GENRE_CARD_TO_PLAYLIST } from '../data/genrePlaylists';
+import { RECOMMENDED_POOL, RECOMMENDED_SHOW_COUNT } from '../data/recommendedTracks';
 import { searchCatalogWithMeta } from '../services/musicApi';
 
 export interface HomePageProps {
@@ -252,6 +253,33 @@ export const HomePage: React.FC<HomePageProps> = ({
   const [isRefreshingRecs, setIsRefreshingRecs] = useState(false);
   const [activeRecommendationQuery, setActiveRecommendationQuery] = useState('Top Hits Indonesia');
   const [recommendationSubtitle, setRecommendationSubtitle] = useState('Berdasarkan selera musikmu & lagu teratas');
+
+  // v85 — Daftar rekomendasi viral format baris (25 lagu) di atas Genre.
+  // Seed harian: daftar stabil seharian, berganti tiap hari; tombol Acak
+  // mengacak ulang kapan saja. Pool-nya lagu viral terverifikasi
+  // (src/data/recommendedTracks.ts), jadi tanpa loading/fetch.
+  const [recListSeed, setRecListSeed] = useState<number>(() => {
+    const d = new Date();
+    return d.getFullYear() * 10000 + (d.getMonth() + 1) * 100 + d.getDate();
+  });
+  const recommendedListTracks = useMemo(() => {
+    // Fisher-Yates dengan PRNG mulberry32 (seeded) supaya hasilnya stabil
+    // untuk seed yang sama.
+    let s = recListSeed || 1;
+    const rand = () => {
+      s |= 0;
+      s = (s + 0x6d2b79f5) | 0;
+      let t = Math.imul(s ^ (s >>> 15), 1 | s);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const arr = [...RECOMMENDED_POOL];
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr.slice(0, RECOMMENDED_SHOW_COUNT);
+  }, [recListSeed]);
   const [activeMood, setActiveMood] = useState('semua');
 
   // Hero Spotlight Slider State
@@ -1086,6 +1114,142 @@ export const HomePage: React.FC<HomePageProps> = ({
             })}
           </div>
         )}
+      </section>
+
+      {/* =====================================================================
+          6b. 🔥 REKOMENDASI VIRAL (format baris, 25 lagu) — v85
+          Daftar rekomendasi viral kedua di Beranda, bentuknya baris/daftar
+          (bukan kartu besar) supaya muat banyak. Diacak dari pool lagu viral
+          terverifikasi; berganti tiap hari + bisa diacak ulang. Kartu besar
+          "Rekomendasi Untukmu" di atas tetap ada (tidak dihapus).
+      ===================================================================== */}
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">🔥</span>
+              <h2 className="font-display text-xl sm:text-2xl font-bold tracking-tight text-white">
+                Rekomendasi Viral
+              </h2>
+            </div>
+            <p className="text-xs text-white/50 truncate pt-0.5">
+              {RECOMMENDED_SHOW_COUNT} lagu viral, diacak tiap hari — ketuk untuk memutar
+            </p>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={() => setRecListSeed(Math.floor(Math.random() * 1000000000) + 1)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 hover:bg-white/10 active:scale-95 border border-white/10 text-xs font-semibold text-white/70 hover:text-white transition-all cursor-pointer"
+              title="Acak daftar rekomendasi baru"
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Acak</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => onNavigateToSearch('Top Hits Indonesia')}
+              className="group flex items-center gap-1 text-xs sm:text-sm font-semibold text-white/60 hover:text-white transition-colors cursor-pointer"
+            >
+              Lihat Semua
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </button>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          {recommendedListTracks.map((track, idx) => {
+            const isCurrent = currentTrack?.id === track.id;
+            const isCurrentlyPlaying = isCurrent && isPlaying;
+            const liked = isTrackLiked(track.id);
+            return (
+              <div
+                key={`${track.id}-${idx}`}
+                onClick={() => onSelectTrack(track, recommendedListTracks)}
+                className={`group relative flex items-center justify-between gap-2 p-2.5 sm:p-3 rounded-2xl cursor-pointer transition-all duration-200 border ${
+                  isCurrent
+                    ? 'bg-violet-500/15 border-violet-500/40 shadow-lg shadow-violet-500/10'
+                    : 'bg-white/[0.03] hover:bg-white/[0.08] border-white/5 hover:border-white/10'
+                }`}
+              >
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  {/* Nomor / gelombang saat diputar */}
+                  <div className="w-5 sm:w-6 text-center font-mono text-xs text-white/40 shrink-0">
+                    {isCurrentlyPlaying ? (
+                      <div className="flex items-end gap-0.5 justify-center h-4 text-violet-400">
+                        <span className="w-0.5 bg-violet-400 rounded-full animate-bounce h-3" />
+                        <span className="w-0.5 bg-violet-400 rounded-full animate-bounce h-4 [animation-delay:0.15s]" />
+                        <span className="w-0.5 bg-violet-400 rounded-full animate-bounce h-2 [animation-delay:0.3s]" />
+                      </div>
+                    ) : (
+                      <span className="group-hover:hidden">{idx + 1}</span>
+                    )}
+                    {!isPlaying && (
+                      <Play className="w-3.5 h-3.5 text-white fill-current hidden group-hover:inline-block mx-auto" />
+                    )}
+                  </div>
+
+                  {/* Sampul */}
+                  <div className="relative w-11 h-11 sm:w-12 sm:h-12 rounded-xl overflow-hidden shrink-0 shadow-md bg-neutral-900 border border-white/10">
+                    <ResilientCoverImage
+                      src={track.coverUrl}
+                      alt={track.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                    {isCurrent && (
+                      <div className="absolute inset-0 bg-black/50 backdrop-blur-[1px] flex items-center justify-center">
+                        {isPlaying ? (
+                          <Pause className="w-4 h-4 text-white fill-current" />
+                        ) : (
+                          <Play className="w-4 h-4 text-white fill-current ml-0.5" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Judul & Artis */}
+                  <div className="min-w-0 flex-1">
+                    <h4
+                      className={`text-sm font-semibold truncate transition-colors ${
+                        isCurrent ? 'text-violet-400 font-display' : 'text-white group-hover:text-violet-300'
+                      }`}
+                    >
+                      {track.title}
+                    </h4>
+                    <p className="text-xs text-white/60 truncate mt-0.5">{track.artist}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+                  <span className="text-[11px] font-mono text-white/40 hidden sm:inline">
+                    {formatDuration(track.durationSec)}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => onToggleLike(track, e)}
+                    className={`p-2 rounded-full transition-colors cursor-pointer ${
+                      liked ? 'text-rose-500' : 'text-white/40 hover:text-rose-400 hover:bg-white/10'
+                    }`}
+                    title={liked ? 'Hapus dari Favorit' : 'Sukai lagu ini'}
+                  >
+                    <Heart className={`w-4 h-4 ${liked ? 'fill-current' : ''}`} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onOpenActions?.(track, e);
+                    }}
+                    className="p-2 rounded-full text-white/40 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+                    title="Menu opsi lagu"
+                  >
+                    <MoreVertical className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {/* =====================================================================
