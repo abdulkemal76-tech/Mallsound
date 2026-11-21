@@ -1153,14 +1153,8 @@ export const DJPage: React.FC<DJPageProps> = ({
         }
       `}</style>
 
-      {/* Top Ambient Glow */}
-      <div
-        className={`absolute top-0 inset-x-0 w-full h-64 blur-3xl pointer-events-none transition-opacity duration-300 ${
-          isPlaying
-            ? 'bg-violet-600/20 opacity-60'
-            : 'bg-violet-900/10 opacity-20'
-        }`}
-      />
+      {/* v86 — Ambient Glow DIHAPUS atas permintaan pengguna: cahaya/
+          bayangan blur di atas halaman DJ mengganggu & tidak pas. */}
 
       <div className="relative max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-5 space-y-6">
         {/* =================================================================
@@ -1190,7 +1184,7 @@ export const DJPage: React.FC<DJPageProps> = ({
             <div
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-2xl text-xs font-semibold transition-all duration-300 border ${
                 autoSaveActive
-                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50 shadow-[0_0_12px_rgba(52,211,153,0.3)]'
+                  ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/50'
                   : 'bg-white/5 text-white/60 border-white/10'
               }`}
               title="Pengaturan konsol DJ tersimpan otomatis"

@@ -75,7 +75,7 @@ export const ThemeColorPicker: React.FC<ThemeColorPickerProps> = ({
                   onClick={() => onSelectTheme(preset.id)}
                   className={`relative p-3 rounded-xl border text-left transition-all duration-200 cursor-pointer flex flex-col justify-between overflow-hidden group ${
                     isSelected
-                      ? 'border-violet-400 ring-2 ring-violet-500/50 shadow-lg scale-[1.02]'
+                      ? 'border-violet-400 scale-[1.02]'
                       : 'border-white/10 hover:border-white/20 bg-white/5 hover:bg-white/10'
                   }`}
                   style={{
@@ -135,7 +135,6 @@ export const ThemeColorPicker: React.FC<ThemeColorPickerProps> = ({
               className="w-7 h-7 rounded-lg flex items-center justify-center text-white shadow-sm"
               style={{
                 backgroundColor: currentAccent,
-                boxShadow: `0 0 12px ${currentAccent}66`,
               }}
             >
               <Palette className="w-4 h-4" />
@@ -181,7 +180,7 @@ export const ThemeColorPicker: React.FC<ThemeColorPickerProps> = ({
                 onClick={() => onSelectAccent(preset.hex)}
                 className={`group relative flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all duration-200 cursor-pointer ${
                   isSelected
-                    ? 'border-white/50 bg-white/10 scale-105 shadow-md'
+                    ? 'border-white/50 bg-white/10 scale-105'
                     : 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-white/20'
                 }`}
                 title={preset.name}
@@ -190,9 +189,6 @@ export const ThemeColorPicker: React.FC<ThemeColorPickerProps> = ({
                   className="w-7 h-7 rounded-full flex items-center justify-center transition-transform group-hover:scale-110 shadow-sm"
                   style={{
                     backgroundColor: preset.hex,
-                    boxShadow: isSelected
-                      ? `0 0 14px ${preset.hex}`
-                      : `0 0 6px ${preset.hex}44`,
                   }}
                 >
                   {isSelected && <Check className="w-4 h-4 text-white stroke-[3]" />}

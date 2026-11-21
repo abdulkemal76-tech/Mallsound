@@ -190,6 +190,59 @@ html.light .bg-black,
   background-color: var(--app-bg) !important;
 }
 
+/* v86 — Lengkapi override tema warna panggung (sebelumnya cuma
+   .bg-white/5 yang ikut tema; .bg-white/10, .bg-zinc-*, dan border
+   masih netral sehingga klik Ocean/Emerald/Sunset nyaris tak terlihat).
+   Kini seluruh kartu & permukaan ikut warna tema. */
+[data-theme="violet"] .bg-zinc-950,
+[data-theme="violet"] .bg-zinc-900,
+[data-theme="ocean"] .bg-zinc-950,
+[data-theme="ocean"] .bg-zinc-900,
+[data-theme="emerald"] .bg-zinc-950,
+[data-theme="emerald"] .bg-zinc-900,
+[data-theme="sunset"] .bg-zinc-950,
+[data-theme="sunset"] .bg-zinc-900 {
+  background-color: var(--app-bg) !important;
+}
+
+[data-theme="violet"] .bg-white\/10,
+[data-theme="ocean"] .bg-white\/10,
+[data-theme="emerald"] .bg-white\/10,
+[data-theme="sunset"] .bg-white\/10 {
+  background-color: var(--app-surface) !important;
+  border-color: var(--app-surface-border) !important;
+}
+
+[data-theme="violet"] .border-white\/10,
+[data-theme="violet"] .border-white\/5,
+[data-theme="violet"] .border-white\/20,
+[data-theme="ocean"] .border-white\/10,
+[data-theme="ocean"] .border-white\/5,
+[data-theme="ocean"] .border-white\/20,
+[data-theme="emerald"] .border-white\/10,
+[data-theme="emerald"] .border-white\/5,
+[data-theme="emerald"] .border-white\/20,
+[data-theme="sunset"] .border-white\/10,
+[data-theme="sunset"] .border-white\/5,
+[data-theme="sunset"] .border-white\/20 {
+  border-color: var(--app-surface-border) !important;
+}
+
+[data-theme="violet"] .text-white\/70,
+[data-theme="violet"] .text-white\/60,
+[data-theme="violet"] .text-white\/50,
+[data-theme="ocean"] .text-white\/70,
+[data-theme="ocean"] .text-white\/60,
+[data-theme="ocean"] .text-white\/50,
+[data-theme="emerald"] .text-white\/70,
+[data-theme="emerald"] .text-white\/60,
+[data-theme="emerald"] .text-white\/50,
+[data-theme="sunset"] .text-white\/70,
+[data-theme="sunset"] .text-white\/60,
+[data-theme="sunset"] .text-white\/50 {
+  color: var(--app-text-secondary) !important;
+}
+
 /* Custom subtle scrollbars for MallSound studio panels */
 ::-webkit-scrollbar {
   width: 6px;

@@ -460,6 +460,8 @@ app.get('/api/playlist/import', async (req, res) => {
       title: string;
       artist: string;
       youtubeId?: string;
+      /** v86: cover dari oEmbed (single video) — dipakai fallback kalau iTunes tak ketemu. */
+      coverUrl?: string;
     }
 
     let playlistTitle = 'Playlist Impor';
@@ -524,67 +526,125 @@ app.get('/api/playlist/import', async (req, res) => {
         }
       }
     }
-    // --- 2. YOUTUBE / YOUTUBE MUSIC PLAYLIST IMPORT ---
+    // --- 2. YOUTUBE / YOUTUBE MUSIC ---
+    // v86: link video SATUAN (tanpa ?list=) juga diterima, bukan cuma playlist.
     else if (rawUrl.includes('youtube.com/') || rawUrl.includes('youtu.be/')) {
       const listMatch = rawUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/);
       const listId = listMatch ? listMatch[1] : '';
+      // Video ID dari ?v=, youtu.be/ID, /shorts/ID, /embed/ID, /v/ID
+      const videoIdMatch =
+        rawUrl.match(/[?&]v=([a-zA-Z0-9_-]{11})/) ||
+        rawUrl.match(/youtu\.be\/([a-zA-Z0-9_-]{11})/) ||
+        rawUrl.match(/\/(?:shorts|embed|v)\/([a-zA-Z0-9_-]{11})/);
+      const singleVideoId = videoIdMatch ? videoIdMatch[1] : '';
 
-      if (!listId) {
-        res.status(400).json({ error: 'ID playlist YouTube tidak ditemukan dalam URL' });
-        return;
-      }
-
-      try {
-        const ytRes = await fetch(`https://www.youtube.com/playlist?list=${listId}`, {
-          headers: {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-            'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-          },
-        });
-
-        if (ytRes.ok) {
-          const html = await ytRes.text();
-          const titleMatch = html.match(/<title>(.*?) - YouTube<\/title>/);
-          if (titleMatch && titleMatch[1]) {
-            playlistTitle = titleMatch[1].trim();
-          }
-
-          // Bersihkan judul YouTube: sering "Artis - Judul" atau "Judul (Official Video)"
-          const seen = new Set<string>();
-          const addCandidate = (videoId: string, title: string) => {
-            if (!videoId || !title || seen.has(videoId)) return;
-            seen.add(videoId);
-            let cleanArtist = '';
-            let cleanTitle = title.replace(/\(.*?\)|\[.*?\]/g, '').trim();
-            if (cleanTitle.includes(' - ')) {
-              const parts = cleanTitle.split(' - ');
-              cleanArtist = parts[0].trim();
-              cleanTitle = parts.slice(1).join(' - ').trim();
+      if (singleVideoId && !listId) {
+        // --- 2a. SINGLE VIDEO: ambil judul + channel via oEmbed (tanpa API key) ---
+        let videoTitle = '';
+        let videoAuthor = '';
+        let videoThumb = '';
+        try {
+          const oembedRes = await fetch(
+            `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/watch?v=' + singleVideoId)}&format=json`,
+            {
+              headers: {
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              },
             }
-            candidates.push({
-              title: cleanTitle || title,
-              artist: cleanArtist,
-              youtubeId: videoId,
-            });
-          };
-
-          // Struktur baru YouTube (lockupViewModel); kalau kosong, coba
-          // regex struktur lama (playlistVideoRenderer).
-          const lockupItems = extractLockupPlaylistItems(html);
-          for (const it of lockupItems) {
-            addCandidate(it.videoId, it.title);
-            if (candidates.length >= 35) break;
+          );
+          if (oembedRes.ok) {
+            const oembedJson = (await oembedRes.json()) as {
+              title?: string;
+              author_name?: string;
+              thumbnail_url?: string;
+            };
+            videoTitle = (oembedJson.title || '').trim();
+            videoAuthor = (oembedJson.author_name || '').trim();
+            videoThumb = (oembedJson.thumbnail_url || '').trim();
           }
-          if (candidates.length === 0) {
-            const trackMatches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})".*?"title":{"runs":\[{"text":"([^"]+)"}\]/g)];
-            for (const m of trackMatches) {
-              addCandidate(m[1], m[2]);
+        } catch {
+          // abaikan — fallback ke judul generik di bawah
+        }
+
+        // Bersihkan judul seperti addCandidate di playlist.
+        let cleanTitle = (videoTitle || 'Video YouTube')
+          .replace(/\(.*?\)|\[.*?\]/g, '')
+          .trim();
+        let cleanArtist = videoAuthor;
+        if (cleanTitle.includes(' - ')) {
+          const parts = cleanTitle.split(' - ');
+          cleanArtist = parts[0].trim();
+          cleanTitle = parts.slice(1).join(' - ').trim();
+        }
+        if (!cleanTitle) cleanTitle = videoTitle || 'Video YouTube';
+        playlistTitle = cleanTitle;
+        candidates.push({
+          title: cleanTitle,
+          artist: cleanArtist || videoAuthor || '',
+          youtubeId: singleVideoId,
+          coverUrl:
+            videoThumb ||
+            `https://i.ytimg.com/vi/${singleVideoId}/hqdefault.jpg`,
+        });
+      } else {
+        // --- 2b. PLAYLIST (jalur lama, tidak berubah) ---
+        if (!listId) {
+          res.status(400).json({ error: 'ID playlist YouTube tidak ditemukan dalam URL' });
+          return;
+        }
+
+        try {
+          const ytRes = await fetch(`https://www.youtube.com/playlist?list=${listId}`, {
+            headers: {
+              'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+              'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
+            },
+          });
+
+          if (ytRes.ok) {
+            const html = await ytRes.text();
+            const titleMatch = html.match(/<title>(.*?) - YouTube<\/title>/);
+            if (titleMatch && titleMatch[1]) {
+              playlistTitle = titleMatch[1].trim();
+            }
+
+            // Bersihkan judul YouTube: sering "Artis - Judul" atau "Judul (Official Video)"
+            const seen = new Set<string>();
+            const addCandidate = (videoId: string, title: string) => {
+              if (!videoId || !title || seen.has(videoId)) return;
+              seen.add(videoId);
+              let cleanArtist = '';
+              let cleanTitle = title.replace(/\(.*?\)|\[.*?\]/g, '').trim();
+              if (cleanTitle.includes(' - ')) {
+                const parts = cleanTitle.split(' - ');
+                cleanArtist = parts[0].trim();
+                cleanTitle = parts.slice(1).join(' - ').trim();
+              }
+              candidates.push({
+                title: cleanTitle || title,
+                artist: cleanArtist,
+                youtubeId: videoId,
+              });
+            };
+
+            // Struktur baru YouTube (lockupViewModel); kalau kosong, coba
+            // regex struktur lama (playlistVideoRenderer).
+            const lockupItems = extractLockupPlaylistItems(html);
+            for (const it of lockupItems) {
+              addCandidate(it.videoId, it.title);
               if (candidates.length >= 35) break;
             }
+            if (candidates.length === 0) {
+              const trackMatches = [...html.matchAll(/"videoId":"([a-zA-Z0-9_-]{11})".*?"title":{"runs":\[{"text":"([^"]+)"}\]/g)];
+              for (const m of trackMatches) {
+                addCandidate(m[1], m[2]);
+                if (candidates.length >= 35) break;
+              }
+            }
           }
+        } catch (err) {
+          console.warn('YouTube playlist fetch failed:', err);
         }
-      } catch (err) {
-        console.warn('YouTube playlist fetch failed:', err);
       }
     } else {
       res.status(400).json({ error: 'URL tidak didukung. Harap gunakan URL Spotify atau YouTube Music.' });
@@ -641,7 +701,10 @@ app.get('/api/playlist/import', async (req, res) => {
           genre: 'Pop',
           durationSec: 210,
           previewDurationSec: 30,
-          coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80',
+          // v86: single video pakai thumbnail YouTube asli, bukan gambar generik.
+          coverUrl:
+            c.coverUrl ||
+            'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&q=80',
           audioUrl: '',
           rawPreviewUrl: '',
           youtubeVideoId: c.youtubeId || ytId || null,

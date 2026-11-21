@@ -20,7 +20,7 @@ export interface PlaylistImportModalProps {
   onImportComplete: (tracks: Track[], playlistTitle: string) => void;
 }
 
-type PlatformType = 'spotify' | 'ytmusic' | 'youtube' | 'unknown';
+type PlatformType = 'spotify' | 'ytmusic' | 'youtube' | 'youtube-video' | 'unknown';
 
 function detectPlatform(url: string): PlatformType {
   const trimmed = url.trim().toLowerCase();
@@ -40,6 +40,20 @@ function detectPlatform(url: string): PlatformType {
   }
   if (trimmed.includes('youtube.com/watch') && /[?&]list=/.test(trimmed)) {
     return 'youtube';
+  }
+  // v86 — VIDEO SATUAN (tanpa ?list=): satu lagu dari link video YouTube.
+  if (
+    (trimmed.includes('youtube.com/watch') ||
+      trimmed.includes('music.youtube.com/watch')) &&
+    /[?&]v=[a-zA-Z0-9_-]{11}/.test(trimmed)
+  ) {
+    return 'youtube-video';
+  }
+  if (
+    trimmed.includes('youtu.be/') ||
+    /youtube\.com\/(shorts|embed|v)\//.test(trimmed)
+  ) {
+    return 'youtube-video';
   }
   return 'unknown';
 }
@@ -92,7 +106,7 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
 
     if (detectedPlatform === 'unknown') {
       setErrorMessage(
-        'Format URL tidak dikenali. Masukkan link playlist dari Spotify atau YouTube / YouTube Music.'
+        'Format URL tidak dikenali. Masukkan link playlist dari Spotify atau YouTube / YouTube Music — atau link SATU video YouTube (youtube.com/watch?v=... / youtu.be/...).'
       );
       return;
     }
@@ -123,7 +137,9 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
         String(data.title || data.playlistTitle || '').trim() ||
         (detectedPlatform === 'spotify'
           ? 'Playlist Impor Spotify'
-          : 'Playlist Impor YouTube Music');
+          : detectedPlatform === 'youtube-video'
+            ? 'Lagu Impor'
+            : 'Playlist Impor YouTube Music');
 
       if (tracks.length === 0) {
         throw new Error(
@@ -164,9 +180,9 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
               <Sparkles className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-white font-display">Import Playlist</h2>
+              <h2 className="text-lg font-bold text-white font-display">Import Playlist / Lagu</h2>
               <p className="text-xs text-white/60">
-                Impor lagu dari Spotify atau YouTube Music ke MallSound
+                Impor playlist dari Spotify atau YouTube Music — atau SATU lagu dari link video YouTube
               </p>
             </div>
           </div>
@@ -187,7 +203,7 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
             <form onSubmit={handleImport} className="space-y-4">
               <div>
                 <label className="block text-xs font-medium text-white/70 uppercase tracking-wider mb-2">
-                  Tautan Playlist (URL)
+                  Tautan Playlist / Video (URL)
                 </label>
                 <div className="relative">
                   <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-white/40">
@@ -200,7 +216,7 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
                       setUrl(e.target.value);
                       if (errorMessage) setErrorMessage(null);
                     }}
-                    placeholder="Paste link Spotify atau YouTube Music..."
+                    placeholder="Paste link playlist… atau link 1 video YouTube (watch?v=… / youtu.be/…)"
                     disabled={isLoading}
                     className="w-full pl-10 pr-4 py-3 rounded-xl bg-white/5 border border-white/10 text-white placeholder-white/30 text-sm focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition-all"
                     autoFocus
@@ -230,6 +246,12 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
                       YouTube Playlist
                     </span>
                   )}
+                  {detectedPlatform === 'youtube-video' && (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium bg-pink-500/20 text-pink-400 border border-pink-500/30">
+                      <Youtube className="w-3.5 h-3.5" />
+                      Satu Video YouTube
+                    </span>
+                  )}
                   {detectedPlatform === 'unknown' && (
                     <span className="text-white/30 italic">
                       {url.trim() ? 'Platform tidak didukung' : 'Menunggu tautan...'}
@@ -253,6 +275,9 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
                   </li>
                   <li>
                     <span className="text-white/70 font-mono">youtube.com/playlist?list=...</span>
+                  </li>
+                  <li>
+                    <span className="text-white/70 font-mono">youtube.com/watch?v=... / youtu.be/... (1 lagu)</span>
                   </li>
                 </ul>
               </div>
@@ -283,7 +308,11 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
                   {isLoading ? (
                     <>
                       <Loader2 className="w-4 h-4 animate-spin" />
-                      <span>Mengimpor Playlist...</span>
+                      <span>
+                        {detectedPlatform === 'youtube-video'
+                          ? 'Mengimpor Lagu...'
+                          : 'Mengimpor Playlist...'}
+                      </span>
                     </>
                   ) : (
                     <>
