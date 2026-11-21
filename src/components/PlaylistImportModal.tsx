@@ -17,7 +17,12 @@ import { Track } from '../types/music';
 export interface PlaylistImportModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onImportComplete: (tracks: Track[], playlistTitle: string) => void;
+  /**
+   * v87: isSingleVideo=true kalau yang diimpor 1 lagu (link video YT) —
+   * lagunya masuk folder "Lagu Diimpor" saja, TANPA membuat playlist baru.
+   * Playlist (Spotify/YT) tetap membuat playlist seperti biasa.
+   */
+  onImportComplete: (tracks: Track[], playlistTitle: string, isSingleVideo?: boolean) => void;
 }
 
 type PlatformType = 'spotify' | 'ytmusic' | 'youtube' | 'youtube-video' | 'unknown';
@@ -163,7 +168,8 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
   const handleSaveToCollection = () => {
     if (!importedTracks || importedTracks.length === 0) return;
     const finalTitle = playlistTitle.trim() || 'Playlist Impor Baru';
-    onImportComplete(importedTracks, finalTitle);
+    // v87: beri tahu App apakah ini 1 lagu (video) atau playlist.
+    onImportComplete(importedTracks, finalTitle, detectedPlatform === 'youtube-video');
     handleModalClose();
   };
 
@@ -342,19 +348,22 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
                 </button>
               </div>
 
-              {/* Editable Playlist Title */}
-              <div>
-                <label className="block text-xs font-medium text-white/70 uppercase tracking-wider mb-1.5">
-                  Judul Playlist Baru
-                </label>
-                <input
-                  type="text"
-                  value={playlistTitle}
-                  onChange={(e) => setPlaylistTitle(e.target.value)}
-                  placeholder="Beri nama playlist..."
-                  className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-semibold focus:outline-none focus:border-violet-500"
-                />
-              </div>
+              {/* Editable Playlist Title — v87: disembunyikan untuk 1 lagu,
+                  karena tidak ada playlist yang dibuat/dinamai. */}
+              {detectedPlatform !== 'youtube-video' && (
+                <div>
+                  <label className="block text-xs font-medium text-white/70 uppercase tracking-wider mb-1.5">
+                    Judul Playlist Baru
+                  </label>
+                  <input
+                    type="text"
+                    value={playlistTitle}
+                    onChange={(e) => setPlaylistTitle(e.target.value)}
+                    placeholder="Beri nama playlist..."
+                    className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm font-semibold focus:outline-none focus:border-violet-500"
+                  />
+                </div>
+              )}
 
               {/* Scrollable Track Preview */}
               <div>
@@ -419,7 +428,11 @@ export const PlaylistImportModal: React.FC<PlaylistImportModalProps> = ({
                   className="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-xs sm:text-sm font-medium bg-gradient-to-r from-violet-500 via-fuchsia-500 to-pink-500 text-white shadow-lg shadow-violet-500/25 hover:from-violet-600 hover:via-fuchsia-600 hover:to-pink-600 transition-all hover:scale-[1.02]"
                 >
                   <Check className="w-4 h-4" />
-                  <span>Simpan ke Koleksi</span>
+                  <span>
+                    {detectedPlatform === 'youtube-video'
+                      ? 'Simpan Lagu'
+                      : 'Simpan ke Koleksi'}
+                  </span>
                 </button>
               </div>
             </div>

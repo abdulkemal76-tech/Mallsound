@@ -920,7 +920,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 setSelectedFolder({
                   id: 'imported',
                   title: 'Lagu Diimpor (Spotify & YouTube)',
-                  subtitle: 'Semua lagu hasil import playlist Spotify & YT Music',
+                  subtitle: 'Lagu dari import playlist Spotify & YT Music, plus 1 lagu dari link video YouTube',
                   type: 'imported',
                   tracks: importedTracks,
                 })
@@ -940,7 +940,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
                 📁 Lagu Diimpor
               </h3>
               <p className="text-xs text-white/60 line-clamp-2 mt-1">
-                Semua lagu yang kamu import dari link Spotify atau YouTube Music terkumpul otomatis di folder ini.
+                Semua lagu yang kamu import — dari playlist Spotify/YouTube Music maupun 1 lagu dari link video YouTube — terkumpul otomatis di folder ini.
               </p>
 
               <div className="mt-4 pt-3 border-t border-white/5 flex items-center justify-between text-xs text-white/50">

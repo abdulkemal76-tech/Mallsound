@@ -98,7 +98,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </div>
 
       {/* SECTION 1: Theme & Appearance */}
-      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-5">
+      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-violet-500/20 text-violet-400 border border-violet-500/30">
@@ -149,7 +149,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </section>
 
       {/* SECTION 2: Equalizer Studio */}
-      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-5">
+      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 space-y-5">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-white/10">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-violet-500/20 text-violet-400 border border-violet-500/30">
@@ -250,7 +250,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </section>
 
       {/* SECTION 3: Playback Preferences */}
-      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-6">
+      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 space-y-6">
         <div className="flex items-center gap-2.5 pb-2 border-b border-white/10">
           <div className="p-2 rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30">
             <Volume2 className="w-5 h-5" />
@@ -370,7 +370,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </section>
 
       {/* SECTION 4: Latar Belakang Tips */}
-      <section className="rounded-2xl border backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-4 bg-sky-500/10 border-sky-500/30">
+      <section className="rounded-2xl border backdrop-blur-md p-5 sm:p-6 space-y-4 bg-sky-500/10 border-sky-500/30">
         <div className="flex items-center gap-2.5 pb-2 border-b border-sky-500/20">
           <div className="p-2 rounded-xl bg-sky-500/20 text-sky-400 border border-sky-500/30">
             <Globe className="w-5 h-5" />
@@ -535,7 +535,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
       </section>
 
       {/* SECTION 5: About MallSound */}
-      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 shadow-xl space-y-4">
+      <section className="rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md p-5 sm:p-6 space-y-4">
         <div className="flex items-center justify-between pb-2 border-b border-white/10">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/30">

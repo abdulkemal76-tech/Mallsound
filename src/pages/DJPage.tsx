@@ -1650,7 +1650,7 @@ export const DJPage: React.FC<DJPageProps> = ({
                 className={`w-full py-2 px-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-semibold transition-all cursor-pointer ${
                   isMuted || volume === 0
                     ? 'bg-rose-500/20 text-rose-300 border-rose-500/40'
-                    : 'bg-white/10 hover:bg-white/20 text-white border-white/10'
+                    : 'bg-transparent hover:bg-white/5 text-white border-white/10'
                 }`}
               >
                 {isMuted || volume === 0 ? (

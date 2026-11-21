@@ -30,7 +30,7 @@ export const ThemeColorPicker: React.FC<ThemeColorPickerProps> = ({
 
   return (
     <div
-      className={`p-4 sm:p-5 rounded-2xl border border-white/10 bg-white/5 space-y-6 ${className}`}
+      className={`p-4 sm:p-5 rounded-2xl border border-white/10 bg-transparent space-y-6 ${className}`}
     >
       {/* =====================================================================
           1. FULL-APP BACKGROUND THEME SELECTOR (Terang, Gelap, & Warna Panggung)

@@ -2131,7 +2131,11 @@ export function App() {
     handleSelectTrack(track);
   };
 
-  const handleImportPlaylistComplete = async (tracks: Track[], playlistTitle: string) => {
+  const handleImportPlaylistComplete = async (
+    tracks: Track[],
+    playlistTitle: string,
+    isSingleVideo = false
+  ) => {
     // 1. Cache imported tracks in localSessionTracks
     setLocalSessionTracks((prev) => {
       const merged = [...tracks, ...prev];
@@ -2153,6 +2157,17 @@ export function App() {
     tracks.forEach((t) => {
       setResolvedSavedTracks((prev) => ({ ...prev, [t.id]: t }));
     });
+
+    // v87: 1 LAGU (link video YT) — TIDAK membuat playlist. Lagunya cukup
+    // masuk folder "Lagu Diimpor" (importedTracks di atas) dan langsung
+    // diputar. Playlist (Spotify/YT) tetap membuat playlist seperti biasa,
+    // supaya folder "Semua Playlist" tidak tercampur 1-lagu.
+    if (isSingleVideo) {
+      if (tracks.length > 0) {
+        handleSelectTrack(tracks[0], undefined, false);
+      }
+      return;
+    }
 
     const playlistId = `pl_import_${Date.now()}`;
     const newPlaylist: Playlist = {
