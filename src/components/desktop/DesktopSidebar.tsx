@@ -169,8 +169,11 @@ export const DesktopSidebar: React.FC<DesktopSidebarProps> = ({
               type="button"
               onClick={() => {
                 if (isNowPlayingExpanded && onToggleNowPlaying) onToggleNowPlaying();
+                // v74 — jangan panggil onTabChange('library') di sini:
+                // handler itu membersihkan activePlaylistId (v71, untuk
+                // tombol tab Library). onSelectPlaylist sudah mengatur
+                // activePlaylistId + tab library sekaligus.
                 onSelectPlaylist(pl.id);
-                onTabChange('library');
               }}
               className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs text-white/60 hover:text-white hover:bg-white/5 transition-colors cursor-pointer text-left"
             >

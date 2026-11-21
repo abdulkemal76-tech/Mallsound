@@ -1185,8 +1185,21 @@ export function App() {
     preserveQueue = false
   ) => {
     // Add to recently played
+    // v74 — dedupe berdasarkan judul + artis yang dinormalisasi, bukan
+    // hanya id: lagu yang sama bisa masuk lewat dua jalur (mis. katalog
+    // mood vs hasil pencarian iTunes) dengan id berbeda dan urutan nama
+    // artis berbeda ("Tenxi, Naykilla & Jemsii" vs "Tenxi, Jemsii &
+    // Naykilla"), sehingga "Baru Diputar" menampilkan lagu yang sama
+    // dua kali.
+    const normKey = (t: Track) =>
+      `${t.title.trim().toLowerCase()}|${t.artist
+        .split(/[, &]+/)
+        .map((s) => s.trim().toLowerCase())
+        .filter(Boolean)
+        .sort()
+        .join(',')}`;
     setRecentlyPlayed((prev) => {
-      const filtered = prev.filter((t) => t.id !== track.id);
+      const filtered = prev.filter((t) => normKey(t) !== normKey(track));
       const updated = [track, ...filtered].slice(0, 30);
       try {
         localStorage.setItem('mallsound_recently_played', JSON.stringify(updated));
@@ -2170,7 +2183,12 @@ export function App() {
         playlists={allPlaylists}
         onSelectPlaylist={(plId) => {
           setIsDesktopNowPlayingExpanded(false);
+          // v74 — buka detail playlist: set activePlaylistId DAN tab library
+          // langsung (jangan lewat onTabChange, karena handler v71 di sana
+          // membersihkan activePlaylistId saat tab === 'library' — itu
+          // untuk tombol tab Library, bukan untuk membuka playlist).
           setActivePlaylistId(plId);
+          setActiveTab('library');
         }}
         onOpenCreatePlaylist={() => setIsPlaylistModalOpen(true)}
         onOpenImportPlaylist={() => setIsImportModalOpen(true)}

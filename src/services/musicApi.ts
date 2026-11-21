@@ -407,7 +407,7 @@ export async function fetchTrackLyrics(
   return [
     { timeSec: 0, text: `${title} — ${artist}` },
     { timeSec: 8, text: 'Nikmati alunan musik berkualitas tinggi di MallSound' },
-    { timeSec: 18, text: 'Buka ikon Gerigi (Pengaturan) untuk mengatur Equalizer & Studio' },
+    { timeSec: 18, text: 'Buka ikon Pengaturan untuk mengatur Equalizer & Studio' },
   ];
 }
 
