@@ -7,8 +7,13 @@ import type { Track } from '../types/music';
 // 20 Nov 2026: 14 lagu di-resolve ulang satu-per-satu dengan jeda 6 detik
 // (retry lambat — resolve batch sebelumnya kena throttle YouTube dan
 // mengembalikan None), 5 lagu dari resolve batch pertama, 9 lagu dari
-// videoId yang sudah dikenal. Satu lagu boleh muncul di 1-2 mood yang
-// cocok, supaya tiap playlist berisi 6-7 lagu, bukan cuma 2.
+// videoId yang sudah dikenal. v72 (21 Nov 2026): 33 lagu unik baru
+// ditambahkan, juga terverifikasi oEmbed satu-per-satu dengan jeda 6 detik.
+// Satu lagu boleh muncul di 1-2 mood yang cocok, supaya tiap playlist
+// berisi 12 lagu. 2 video adalah lyric video channel non-official
+// (Danilla "Senja di Ambang Pilu" via IndieTube, Banda Neira
+// "Yang Patah Tumbuh..." via Luthfi Pradita) — judul cocok, hasil teratas;
+// kalau mati, fallback v60 yang menangani.
 
 const COVERS = [
   'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop',
@@ -85,6 +90,48 @@ export const MOOD_TRACKS: Track[] = [
   t('mood_dewa_kangen', 'Kangen', 'Dewa 19', 'Terbaik Terbaik', 'Rock Indonesia', 280, 'tQkEG30xYxA', 1995, 230000000),
   // --- Jalan Santai / Trip ---
   t('mood_dongker_lautan', 'Lautan Bunga Warna Terang', 'Dongker', 'Lautan Bunga Warna Terang (Single)', 'Rock Indonesia', 240, 'ETLJ1ZgtvM0', 2023, 25000000),
+  // --- Tambahan v72: tiap playlist jadi 12 lagu (33 lagu unik baru) ---
+  // Santai & Rileks
+  t('mood_nadin_bertaut', 'Bertaut', 'Nadin Amizah', 'Selamat Ulang Tahun', 'Pop Indonesia', 240, 'HyhLsy6b0XI', 2020, 280000000),
+  t('mood_tulus_ruang_sendiri', 'Ruang Sendiri', 'Tulus', 'Gajah', 'Pop Indonesia', 240, 'eZgj6pTnNto', 2014, 150000000),
+  t('mood_andra_sempurna', 'Sempurna', 'Andra and The Backbone', 'Season 2', 'Rock Indonesia', 260, '_92BBpjIxVE', 2008, 200000000),
+  t('mood_glenn_kasih_putih', 'Kasih Putih', 'Glenn Fredly', 'Selamat Pagi, Dunia!', 'Pop Indonesia', 250, 'CVEPAN2eLYg', 2000, 120000000),
+  t('mood_letto_ruang_rindu', 'Ruang Rindu', 'Letto', 'Truth, Cry, and Lie', 'Pop Indonesia', 250, '9JS47BC0WXc', 2005, 90000000),
+  // Fokus & Kerja
+  t('mood_maliq_dia', 'Dia', "Maliq & D'Essentials", '1st', 'Pop Indonesia', 250, 'jssAJes8_wI', 2005, 80000000),
+  t('mood_tulus_pamit', 'Pamit', 'Tulus', 'Manusia', 'Pop Indonesia', 240, '3xNp8sjMOiU', 2022, 200000000),
+  t('mood_danilla_senja', 'Senja di Ambang Pilu', 'Danilla', 'Lintasan Waktu', 'Pop Indonesia', 240, 'PVjCKlaFCZ8', 2017, 40000000),
+  t('mood_banda_yang_patah', 'Yang Patah Tumbuh, Yang Hilang Berganti', 'Banda Neira', 'Yang Patah Tumbuh, Yang Hilang Berganti (Single)', 'Pop Indonesia', 240, 'AhnQzpmVYEU', 2016, 60000000),
+  // Semangat & Energi
+  t('mood_nidji_laskar', 'Laskar Pelangi', 'Nidji', 'Top Up', 'Pop Indonesia', 270, 'fO1iJqBdXrc', 2008, 250000000),
+  t('mood_peterpan_bintang', 'Bintang di Surga', 'Peterpan', 'Bintang di Surga', 'Rock Indonesia', 280, 'Yi-C9okDw3A', 2004, 300000000),
+  t('mood_cokelat_bendera', 'Bendera', 'Cokelat', 'Rasa Baru', 'Rock Indonesia', 260, '_fvWUeF0tOU', 2000, 100000000),
+  t('mood_tulus_manusia_kuat', 'Manusia Kuat', 'Tulus', 'Monokrom', 'Pop Indonesia', 240, 'LHOh-R00gzI', 2016, 180000000),
+  t('mood_noah_separuh', 'Separuh Aku', 'Noah', 'Seperti Seharusnya', 'Rock Indonesia', 270, 'ZyW9eBf2zfI', 2012, 220000000),
+  t('mood_peterpan_di_atas_normal', 'Di Atas Normal', 'Peterpan', 'Bintang di Surga', 'Rock Indonesia', 240, 'ZwTAq0PwWKE', 2004, 150000000),
+  // Galau & Sendu
+  t('mood_mahalini_sial', 'Sial', 'Mahalini', 'Fabula', 'Pop Indonesia', 250, 'QSWYyoF79oE', 2023, 400000000),
+  t('mood_ari_hampa', 'Hampa', 'Ari Lasso', 'Keseimbangan', 'Rock Indonesia', 260, 'hTOshUuQNNw', 2003, 130000000),
+  t('mood_kerispatih_demi_cinta', 'Demi Cinta', 'Kerispatih', 'Kejujuran Hati', 'Pop Indonesia', 250, 'wlK0erzBlGg', 2005, 110000000),
+  t('mood_dewa_takkan_ada', 'Takkan Ada Cinta yang Lain', 'Dewa 19', 'Terbaik Terbaik', 'Rock Indonesia', 270, '_PSPhCCUdZE', 1995, 180000000),
+  t('mood_dewa_roman', 'Roman Picisan', 'Dewa 19', 'Laskar Cinta', 'Rock Indonesia', 280, 'N43bVhtyVt4', 2004, 160000000),
+  t('mood_sheila_berhenti', 'Berhenti Berharap', 'Sheila On 7', 'Pejantan Tangguh', 'Rock Indonesia', 260, 'nJPnGvWM-n0', 2004, 140000000),
+  // Pesta & Ceria
+  t('mood_diskoria_chrisye', 'C.H.R.I.S.Y.E', 'Diskoria', 'C.H.R.I.S.Y.E (Single)', 'Pop Indonesia', 240, 'ThYGrYiyvA8', 2022, 50000000),
+  t('mood_siti_lagi_syantik', 'Lagi Syantik', 'Siti Badriah', 'Lagi Syantik (Single)', 'Pop Indonesia', 240, 'Tet6_BlStEM', 2018, 350000000),
+  t('mood_ayu_alamat_palsu', 'Alamat Palsu', 'Ayu Ting Ting', 'Alamat Palsu (Single)', 'Pop Indonesia', 240, '2NyGDQItpSY', 2014, 200000000),
+  t('mood_happy_rungkad', 'Rungkad', 'Happy Asmara', 'Rungkad (Single)', 'Pop Indonesia', 240, 'Tzzdu68zbvQ', 2022, 300000000),
+  // Tidur & Tenang
+  t('mood_sheila_anugerah', 'Anugerah Terindah yang Pernah Kumiliki', 'Sheila On 7', '07 Des', 'Rock Indonesia', 280, 'gnRCnyC8z0M', 2002, 190000000),
+  t('mood_peterpan_yang_terdalam', 'Yang Terdalam', 'Peterpan', 'Bintang di Surga', 'Rock Indonesia', 280, 'CNbmVEEW-mA', 2004, 260000000),
+  t('mood_sherina_cinta_pertama', 'Cinta Pertama dan Terakhir', 'Sherina', 'My Life', 'Pop Indonesia', 250, 'DRY81pGMABc', 2002, 100000000),
+  t('mood_sheila_pemuja', 'Pemuja Rahasia', 'Sheila On 7', 'Pejantan Tangguh', 'Rock Indonesia', 260, 'fAPeKtnAalc', 2004, 120000000),
+  // Nostalgia Hangat
+  t('mood_ari_mengejar', 'Mengejar Matahari', 'Ari Lasso', 'Keseimbangan', 'Rock Indonesia', 260, 'FXv02coffR8', 2003, 110000000),
+  t('mood_dewa_arjuna', 'Arjuna', 'Dewa 19', 'Laskar Cinta', 'Rock Indonesia', 280, 'EYACy7jELw4', 2004, 150000000),
+  t('mood_chrisye_kala', 'Kala Cinta Menggoda', 'Chrisye', 'Kala Cinta Menggoda', 'Pop Indonesia', 270, 'o2jLWzwC4eg', 1997, 90000000),
+  // Jalan Santai / Trip
+  t('mood_endank_sampai_jumpa', 'Sampai Jumpa', 'Endank Soekamti', 'Sampai Jumpa (Single)', 'Rock Indonesia', 240, '6OMQsYDbbnI', 2015, 60000000),
 ];
 
 function playlist(
@@ -122,6 +169,11 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_tulus_monokrom',
       'mood_danilla_ada',
       'mood_bernadya_satu_bulan',
+      'mood_nadin_bertaut',
+      'mood_tulus_ruang_sendiri',
+      'mood_andra_sempurna',
+      'mood_glenn_kasih_putih',
+      'mood_letto_ruang_rindu',
     ],
   ),
   playlist(
@@ -136,12 +188,18 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_danilla_ada',
       'mood_fourtwnty_zona',
       'mood_nadin_taruh',
+      'mood_nadin_bertaut',
+      'mood_tulus_ruang_sendiri',
+      'mood_maliq_dia',
+      'mood_tulus_pamit',
+      'mood_danilla_senja',
+      'mood_banda_yang_patah',
     ],
   ),
   playlist(
     'pl_mood_semangat',
     'Semangat & Energi',
-    "D'Masiv, Jamrud, Sheila On 7 & more — pompa semangat",
+    'Nidji, Peterpan, D\'Masiv & more — pompa semangat',
     'rose',
     [
       'mood_sheila_melompat',
@@ -150,6 +208,12 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_wali_cari_jodoh',
       'mood_dongker_bertaruh',
       'mood_tenxi_garam',
+      'mood_nidji_laskar',
+      'mood_peterpan_bintang',
+      'mood_cokelat_bendera',
+      'mood_tulus_manusia_kuat',
+      'mood_noah_separuh',
+      'mood_peterpan_di_atas_normal',
     ],
   ),
   playlist(
@@ -164,12 +228,18 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_sheila_sephia',
       'mood_feast_peradaban',
       'mood_dongker_tuhan',
+      'mood_mahalini_sial',
+      'mood_ari_hampa',
+      'mood_kerispatih_demi_cinta',
+      'mood_dewa_takkan_ada',
+      'mood_dewa_roman',
+      'mood_sheila_berhenti',
     ],
   ),
   playlist(
     'pl_mood_pesta',
     'Pesta & Ceria',
-    'Wali, Tenxi, Sheila On 7 & more — langsung joget',
+    'Wali, Tenxi, Siti Badriah & more — langsung joget',
     'emerald',
     [
       'mood_wali_cari_jodoh',
@@ -178,6 +248,12 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_sheila_melompat',
       'mood_jamrud_surti',
       'mood_sheila_dan',
+      'mood_peterpan_di_atas_normal',
+      'mood_peterpan_bintang',
+      'mood_diskoria_chrisye',
+      'mood_siti_lagi_syantik',
+      'mood_ayu_alamat_palsu',
+      'mood_happy_rungkad',
     ],
   ),
   playlist(
@@ -192,6 +268,12 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_tulus_monokrom',
       'mood_sheila_dan',
       'mood_tulus_hati_hati',
+      'mood_glenn_kasih_putih',
+      'mood_andra_sempurna',
+      'mood_sheila_anugerah',
+      'mood_peterpan_yang_terdalam',
+      'mood_sherina_cinta_pertama',
+      'mood_sheila_pemuja',
     ],
   ),
   playlist(
@@ -207,6 +289,11 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_sheila_dan',
       'mood_sheila_sephia',
       'mood_gigi_11_januari',
+      'mood_peterpan_yang_terdalam',
+      'mood_ari_hampa',
+      'mood_ari_mengejar',
+      'mood_dewa_arjuna',
+      'mood_chrisye_kala',
     ],
   ),
   playlist(
@@ -221,6 +308,12 @@ export const MOOD_PLAYLISTS: Playlist[] = [
       'mood_dongker_lautan',
       'mood_dewa_kangen',
       'mood_fourtwnty_zona',
+      'mood_nidji_laskar',
+      'mood_ari_mengejar',
+      'mood_cokelat_bendera',
+      'mood_tulus_manusia_kuat',
+      'mood_noah_separuh',
+      'mood_endank_sampai_jumpa',
     ],
   ),
 ];
