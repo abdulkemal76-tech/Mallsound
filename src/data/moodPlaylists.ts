@@ -28,8 +28,11 @@ function t(
   youtubeVideoId: string,
   releaseYear: number,
   playsCount: number,
+  // v75 — override sampul: untuk lagu yang thumbnail YouTube-nya
+  // kosong/putih/gelap, pakai artwork album asli (iTunes) di sini.
+  coverUrlOverride?: string,
 ): Track {
-  const coverUrl = `https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`;
+  const coverUrl = coverUrlOverride ?? `https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`;
   return {
     id,
     title,
@@ -51,10 +54,10 @@ function t(
 export const MOOD_TRACKS: Track[] = [
   // --- Santai & Rileks ---
   t('mood_tulus_hati_hati', 'Hati-Hati di Jalan', 'Tulus', 'Manusia', 'Pop Indonesia', 245, '_N6vSc_mT6I', 2022, 850000000),
-  t('mood_sal_gala', 'Gala Bunga Matahari', 'Sal Priadi', 'Gala Bunga Matahari (Single)', 'Pop Indonesia', 245, 'AQpEIZ8dNcU', 2024, 420000000),
+  t('mood_sal_gala', 'Gala Bunga Matahari', 'Sal Priadi', 'Gala Bunga Matahari (Single)', 'Pop Indonesia', 245, 'AQpEIZ8dNcU', 2024, 420000000, 'https://is1-ssl.mzstatic.com/image/thumb/Music211/v4/fa/a8/4c/faa84c4f-0f09-3730-6460-8c53e9dc159d/cover.jpg/600x600bb.jpg'),
   t('mood_fourtwnty_zona', 'Zona Nyaman', 'Fourtwnty', 'Filosofi Kopi 2 (OST)', 'Pop Indonesia', 245, 'OnfYLBNvrPw', 2017, 380000000),
   t('mood_payung_akad', 'Akad', 'Payung Teduh', 'Ruang Tunggu', 'Pop Indonesia', 270, 'viW0M5R2BLo', 2017, 520000000),
-  t('mood_tulus_monokrom', 'Monokrom', 'Tulus', 'Monokrom', 'Pop Indonesia', 250, 'ma4sO59mcC4', 2016, 310000000),
+  t('mood_tulus_monokrom', 'Monokrom', 'Tulus', 'Monokrom', 'Pop Indonesia', 250, 'ma4sO59mcC4', 2016, 310000000, 'https://is1-ssl.mzstatic.com/image/thumb/Music18/v4/d1/8f/41/d18f41cf-45e4-39f4-4d10-0a0af01f7eb7/cover.jpg/600x600bb.jpg'),
   t('mood_danilla_ada', 'Ada di Sana', 'Danilla', 'Telisik', 'Pop Indonesia', 240, '-tQLT6gcjNY', 2014, 95000000),
   t('mood_bernadya_satu_bulan', 'Satu Bulan', 'Bernadya', 'Sialnya, Hidup Harus Tetap Berjalan', 'Pop Indonesia', 200, 'yjnSX_iUFVo', 2024, 290000000),
   // --- Fokus & Kerja ---
@@ -65,7 +68,7 @@ export const MOOD_TRACKS: Track[] = [
   t('mood_dmasiv_jangan_menyerah', 'Jangan Menyerah', "D'Masiv", 'Perubahan', 'Rock Indonesia', 250, 'mTp-OxfkCao', 2008, 260000000),
   t('mood_jamrud_surti', 'Surti Tejo', 'Jamrud', 'Ningrat', 'Rock Indonesia', 280, '0DQVH-vgHfs', 2000, 150000000),
   t('mood_wali_cari_jodoh', 'Cari Jodoh', 'Wali', 'Cari Jodoh', 'Pop Indonesia', 200, 'dERdrEKmOHE', 2009, 220000000),
-  t('mood_dongker_bertaruh', 'Bertaruh Pada Api', 'Dongker', 'Bertaruh Pada Api (Single)', 'Rock Indonesia', 200, 'fjAFcewRl64', 2023, 45000000),
+  t('mood_dongker_bertaruh', 'Bertaruh Pada Api', 'Dongker', 'Bertaruh Pada Api (Single)', 'Rock Indonesia', 200, 'fjAFcewRl64', 2023, 45000000, 'https://is1-ssl.mzstatic.com/image/thumb/Music112/v4/65/32/d7/6532d722-94de-ee51-da08-08f00b7c48a6/cover.jpg/600x600bb.jpg'),
   t('mood_tenxi_garam', 'Garam dan Madu', 'Tenxi, Naykilla & Jemsii', 'Garam & Madu (Single)', 'Pop Indonesia', 200, 'k0ubS6BhHu4', 2025, 310000000),
   // --- Galau & Sendu ---
   t('mood_dewa_pupus', 'Pupus', 'Dewa 19', 'Cintailah Cinta', 'Rock Indonesia', 270, 'VQ-qjEV1m6M', 2002, 290000000),
@@ -87,7 +90,7 @@ export const MOOD_TRACKS: Track[] = [
   // --- Tambahan v72: tiap playlist jadi 12 lagu (33 lagu unik baru) ---
   // Santai & Rileks
   t('mood_nadin_bertaut', 'Bertaut', 'Nadin Amizah', 'Selamat Ulang Tahun', 'Pop Indonesia', 240, 'HyhLsy6b0XI', 2020, 280000000),
-  t('mood_tulus_ruang_sendiri', 'Ruang Sendiri', 'Tulus', 'Gajah', 'Pop Indonesia', 240, 'eZgj6pTnNto', 2014, 150000000),
+  t('mood_tulus_ruang_sendiri', 'Ruang Sendiri', 'Tulus', 'Gajah', 'Pop Indonesia', 240, 'eZgj6pTnNto', 2014, 150000000, 'https://is1-ssl.mzstatic.com/image/thumb/Music18/v4/92/59/8b/92598b17-f649-394b-b0b6-346c7320f16a/cover.jpg/600x600bb.jpg'),
   t('mood_andra_sempurna', 'Sempurna', 'Andra and The Backbone', 'Season 2', 'Rock Indonesia', 260, '_92BBpjIxVE', 2008, 200000000),
   t('mood_glenn_kasih_putih', 'Kasih Putih', 'Glenn Fredly', 'Selamat Pagi, Dunia!', 'Pop Indonesia', 250, 'CVEPAN2eLYg', 2000, 120000000),
   t('mood_letto_ruang_rindu', 'Ruang Rindu', 'Letto', 'Truth, Cry, and Lie', 'Pop Indonesia', 250, '9JS47BC0WXc', 2005, 90000000),
