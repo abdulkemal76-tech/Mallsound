@@ -8,7 +8,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Breakbeat Mengkane TikTok 2024',
     genre: 'Breakbeat',
     durationSec: 2059, // 34:19 Full Mixtape
-    coverUrl: 'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/ZpKSSG-5s5c/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'ZpKSSG-5s5c',
@@ -29,7 +29,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Jedag Jedug Horeg Hits',
     genre: 'Jedag Jedug',
     durationSec: 2471, // 41:11 Full Album
-    coverUrl: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/4THHQefmCa4/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: '4THHQefmCa4',
@@ -49,7 +49,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Koleksi Slow Bass Jedag Jedug',
     genre: 'Slow Bass',
     durationSec: 258, // 4:18
-    coverUrl: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/Wyqlqo6xXXQ/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'Wyqlqo6xXXQ',
@@ -69,7 +69,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Slowed Bass FYP 2024',
     genre: 'Slow Bass',
     durationSec: 267, // 4:27
-    coverUrl: 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/Wola2tvRHIE/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'Wola2tvRHIE',
@@ -89,7 +89,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Party Jedag Jedug Mengkane',
     genre: 'Jedag Jedug',
     durationSec: 2993, // 49:53 Full Mix
-    coverUrl: 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/LXpV6FLi4VI/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'LXpV6FLi4VI',
@@ -109,7 +109,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Breakbeat Hold On Viral',
     genre: 'Jedag Jedug',
     durationSec: 261, // 4:21
-    coverUrl: 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/yPn2YsBQKzM/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'yPn2YsBQKzM',
@@ -129,7 +129,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Breakbeat Pop Indo Remix',
     genre: 'Jedag Jedug',
     durationSec: 406, // 6:46
-    coverUrl: 'https://images.unsplash.com/photo-1429962714451-bb934ecdc4ec?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/M0-rGVu200w/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'M0-rGVu200w',
@@ -149,7 +149,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Horeg Sunda Breakbeat',
     genre: 'Horeg Bass',
     durationSec: 348, // 5:48
-    coverUrl: 'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/yTKYTZWQvpc/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'yTKYTZWQvpc',
@@ -168,7 +168,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Viral TikTok Dance',
     genre: 'Jedag Jedug',
     durationSec: 214, // 3:34
-    coverUrl: 'https://images.unsplash.com/photo-1501386761578-eac5c94b800a?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/0ZawFnlPLVQ/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: '0ZawFnlPLVQ',
@@ -187,7 +187,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Mengkane Sound 2024',
     genre: 'Breakbeat',
     durationSec: 265, // 4:25 Full Song
-    coverUrl: 'https://images.unsplash.com/photo-1518609878373-06d740f60d8b?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/CvcuMr36JOw/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'CvcuMr36JOw',
@@ -206,7 +206,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Horeg Sound System Jawa Timur',
     genre: 'Horeg Bass',
     durationSec: 326, // 5:26
-    coverUrl: 'https://images.unsplash.com/photo-1520523839898-507125cd53c1?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/z3XgUiL42OY/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: 'z3XgUiL42OY',
@@ -225,7 +225,7 @@ export const DJ_INDO_TRACKS: Track[] = [
     album: 'Pargoy Party Breakbeat',
     genre: 'Breakbeat',
     durationSec: 315, // 5:15
-    coverUrl: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?w=600&h=600&fit=crop',
+    coverUrl: 'https://i.ytimg.com/vi/9CjG0SHQAfs/hqdefault.jpg',
     audioUrl: '',
     rawPreviewUrl: '',
     youtubeVideoId: '9CjG0SHQAfs',

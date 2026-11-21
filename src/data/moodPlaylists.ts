@@ -15,15 +15,9 @@ import type { Track } from '../types/music';
 // "Yang Patah Tumbuh..." via Luthfi Pradita) — judul cocok, hasil teratas;
 // kalau mati, fallback v60 yang menangani.
 
-const COVERS = [
-  'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1465847899084-d164df4dedc6?w=600&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=600&h=600&fit=crop',
-];
-
-let coverIdx = 0;
+// Sampul lagu = thumbnail YouTube videonya sendiri (v73): tiap lagu
+// sudah punya sampul dari videonya — tidak lagi memakai foto Unsplash
+// generik yang sama untuk semua lagu.
 function t(
   id: string,
   title: string,
@@ -35,7 +29,7 @@ function t(
   releaseYear: number,
   playsCount: number,
 ): Track {
-  const coverUrl = COVERS[coverIdx++ % COVERS.length];
+  const coverUrl = `https://i.ytimg.com/vi/${youtubeVideoId}/hqdefault.jpg`;
   return {
     id,
     title,
