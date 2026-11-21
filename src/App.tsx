@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, lazy, Suspense } from 'react';
 import {
   Play,
   Pause,
@@ -59,11 +59,7 @@ import { RemoteAudioPlayer } from './services/players/RemoteAudioPlayer';
 import { PlayerManager, type PlayerManagerApi, type PlayerManagerConfig } from './services/players/PlayerManager';
 import type { PlayerTrack } from './services/players/MusicPlayer';
 import { FullScreenPlayer } from './components/FullScreenPlayer';
-import { AddCustomTrackModal, CreatePlaylistModal } from './components/Modals';
-import { SettingsModal } from './components/SettingsModal';
 import { OfflineIndicator } from './components/AppDownloadHub';
-import { PlaylistImportModal } from './components/PlaylistImportModal';
-import { TrackActionModal } from './components/TrackActionModal';
 import { BottomNav, BottomNavTab } from './components/ui/BottomNav';
 import { DJ_INDO_TRACKS } from './data/djIndoTracks';
 import { SHOEGAZE_INDO_TRACKS, SHOEGAZE_INDO_PLAYLIST, SHOEGAZE_INDO_PLAYLIST_ID } from './data/shoegazeIndoTracks';
@@ -72,10 +68,45 @@ import { GENRE_TRACKS, GENRE_PLAYLISTS, GENRE_PLAYLIST_IDS } from './data/genreP
 
 // Pages
 import { HomePage } from './pages/HomePage';
-import { SearchPage } from './pages/SearchPage';
-import { DJPage } from './pages/DJPage';
-import { LibraryPage } from './pages/LibraryPage';
-import { ProfilePage } from './pages/ProfilePage';
+
+// v84 — Code-splitting: halaman tab non-Beranda + modal berat dimuat malas
+// (React.lazy) supaya bundle awal lebih ringan. Beranda + pemutar YouTube
+// + FullScreenPlayer tetap eager karena itu yang pertama dilihat/didengar;
+// FullScreenPlayer sengaja TIDAK di-lazy karena di dalamnya ada slot
+// "mallsound-video-stage-target" tempat video dipindah saat mode video.
+// Chunk tab di-preload saat browser idle (lihat useEffect di bawah) supaya
+// pindah tab terasa instan. Modal di-preload bareng karena selalu terpasang.
+const loadSearchPage = () => import('./pages/SearchPage');
+const loadDJPage = () => import('./pages/DJPage');
+const loadLibraryPage = () => import('./pages/LibraryPage');
+const loadProfilePage = () => import('./pages/ProfilePage');
+const SearchPage = lazy(() => loadSearchPage().then((m) => ({ default: m.SearchPage })));
+const DJPage = lazy(() => loadDJPage().then((m) => ({ default: m.DJPage })));
+const LibraryPage = lazy(() => loadLibraryPage().then((m) => ({ default: m.LibraryPage })));
+const ProfilePage = lazy(() => loadProfilePage().then((m) => ({ default: m.ProfilePage })));
+const SettingsModal = lazy(() =>
+  import('./components/SettingsModal').then((m) => ({ default: m.SettingsModal })),
+);
+const PlaylistImportModal = lazy(() =>
+  import('./components/PlaylistImportModal').then((m) => ({ default: m.PlaylistImportModal })),
+);
+const TrackActionModal = lazy(() =>
+  import('./components/TrackActionModal').then((m) => ({ default: m.TrackActionModal })),
+);
+const AddCustomTrackModal = lazy(() =>
+  import('./components/Modals').then((m) => ({ default: m.AddCustomTrackModal })),
+);
+const CreatePlaylistModal = lazy(() =>
+  import('./components/Modals').then((m) => ({ default: m.CreatePlaylistModal })),
+);
+
+// Fallback saat chunk tab belum terunduh (jarang terlihat: chunk di-preload
+// saat idle). Spinner kecil senada tema, bukan perubahan desain.
+const TabLoading = () => (
+  <div className="flex items-center justify-center py-24" aria-label="Memuat halaman">
+    <div className="w-8 h-8 rounded-full border-2 border-white/20 border-t-white/80 animate-spin" />
+  </div>
+);
 
 // Theme Configuration
 import {
@@ -243,6 +274,25 @@ export function App() {
       return {};
     }
   });
+
+  // v84 — Preload chunk halaman tab saat browser idle, supaya pindah tab
+  // terasa instan (chunk sudah terunduh sebelum diketuk). Tidak mengubah
+  // tampilan apa pun; cuma memindahkan unduhan ke latar belakang.
+  useEffect(() => {
+    const preload = () => {
+      loadSearchPage().catch(() => {});
+      loadDJPage().catch(() => {});
+      loadLibraryPage().catch(() => {});
+      loadProfilePage().catch(() => {});
+    };
+    if (typeof window !== 'undefined' && 'requestIdleCallback' in window) {
+      const id = (window as unknown as { requestIdleCallback: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback(preload, { timeout: 3000 });
+      return () =>
+        (window as unknown as { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(preload, 1500);
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     try {
@@ -2261,7 +2311,8 @@ export function App() {
         )}
 
         {activeTab === 'search' && (
-          <SearchPage
+          <Suspense fallback={<TabLoading />}>
+            <SearchPage
             onSelectTrack={(trk, ctx) => handleSelectTrack(trk, undefined, false, ctx)}
             currentTrack={currentTrack}
             isPlaying={isPlaying}
@@ -2274,10 +2325,12 @@ export function App() {
               setActiveTab('library');
             }}
           />
+          </Suspense>
         )}
 
         {activeTab === 'dj' && (
-          <DJPage
+          <Suspense fallback={<TabLoading />}>
+            <DJPage
             currentTrack={currentTrack}
             isPlaying={isPlaying}
             currentTimeSec={currentTimeSec}
@@ -2306,10 +2359,12 @@ export function App() {
             repeatMode={repeatMode}
             onToggleRepeat={handleToggleRepeat}
           />
+          </Suspense>
         )}
 
         {activeTab === 'library' && (
-          <LibraryPage
+          <Suspense fallback={<TabLoading />}>
+            <LibraryPage
             playlists={allPlaylists}
             activePlaylistId={activePlaylistId}
             onSelectPlaylist={(plId) => {
@@ -2340,10 +2395,12 @@ export function App() {
             }}
             onShowToast={showToast}
           />
+          </Suspense>
         )}
 
         {activeTab === 'profile' && (
-          <ProfilePage
+          <Suspense fallback={<TabLoading />}>
+            <ProfilePage
             user={user}
             onSignIn={handleGoogleSignIn}
             onSignOut={() => signOutUser()}
@@ -2364,6 +2421,7 @@ export function App() {
             crossfadeSec={crossfadeSec}
             onCrossfadeChange={setCrossfadeSec}
           />
+          </Suspense>
         )}
       </main>
       </div>
@@ -2614,6 +2672,7 @@ export function App() {
       {/* =====================================================================
           SETTINGS MODAL
       ===================================================================== */}
+      <Suspense fallback={null}>
       <SettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
@@ -2640,34 +2699,41 @@ export function App() {
         onOpenUploadModal={() => setIsAddTrackModalOpen(true)}
         onOpenCreatePlaylistModal={() => setIsPlaylistModalOpen(true)}
       />
+      </Suspense>
 
       {/* =====================================================================
           PLAYLIST IMPORT MODAL (Spotify & YouTube Music URLs)
       ===================================================================== */}
+      <Suspense fallback={null}>
       <PlaylistImportModal
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onImportComplete={handleImportPlaylistComplete}
       />
+      </Suspense>
 
       {/* =====================================================================
           PLAYLIST CREATION MODAL
       ===================================================================== */}
+      <Suspense fallback={null}>
       <CreatePlaylistModal
         isOpen={isPlaylistModalOpen}
         onClose={() => setIsPlaylistModalOpen(false)}
         allTracks={allKnownTracks}
         onSave={handleCreatePlaylist}
       />
+      </Suspense>
 
       {/* =====================================================================
           CUSTOM TRACK UPLOAD MODAL
       ===================================================================== */}
+      <Suspense fallback={null}>
       <AddCustomTrackModal
         isOpen={isAddTrackModalOpen}
         onClose={() => setIsAddTrackModalOpen(false)}
         onAddTrack={handleAddCustomTrack}
       />
+      </Suspense>
 
       {/* =====================================================================
           SINGLETON GLOBAL YOUTUBE AUDIO/VIDEO ENGINE (Continuous Playback)
@@ -2846,6 +2912,7 @@ export function App() {
       {/* =====================================================================
           YOUTUBE MUSIC STYLE TRACK ACTION MODAL (Bottom Sheet)
       ===================================================================== */}
+      <Suspense fallback={null}>
       <TrackActionModal
         isOpen={Boolean(actionModalTrack)}
         onClose={() => setActionModalTrack(null)}
@@ -2860,6 +2927,7 @@ export function App() {
         onCreatePlaylistWithTrack={handleCreatePlaylistWithTrack}
         onShowToast={showToast}
       />
+      </Suspense>
 
       {/* =====================================================================
           FLOATING TOAST NOTIFICATION

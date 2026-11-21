@@ -33,6 +33,30 @@ export default defineConfig(() => {
         '@': path.resolve(__dirname, '.'),
       },
     },
+    // v84 — Pisah vendor besar ke chunk sendiri: (1) browser mengunduhnya
+    // paralel dengan kode aplikasi, (2) chunk vendor di-cache terpisah —
+    // saat kode aplikasi berubah (deploy baru), pengguna TIDAK mengunduh
+    // ulang React/Firebase, cuma chunk aplikasi yang berubah. Tidak
+    // mengubah tampilan/fungsi apa pun.
+    build: {
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (!id.includes('node_modules')) return undefined;
+            if (id.includes('firebase')) return 'firebase-vendor';
+            if (
+              id.includes('/react-dom/') ||
+              id.includes('/react/') ||
+              id.includes('/scheduler/')
+            ) {
+              return 'react-vendor';
+            }
+            if (id.includes('/lucide-react/')) return 'lucide-vendor';
+            return undefined;
+          },
+        },
+      },
+    },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
