@@ -151,9 +151,21 @@ export const SearchPage: React.FC<SearchPageProps> = ({
 
         // Audius results (v52): appended after the catalog, so the YouTube
         // catalog keeps its order. Failures return [] and change nothing.
+        // v79 — saring relevansi: katalog Audius hampir tidak punya pop
+        // Indonesia, jadi pencariannya mengembalikan 8 lagu yang tidak
+        // nyambung dengan query (mis. genre Rock/K-Pop). Hanya tempel
+        // lagu Audius yang judul/artisnya mengandung kata kunci query.
         let audiusTracks: Track[] = [];
         try {
-          audiusTracks = await searchAudiusTracks(debouncedQuery, 8);
+          const queryWords = debouncedQuery
+            .toLowerCase()
+            .split(/[^a-z0-9]+/)
+            .filter((w) => w.length >= 3);
+          const allAudius = await searchAudiusTracks(debouncedQuery, 8);
+          audiusTracks = allAudius.filter((t) => {
+            const hay = `${t.title} ${t.artist}`.toLowerCase();
+            return queryWords.some((w) => hay.includes(w));
+          });
         } catch {
           audiusTracks = [];
         }

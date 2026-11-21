@@ -91,6 +91,9 @@ async function fetchItunesSearch(queryTerm: string, limit: number) {
   const data = (await response.json()) as { results?: ItunesTrackItem[] };
   return (data.results || [])
     .filter((item) => Boolean(item.trackId && item.trackName && item.previewUrl))
+    // v79 — saring judul hasil terjemahan mesin yang jelas-jelas sampah
+    // (mis. "Diterjemahkan Dengan Buruk" di pencarian Jazz).
+    .filter((item) => !/diterjemahkan/i.test(item.trackName || ''))
     .map(mapItunesItemToTrack);
 }
 
@@ -159,10 +162,22 @@ app.get('/api/music/search', async (req, res) => {
         : Promise.resolve([]),
     ]);
 
+    // v79 — dedupe berdasarkan judul + artis yang dinormalisasi, bukan
+    // hanya id iTunes: lagu yang sama (mis. "Cicak Cicak di Dinding",
+    // "Hello" Adele) muncul berkali-kali dari album/kompilasi berbeda
+    // dengan trackId berbeda, jadi dedupe id saja tidak cukup.
+    const normKey = (t: { title: string; artist: string }) =>
+      `${t.title.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()}|${t.artist
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim()}`;
     const mergedMap = new Map<string, ReturnType<typeof mapItunesItemToTrack>>();
+    const seenKeys = new Set<string>();
     for (const t of [...primaryTracks, ...rawTracks]) {
-      if (!mergedMap.has(t.id)) {
+      const key = normKey(t);
+      if (!mergedMap.has(t.id) && !seenKeys.has(key)) {
         mergedMap.set(t.id, t);
+        seenKeys.add(key);
       }
     }
 
