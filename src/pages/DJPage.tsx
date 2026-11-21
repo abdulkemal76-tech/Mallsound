@@ -1372,48 +1372,57 @@ export const DJPage: React.FC<DJPageProps> = ({
 
             {/* Speed & Intensity Dual Selector */}
             <div className="flex items-center gap-2 flex-wrap">
-              {/* Speed Selector */}
-              <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
-                {[
-                  { id: 'hyper', label: '🚀 HYPER' },
-                  { id: 'turbo', label: '⚡ FAST' },
-                  { id: 'normal', label: '🌌 NORMAL' },
-                ].map((sp) => (
-                  <button
-                    key={sp.id}
-                    type="button"
-                    onClick={() => setLightSpeed(sp.id as DiscoSpeed)}
-                    className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      lightSpeed === sp.id
-                        ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-sm'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                  >
-                    {sp.label}
-                  </button>
-                ))}
+              {/* Speed Selector — v77: beri label supaya jelas ini dua
+                  pengaturan terpisah (Kecepatan vs Intensitas), bukan satu
+                  grup 6 tombol. Masing-masing grup memang sudah single-select
+                  di state-nya; yang membingungkan hanya tampilannya. */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">Kecepatan</span>
+                <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
+                  {[
+                    { id: 'hyper', label: '🚀 HYPER' },
+                    { id: 'turbo', label: '⚡ FAST' },
+                    { id: 'normal', label: '🌌 NORMAL' },
+                  ].map((sp) => (
+                    <button
+                      key={sp.id}
+                      type="button"
+                      onClick={() => setLightSpeed(sp.id as DiscoSpeed)}
+                      className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        lightSpeed === sp.id
+                          ? 'bg-gradient-to-r from-amber-500 to-fuchsia-600 text-white shadow-sm'
+                          : 'text-white/60 hover:text-white'
+                      }`}
+                    >
+                      {sp.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {/* Intensity Selector */}
-              <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
-                {[
-                  { id: 'soft', label: '🔅 SOFT' },
-                  { id: 'boost', label: '🔆 BOOST' },
-                  { id: 'ultra', label: '💥 ULTRA' },
-                ].map((int) => (
-                  <button
-                    key={int.id}
-                    type="button"
-                    onClick={() => setLightIntensity(int.id as LightIntensity)}
-                    className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
-                      lightIntensity === int.id
-                        ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-neutral-950 shadow-sm'
-                        : 'text-white/60 hover:text-white'
-                    }`}
-                  >
-                    {int.label}
-                  </button>
-                ))}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-white/50">Intensitas</span>
+                <div className="flex items-center gap-1 bg-black/50 p-1 rounded-xl border border-white/10">
+                  {[
+                    { id: 'soft', label: '🔅 SOFT' },
+                    { id: 'boost', label: '🔆 BOOST' },
+                    { id: 'ultra', label: '💥 ULTRA' },
+                  ].map((int) => (
+                    <button
+                      key={int.id}
+                      type="button"
+                      onClick={() => setLightIntensity(int.id as LightIntensity)}
+                      className={`py-1 px-2.5 rounded-lg text-[11px] font-bold transition-all cursor-pointer ${
+                        lightIntensity === int.id
+                          ? 'bg-gradient-to-r from-cyan-500 to-emerald-500 text-neutral-950 shadow-sm'
+                          : 'text-white/60 hover:text-white'
+                      }`}
+                    >
+                      {int.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
