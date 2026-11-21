@@ -91,6 +91,8 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
   const logTag = label ? `[${label}] ` : '';
   const candidatesRef = useRef<string[]>(candidateIds);
   const isPlayingPropRef = useRef<boolean>(isPlaying);
+  const isMutedPropRef = useRef<boolean>(isMuted);
+  const volumePropRef = useRef<number>(volume);
 
   // === STALE CLOSURE FIX ===
   // The YouTube player's onStateChange is a closure created once at player init.
@@ -144,6 +146,8 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     onFallbackToPreviewRef.current = onFallbackToPreview;
     onStateChangeRef.current = onStateChange;
     isPlayingPropRef.current = isPlaying;
+    isMutedPropRef.current = isMuted;
+    volumePropRef.current = volume;
   });
 
   useEffect(() => {
@@ -200,7 +204,13 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
           }
           if (isPlayingPropRef.current) {
             try {
-              if (document.hidden) {
+              // v69 — mute SEBELUM playVideo, bukan cuma saat hidden. Video
+              // yang baru di-cue bisa tidak mewarisi flag mute dari video
+              // sebelumnya, jadi standby (yang memang harus bisu: isMuted
+              // atau volume 0) bisa terdengar = musik double. Dulu mute
+              // cuma dipanggil kalau document.hidden, jadi saat tab terlihat
+              // standby yang baru di-cue langsung bunyi bareng player aktif.
+              if (document.hidden || isMutedPropRef.current || volumePropRef.current === 0) {
                 muteForBackground(playerRef.current);
               }
               playerRef.current.playVideo();
@@ -397,7 +407,9 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     }
   }, [isPlaying]);
 
-  // Sync Volume / Mute
+  // Sync Volume / Mute — videoId ikut di deps supaya mute diterapkan ulang
+  // setiap video baru di-cue (v69): flag mute bisa tidak terbawa ke video
+  // baru, jadi tanpa ini standby bisa terdengar.
   useEffect(() => {
     if (!playerRef.current || !readyRef.current) return;
     try {
@@ -410,7 +422,7 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
     } catch {
       // ignore
     }
-  }, [volume, isMuted]);
+  }, [volume, isMuted, videoId]);
 
   // Sync Seek Request
   useEffect(() => {
