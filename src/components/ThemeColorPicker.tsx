@@ -112,7 +112,7 @@ export const ThemeColorPicker: React.FC<ThemeColorPickerProps> = ({
                       {preset.name}
                     </p>
                     <p
-                      className="text-[10px] line-clamp-1 mt-0.5"
+                      className="text-[10px] line-clamp-2 mt-0.5"
                       style={{ color: preset.textSecondary }}
                     >
                       {preset.description}

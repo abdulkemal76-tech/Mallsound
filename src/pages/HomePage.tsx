@@ -582,7 +582,7 @@ export const HomePage: React.FC<HomePageProps> = ({
                     </span>
                   </h2>
                   <p className="text-white/70 text-sm sm:text-base leading-relaxed max-w-xl">
-                    Joan Pasha Syahputra (Tenxi) asal Sidoarjo—pelopor fenomena genre Hipdut yang menggabungkan trap modern dengan kendang koplo nusantara. Populer lewat anthem viral Garam & Madu (Sakit Dadaku), Kasih Aba-Aba, hingga mejikuhibiniu.
+                    Joan Pasha Syahputra (Tenxi) asal Sidoarjo — pelopor fenomena genre Hipdut yang menggabungkan trap modern dengan kendang koplo nusantara. Populer lewat anthem viral Garam & Madu (Sakit Dadaku), Kasih Aba-Aba, hingga mejikuhibiniu.
                   </p>
                 </div>
 

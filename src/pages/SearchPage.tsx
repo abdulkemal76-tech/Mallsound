@@ -475,7 +475,7 @@ export const SearchPage: React.FC<SearchPageProps> = ({
           {!isLoading && searchResults.length > 0 && (
             <div className="space-y-1.5">
               {/* Header row on tablet/desktop */}
-              <div className="hidden sm:grid grid-cols-[40px_1fr_160px_80px_40px_40px] px-4 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider">
+              <div className="hidden sm:grid grid-cols-[40px_1fr_160px_80px_40px_40px] gap-4 px-4 py-2 text-xs font-semibold text-white/40 uppercase tracking-wider">
                 <span>#</span>
                 <span>Judul Lagu</span>
                 <span>Album</span>
