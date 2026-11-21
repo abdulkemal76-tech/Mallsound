@@ -384,9 +384,9 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
         {/* Info Box */}
         <div className="flex gap-2.5 p-3 rounded-xl bg-sky-500/10 border border-sky-500/20">
           <Info className="w-4 h-4 text-sky-400 flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-white/80 leading-relaxed">
-            Browser bawaan Android menghentikan audio saat kamu beralih ke aplikasi lain.
-            Pakai <span className="font-semibold text-sky-300">Lemur Browser</span> + pintasan layar utama dan ekstensi{' '}
+          <p className="text-xs text-white/80 leading-relaxed min-w-0 break-words">
+            Browser bawaan Android menghentikan audio saat kamu beralih ke aplikasi lain. Pakai{' '}
+            <span className="font-semibold text-sky-300">Lemur Browser</span> + pintasan layar utama dan ekstensi{' '}
             <span className="font-semibold text-sky-300">Always Active Window</span> supaya musik terus mengalir meski layar mati.
           </p>
         </div>
@@ -405,7 +405,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                 <span className="flex-shrink-0 w-5 h-5 rounded-full bg-sky-500/30 text-sky-300 font-bold text-[10px] flex items-center justify-center border border-sky-500/40">
                   {i + 1}
                 </span>
-                <span className="pt-0.5">{step}</span>
+                <span className="pt-0.5 min-w-0 break-words">{step}</span>
               </li>
             ))}
           </ol>
@@ -466,13 +466,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <Info className="w-4 h-4" /> Cara Pasang Pintasan di Lemur Browser:
             </p>
             <ol className="list-decimal pl-4 space-y-1.5 text-white/80 text-[11px]">
-              <li>
+              <li className="min-w-0 break-words">
                 Ketuk tombol <b>Menu Titik Tiga (⋮)</b> di sudut Lemur.
               </li>
-              <li>
+              <li className="min-w-0 break-words">
                 Pilih opsi <b>&quot;Tambahkan ke Layar Utama&quot; (Add to Home screen)</b>.
               </li>
-              <li>
+              <li className="min-w-0 break-words">
                 Tekan <b>Tambah / Add</b>. Ikon pintasan MallSound akan langsung aktif di layar utama HP kamu!
               </li>
             </ol>
@@ -503,7 +503,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
                     Ekstensi Chrome
                   </span>
                 </div>
-                <p className="text-[11px] text-violet-200/80">
+                <p className="text-[11px] text-violet-200/80 break-words">
                   Bikin tab Lemur selalu aktif, supaya musik tetap jalan saat layar mati &bull; Pasang dari Chrome Web Store
                 </p>
               </div>
@@ -513,7 +513,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({
               <span>Pasang Ekstensi</span>
             </div>
           </a>
-          <p className="text-[11px] text-white/50 leading-relaxed">
+          <p className="text-[11px] text-white/50 leading-relaxed break-words">
             Buka link di atas lewat Lemur, ketuk <b className="text-white/70">Tambahkan ke Chrome</b>, lalu aktifkan ekstensinya. Lemur mendukung ekstensi Chrome, jadi tab MallSound tetap dianggap aktif.
           </p>
         </div>
