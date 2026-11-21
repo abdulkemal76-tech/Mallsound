@@ -570,9 +570,10 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           </div>
         </div>
 
-        {/* Hero Banner Header — v88: shadow-2xl + glow radial dihapus (bayangan di Koleksi). */}
+        {/* Hero Banner Header — v89: gradient dihapus (jangan dua warna),
+            kini datar tanpa bayangan. */}
         <div
-          className={`relative rounded-3xl overflow-hidden border border-white/15 bg-gradient-to-b ${theme.heroGradient} p-6 sm:p-8 backdrop-blur-2xl`}
+          className="relative rounded-3xl overflow-hidden border border-white/15 bg-transparent p-6 sm:p-8 backdrop-blur-2xl"
         >
           <div className="relative z-10 flex flex-col md:flex-row md:items-end gap-6 sm:gap-8">
             {/* Playlist Artwork Cover */}
@@ -743,9 +744,9 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
           )}
         </div>
 
-        {/* Folder Hero Banner — v88: gradient + shadow-xl + glow dihapus
-            (bayangan melintang yang mengganggu di Koleksi). Kini datar. */}
-        <div className="p-6 sm:p-8 rounded-3xl bg-white/5 border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+        {/* Folder Hero Banner — v89: latar dihapus total (bg-transparent)
+            supaya tidak ada lagi dua warna / bayangan di Koleksi. */}
+        <div className="p-6 sm:p-8 rounded-3xl bg-transparent border border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
             <div
               className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl flex items-center justify-center text-white shrink-0"
