@@ -569,30 +569,11 @@ app.get('/api/playlist/import', async (req, res) => {
           // abaikan — fallback ke judul generik di bawah
         }
 
-        // v88: ambil durasi asli dari halaman watch YouTube
-        // (lengthSeconds) supaya lagu sejam tidak tersimpan 210 dtk.
-        let videoDurationSec = 0;
-        try {
-          const watchRes = await fetch(
-            `https://www.youtube.com/watch?v=${singleVideoId}`,
-            {
-              headers: {
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                'Accept-Language': 'id-ID,id;q=0.9,en-US;q=0.8,en;q=0.7',
-              },
-            }
-          );
-          if (watchRes.ok) {
-            const watchHtml = await watchRes.text();
-            const lenMatch = watchHtml.match(/"lengthSeconds":"(\d+)"/);
-            if (lenMatch) {
-              const parsed = parseInt(lenMatch[1], 10);
-              if (Number.isFinite(parsed) && parsed > 0) videoDurationSec = parsed;
-            }
-          }
-        } catch {
-          // abaikan — fallback ke 210 di bawah
-        }
+        // v88: durasi asli diambil dari player YouTube saat diputar
+        // (guard di App.tsx sudah tidak mengunci durasi impor fallback
+        // 210 dtk lagi). Fetch halaman watch dihapus — YouTube memblokir
+        // IP datacenter Vercel untuk halaman watch, jadi fetch itu hanya
+        // menambah latensi tanpa hasil.
 
         // Bersihkan judul seperti addCandidate di playlist.
         let cleanTitle = (videoTitle || 'Video YouTube')
@@ -613,7 +594,6 @@ app.get('/api/playlist/import', async (req, res) => {
           coverUrl:
             videoThumb ||
             `https://i.ytimg.com/vi/${singleVideoId}/hqdefault.jpg`,
-          durationSec: videoDurationSec > 0 ? videoDurationSec : undefined,
         });
       } else {
         // --- 2b. PLAYLIST (jalur lama, tidak berubah) ---
@@ -728,8 +708,9 @@ app.get('/api/playlist/import', async (req, res) => {
           artist: c.artist || 'Artis',
           album: playlistTitle,
           genre: 'Pop',
-          // v88: pakai durasi asli YouTube kalau ada (lagu sejam), kalau
-          // tidak ada baru fallback 210 dtk.
+          // v88: durasi tersimpan 210 dtk (tebakan) — durasi ASLI dipakai
+          // saat diputar, karena guard player sudah tidak mengunci durasi
+          // impor fallback lagi (lihat App.tsx isImportedFallback).
           durationSec: c.durationSec && c.durationSec > 0 ? c.durationSec : 210,
           previewDurationSec: 30,
           // v86: single video pakai thumbnail YouTube asli, bukan gambar generik.
