@@ -308,6 +308,23 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
     return playlists.find((p) => p.id === selectedPlaylistId) || null;
   }, [playlists, selectedPlaylistId]);
 
+  // v83 — Koleksi hanya menampilkan playlist MILIK PENGGUNA. Playlist
+  // publik bawaan MallSound (Shoegaze, 8 mood, 12 genre) adalah "daftar
+  // putar publik" yang tempatnya di Beranda/Cari, bukan di Koleksi —
+  // kalau ikut tampil di sini kesannya nyampah. Detail playlist bawaan
+  // tetap bisa dibuka dari Beranda/Cari karena activePlaylist di atas
+  // memakai `playlists` lengkap; yang difilter hanya DAFTAR-nya.
+  const userPlaylists = useMemo(
+    () =>
+      playlists.filter(
+        (p) =>
+          p.id !== SHOEGAZE_INDO_PLAYLIST_ID &&
+          !MOOD_PLAYLIST_IDS.has(p.id) &&
+          !GENRE_PLAYLIST_IDS.has(p.id),
+      ),
+    [playlists],
+  );
+
   // Tracks inside the currently opened playlist
   const activePlaylistTracks = useMemo(() => {
     if (!activePlaylist) return [];
@@ -360,8 +377,8 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
   };
 
   const tabs: { id: SubTab; label: string; icon: React.ElementType; count?: number }[] = [
-    { id: 'folders', label: 'Folder Koleksi', icon: Folder, count: 3 + playlists.length },
-    { id: 'playlist', label: 'Semua Playlist', icon: FolderPlus, count: playlists.length },
+    { id: 'folders', label: 'Folder Koleksi', icon: Folder, count: 3 + userPlaylists.length },
+    { id: 'playlist', label: 'Semua Playlist', icon: FolderPlus, count: userPlaylists.length },
     { id: 'disukai', label: 'Disukai', icon: Heart, count: favoriteTracks.length },
     { id: 'baru-diputar', label: 'Baru Diputar', icon: Clock, count: recentlyPlayed.length },
     { id: 'upload', label: 'Upload', icon: Upload, count: resolvedCustomTracks.length },
@@ -1014,8 +1031,8 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
               </div>
             </div>
 
-            {/* 4. 📁 PLAYLIST FOLDERS (OPEN PLAYLIST DETAIL!) */}
-            {playlists.map((pl) => {
+            {/* 4. 📁 PLAYLIST FOLDERS (OPEN PLAYLIST DETAIL!) — hanya playlist pengguna (v83) */}
+            {userPlaylists.map((pl) => {
               const plTracks = resolvePlaylistTracks(pl);
               const theme = COVER_THEME_STYLES[pl.coverTheme] || COVER_THEME_STYLES.amber;
               return (
@@ -1068,7 +1085,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
       ================================================================= */}
       {activeTab === 'playlist' && (
         <div className="space-y-6">
-          {playlists.length === 0 ? (
+          {userPlaylists.length === 0 ? (
             <div className="rounded-3xl bg-white/5 border border-white/10 p-8 sm:p-12 text-center flex flex-col items-center justify-center backdrop-blur-md">
               <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-violet-500/20 via-fuchsia-500/20 to-pink-500/20 border border-white/10 flex items-center justify-center text-fuchsia-400 mb-4 shadow-inner">
                 <FolderPlus className="w-8 h-8" />
@@ -1100,7 +1117,7 @@ export const LibraryPage: React.FC<LibraryPageProps> = ({
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {playlists.map((playlist) => {
+              {userPlaylists.map((playlist) => {
                 const plTracks = resolvePlaylistTracks(playlist);
                 const theme = COVER_THEME_STYLES[playlist.coverTheme] || COVER_THEME_STYLES.amber;
 

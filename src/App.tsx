@@ -155,8 +155,10 @@ export function App() {
 
   // Merged Playlists (local + cloud)
   const allPlaylists = useMemo(() => {
-    // Playlist bawaan MallSound (mis. Shoegaze Indonesia) selalu ada di
-    // paling atas Koleksi — bukan dari localStorage / cloud.
+    // Playlist bawaan MallSound (Shoegaze, mood, genre) + playlist pengguna.
+    // Daftar putar bawaan tetap ada di sini supaya detail-nya bisa dibuka
+    // dari Beranda/Cari, tapi DAFTAR Koleksi/sidebar hanya menampilkan
+    // playlist pengguna (lihat userPlaylists, v83).
     const list: Playlist[] = [SHOEGAZE_INDO_PLAYLIST, ...MOOD_PLAYLISTS, ...GENRE_PLAYLISTS, ...localPlaylists];
     cloudPlaylists.forEach((cp) => {
       const existingIdx = list.findIndex((lp) => lp.id === cp.id);
@@ -168,6 +170,24 @@ export function App() {
     });
     return list;
   }, [localPlaylists, cloudPlaylists]);
+
+  // v83 — Playlist MILIK PENGGUNA saja (tanpa playlist publik bawaan
+  // MallSound: Shoegaze, mood, genre). Dipakai untuk sidebar dan pemilih
+  // "tambah ke playlist", supaya daftar putar publik tidak nyampah di
+  // Koleksi/sidebar. `allPlaylists` tetap dipakai untuk membuka detail
+  // playlist bawaan dari Beranda/Cari.
+  const userPlaylists = useMemo(
+    () =>
+      allPlaylists.filter(
+        (p) =>
+          p.id !== SHOEGAZE_INDO_PLAYLIST_ID &&
+          !MOOD_PLAYLIST_IDS.has(p.id) &&
+          !GENRE_PLAYLIST_IDS.has(p.id),
+      ),
+    [allPlaylists],
+  );
+
+  // Playback Queue (YouTube Music style queue)
 
   // Playback Queue (YouTube Music style queue)
   const [playbackQueue, setPlaybackQueue] = useState<Track[]>(() => {
@@ -2182,7 +2202,7 @@ export function App() {
           if (tab === 'library') setActivePlaylistId(null);
           setActiveTab(tab);
         }}
-        playlists={allPlaylists}
+        playlists={userPlaylists}
         onSelectPlaylist={(plId) => {
           setIsDesktopNowPlayingExpanded(false);
           // v74 — buka detail playlist: set activePlaylistId DAN tab library
@@ -2582,7 +2602,7 @@ export function App() {
         onClearQueue={handleClearQueue}
         onAddToQueue={handleAddToQueue}
         allAvailableTracks={allKnownTracks}
-        playlists={allPlaylists}
+        playlists={userPlaylists}
         onAddTrackToPlaylist={handleAddTrackToPlaylist}
         onOpenCreatePlaylist={() => setIsPlaylistModalOpen(true)}
         eqGains={eqGains}
@@ -2835,7 +2855,7 @@ export function App() {
         onPlayNext={handlePlayNext}
         onAddToQueue={handleAddToQueue}
         onStartRadio={handleStartRadio}
-        playlists={allPlaylists}
+        playlists={userPlaylists}
         onAddTrackToPlaylist={handleAddTrackToPlaylistById}
         onCreatePlaylistWithTrack={handleCreatePlaylistWithTrack}
         onShowToast={showToast}
