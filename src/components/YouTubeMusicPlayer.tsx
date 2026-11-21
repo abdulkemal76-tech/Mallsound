@@ -307,11 +307,18 @@ export const YouTubeMusicPlayer: React.FC<YouTubeMusicPlayerProps> = ({
             } else if (e.data === 1) {
               // State 1 = PLAYING
               onPlayingChangeRef.current(true);
-              if (!isMuted && volume > 0) {
+              // v70 — JANGAN pakai isMuted/volume dari closure: callback ini
+              // dibuat sekali saat player di-init, jadi nilainya STALE
+              // (nilai saat player pertama dibuat). Player A dibuat saat ia
+              // aktif (isMuted=false, volume>0); saat ia jadi standby dan
+              // mulai memutar lagu berikutnya, handler ini mengira ia masih
+              // aktif lalu memanggil unMute() + setVolume() — standby jadi
+              // terdengar = musik DOUBLE. Pakai ref yang selalu mutakhir.
+              if (!isMutedPropRef.current && volumePropRef.current > 0) {
                 setTimeout(() => {
                   try {
                     e.target.unMute();
-                    e.target.setVolume(Math.round(volume * 100));
+                    e.target.setVolume(Math.round(volumePropRef.current * 100));
                   } catch {}
                 }, 250);
               }
